@@ -10,6 +10,8 @@ import { ProjectDetailScreen } from '../ui/screens/ProjectDetailScreen'
 import { CriticsScreen } from '../ui/screens/CriticsScreen'
 import { NewsScreen } from '../ui/screens/NewsScreen'
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen'
+import { AwardsScreen } from '../ui/screens/AwardsScreen'
+import { AwardsCeremonyModal } from '../ui/components/AwardsCeremonyModal'
 import { MoneyText } from '../ui/components/MoneyText'
 import { SEASON_ZH } from '../ui/format'
 
@@ -23,6 +25,7 @@ type Nav =
   | { screen: 'critics' }
   | { screen: 'news' }
   | { screen: 'leaderboard' }
+  | { screen: 'awards' }
   | { screen: 'project'; projectId: string }
 
 type NavKey = Exclude<Nav['screen'], 'project'>
@@ -37,6 +40,7 @@ const NAV_ITEMS: Array<{ key: NavKey; label: string }> = [
   { key: 'critics', label: '影评人' },
   { key: 'news', label: '新闻' },
   { key: 'leaderboard', label: '排行榜' },
+  { key: 'awards', label: '颁奖' },
 ]
 
 export function App() {
@@ -47,6 +51,8 @@ export function App() {
   const newGame = useGameStore((s) => s.newGame)
   const resetSave = useGameStore((s) => s.resetSave)
   const [nav, setNav] = useState<Nav>({ screen: 'company' })
+  // 已看过的颁奖届次（避免重复弹出）
+  const [seenCeremonyYear, setSeenCeremonyYear] = useState<number | null>(null)
 
   useEffect(() => {
     void boot()
@@ -118,6 +124,7 @@ export function App() {
           {nav.screen === 'critics' && <CriticsScreen />}
           {nav.screen === 'news' && <NewsScreen />}
           {nav.screen === 'leaderboard' && <LeaderboardScreen />}
+          {nav.screen === 'awards' && <AwardsScreen />}
           {nav.screen === 'projects' && (
             <ProjectsScreen onOpenProject={(id) => setNav({ screen: 'project', projectId: id })} />
           )}
@@ -131,11 +138,18 @@ export function App() {
           {nav.screen === 'project' && (
             <ProjectDetailScreen
               projectId={nav.projectId}
-              onBack={() => setNav({ screen: 'company' })}
+              onBack={() => setNav({ screen: 'projects' })}
             />
           )}
         </div>
       </div>
+
+      {state.lastCeremony && state.lastCeremony.year !== seenCeremonyYear && (
+        <AwardsCeremonyModal
+          ceremony={state.lastCeremony}
+          onClose={() => setSeenCeremonyYear(state.lastCeremony!.year)}
+        />
+      )}
     </div>
   )
 }

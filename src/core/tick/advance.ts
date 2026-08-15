@@ -9,6 +9,7 @@ import type { Rng } from '../rng'
 import { chance, clamp, pick, randInt, round1, weightedPick } from '../rng'
 import { applyWeeklyWorkerState } from '../rules/growth'
 import { chemistrySpeedFactor } from '../rules/chemistry'
+import { applyAwardEffects, computeYearAwards } from '../rules/awards'
 import { generateScript } from '../generators/scriptGen'
 import { generateMarketScripts } from '../generators/scriptGen'
 import { generateCandidates } from '../generators/workerGen'
@@ -166,9 +167,13 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     }
   }
 
-  // 8. 年度切换钩子（V1 预留）
+  // 8. 年度切换：TMA 颁奖典礼（GDD §6 Award Ceremony）
   if (draft.calendar.week === 1 && draft.calendar.year > 1) {
-    pushNews(draft, `第 ${draft.calendar.year - 1} 年收官，迎来新的一年。`)
+    const prevYear = draft.calendar.year - 1
+    const ceremony = computeYearAwards(draft, prevYear)
+    draft.lastCeremony = ceremony
+    applyAwardEffects(draft, ceremony)
+    pushNews(draft, `第 ${prevYear} 年收官，TMA 颁奖典礼隆重举行，恭喜所有获奖影片！`)
   }
 
   draft.company.cash = round1(draft.company.cash)

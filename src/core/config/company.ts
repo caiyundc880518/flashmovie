@@ -47,3 +47,15 @@ export const CHEMISTRY = {
   /** 黄金组合成片加成（加到 Specific） */
   goldenSpecificBonus: 2,
 } as const
+
+/** TMA 颁奖典礼（GDD §6 / §3.7） */
+export const TMA_CONFIG = {
+  /** 奖项顺序 */
+  categories: ['最佳影片', '最佳导演', '最佳演员', '最佳摄影', '最佳剪辑', '最佳特效'] as const,
+  /** 我方获最佳影片：声誉 + */
+  pictureBonus: 3,
+  /** 我方获个人奖项：声誉 + */
+  winnerRepBonus: 1,
+  /** 得奖员工 Fame + */
+  workerFameGain: 10,
+} as const

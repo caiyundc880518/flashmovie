@@ -3,6 +3,7 @@ import type { Script } from './script'
 import type { Company } from './company'
 import type { FilmProject } from './film'
 import type { Calendar } from './calendar'
+import type { YearAwards } from './awards'
 
 /** 新闻 */
 export interface NewsItem {
@@ -115,4 +116,6 @@ export interface GameState {
   projects: FilmProject[]
   /** 编剧排队中的剧本产出（writerId → 剩余周数） */
   writerQueues: Record<string, number>
+  /** 最近一届 TMA 颁奖结果（跨年时生成） */
+  lastCeremony?: YearAwards
 }

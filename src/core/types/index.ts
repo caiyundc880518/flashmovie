@@ -63,3 +63,8 @@ export type {
   Publisher,
   Investor,
 } from './world'
+export type {
+  AwardCategory,
+  AwardWinner,
+  YearAwards,
+} from './awards'

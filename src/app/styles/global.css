@@ -801,6 +801,34 @@ input[type='range'] {
 .dot-miss {
   color: var(--danger);
 }
+
+/* ===== 颁奖 ===== */
+.award-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.award-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--gold);
+  border-radius: var(--radius);
+}
+.award-cat {
+  min-width: 76px;
+  color: var(--gold);
+  font-weight: 600;
+}
+.award-film {
+  flex: 1;
+}
 .data-table tbody tr:nth-child(1) .rank-num {
   background: linear-gradient(135deg, #b8860b, #e8b64c);
   color: #1a1200;
