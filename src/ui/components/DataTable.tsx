@@ -3,7 +3,8 @@ import type { ReactNode } from 'react'
 export interface Column<T> {
   key: string
   label: string
-  render: (row: T) => ReactNode
+  /** 第二参数为行索引（0 起），用于排名等场景 */
+  render: (row: T, index: number) => ReactNode
   className?: string
 }
 
@@ -34,7 +35,7 @@ export function DataTable<T>({
           </tr>
         </thead>
         <tbody>
-          {rows.map((row) => (
+          {rows.map((row, idx) => (
             <tr
               key={rowKey(row)}
               className={onRowClick ? 'clickable' : undefined}
@@ -42,7 +43,7 @@ export function DataTable<T>({
             >
               {columns.map((c) => (
                 <td key={c.key} className={c.className}>
-                  {c.render(row)}
+                  {c.render(row, idx)}
                 </td>
               ))}
             </tr>

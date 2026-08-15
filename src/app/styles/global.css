@@ -693,6 +693,28 @@ input[type='range'] {
   border: 1px solid rgba(232, 182, 76, 0.6);
   background: rgba(232, 182, 76, 0.08);
 }
+.rank-num {
+  display: inline-block;
+  min-width: 26px;
+  text-align: center;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text-dim);
+  font-weight: 600;
+}
+.data-table tbody tr:nth-child(1) .rank-num {
+  background: linear-gradient(135deg, #b8860b, #e8b64c);
+  color: #1a1200;
+}
+.data-table tbody tr:nth-child(2) .rank-num {
+  background: #9aa5b5;
+  color: #0d1321;
+}
+.data-table tbody tr:nth-child(3) .rank-num {
+  background: #b5733a;
+  color: #fff;
+}
 
 /* ===== 数据表格 ===== */
 .table-wrap {

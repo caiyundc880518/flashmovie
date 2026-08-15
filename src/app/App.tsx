@@ -8,6 +8,7 @@ import { TeamBuildScreen } from '../ui/screens/TeamBuildScreen'
 import { ProjectDetailScreen } from '../ui/screens/ProjectDetailScreen'
 import { CriticsScreen } from '../ui/screens/CriticsScreen'
 import { NewsScreen } from '../ui/screens/NewsScreen'
+import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen'
 import { MoneyText } from '../ui/components/MoneyText'
 import { SEASON_ZH } from '../ui/format'
 
@@ -19,6 +20,7 @@ type Nav =
   | { screen: 'team'; teamScriptId?: string }
   | { screen: 'critics' }
   | { screen: 'news' }
+  | { screen: 'leaderboard' }
   | { screen: 'project'; projectId: string }
 
 type NavKey = Exclude<Nav['screen'], 'project'>
@@ -31,6 +33,7 @@ const NAV_ITEMS: Array<{ key: NavKey; label: string }> = [
   { key: 'team', label: '组队立项' },
   { key: 'critics', label: '影评人' },
   { key: 'news', label: '新闻' },
+  { key: 'leaderboard', label: '排行榜' },
 ]
 
 export function App() {
@@ -113,6 +116,7 @@ export function App() {
           {nav.screen === 'recruit' && <RecruitScreen />}
           {nav.screen === 'critics' && <CriticsScreen />}
           {nav.screen === 'news' && <NewsScreen />}
+          {nav.screen === 'leaderboard' && <LeaderboardScreen />}
           {nav.screen === 'team' && (
             <TeamBuildScreen key={nav.teamScriptId ?? 'team'} initialScriptId={nav.teamScriptId} />
           )}
