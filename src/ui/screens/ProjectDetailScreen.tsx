@@ -145,7 +145,6 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
           <div className="attr-line">
             预测 AP <b>{preview.ap}</b> · MP <b>{preview.mp}</b>
           </div>
-          <CriticReviews reviews={preview.reviews} title="影评预测" />
           <div className="btn-row">
             <button className="btn-primary" onClick={() => dispatch({ type: 'chooseEditStyle', projectId, style: 'market' })}>
               市场向剪辑（更卖座）
@@ -289,7 +288,6 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
                 <span className="stat-label">片方总收入</span>
                 <MoneyText value={p.result.revenue ?? p.result.boxOffice * ECONOMY.cinemaShare} />
               </div>
-              <CriticReviews reviews={p.result.reviews} title="影评人评分" />
               <h3>成员表现（Group Performance）</h3>
               <ul className="career-list">
                 {p.result.groupPerformance.map((g) => (
@@ -301,6 +299,18 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
               </ul>
             </div>
           </div>
+        </section>
+      )}
+
+      {/* 影评人区：剪辑/宣发显示预测，上映后显示真实评分 */}
+      {p.stage !== 'preparing' && p.stage !== 'shooting' && (
+        <section className="panel">
+          <h2>影评人</h2>
+          {p.stage === 'released' && p.result ? (
+            <CriticReviews reviews={p.result.reviews} average={p.result.criticScore} title="上映后评分" />
+          ) : preview ? (
+            <CriticReviews reviews={preview.reviews} title="影评预测" />
+          ) : null}
         </section>
       )}
     </div>
@@ -336,7 +346,15 @@ function scoreColor(score: number): string {
 }
 
 /** 影评人评分列表（含预测） */
-function CriticReviews({ reviews, title }: { reviews: CriticReview[] | undefined; title: string }) {
+function CriticReviews({
+  reviews,
+  title,
+  average,
+}: {
+  reviews: CriticReview[] | undefined
+  title: string
+  average?: number
+}) {
   if (!reviews || reviews.length === 0) return null
   return (
     <div className="critic-list">
@@ -350,6 +368,15 @@ function CriticReviews({ reviews, title }: { reviews: CriticReview[] | undefined
           </span>
         </div>
       ))}
+      {average !== undefined && (
+        <div className="critic-row critic-avg">
+          <span className="critic-name">平均</span>
+          <Bar value={average} max={100} color={scoreColor(average)} />
+          <span className="critic-score" style={{ color: scoreColor(average) }}>
+            {average}
+          </span>
+        </div>
+      )}
     </div>
   )
 }

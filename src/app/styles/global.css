@@ -657,6 +657,15 @@ input[type='range'] {
   font-weight: 600;
   font-size: 13px;
 }
+.critic-avg {
+  border-top: 1px dashed var(--border);
+  margin-top: 6px;
+  padding-top: 8px;
+}
+.critic-avg .critic-name {
+  color: var(--gold);
+  font-weight: 600;
+}
 
 /* ===== 数据表格 ===== */
 .table-wrap {
