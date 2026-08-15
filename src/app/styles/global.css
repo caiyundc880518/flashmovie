@@ -1,0 +1,50 @@
+:root {
+  --bg: #0d1321;
+  --bg-panel: #16203a;
+  --bg-card: #1d2a4d;
+  --gold: #e8b64c;
+  --text: #e8ecf4;
+  --text-dim: #8fa0bd;
+  --accent: #4c8bf5;
+  --danger: #e05555;
+  --ok: #4cc38a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  min-height: 100vh;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+}
+
+.app-shell {
+  min-height: 100vh;
+  padding: 24px;
+}
+
+.app-header h1 {
+  margin: 0 0 8px;
+  color: var(--text);
+  font-size: 28px;
+  letter-spacing: 2px;
+}
+
+.app-sub {
+  color: var(--gold);
+  font-size: 16px;
+  font-weight: 400;
+}
+
+.app-body {
+  color: var(--text-dim);
+}
