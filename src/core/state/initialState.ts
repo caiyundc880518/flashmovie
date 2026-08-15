@@ -7,7 +7,12 @@ import type { Rng } from '../rng'
 import { createRng, pick, randInt } from '../rng'
 import { generateMarketScripts } from '../generators/scriptGen'
 import { generateCandidates } from '../generators/workerGen'
-import { generateCompetitors, generateCritics, generatePublishers } from '../generators/worldGen'
+import {
+  generateCompetitors,
+  generateCritics,
+  generateInvestors,
+  generatePublishers,
+} from '../generators/worldGen'
 
 /** 创建新档（种子可复现） */
 export function createInitialState(seed?: number): GameState {
@@ -27,6 +32,7 @@ export function createInitialState(seed?: number): GameState {
   const competitors = generateCompetitors(rng, (p) => `${p}${(counter++).toString(36)}`)
   const critics = generateCritics(rng, (p) => `${p}${(counter++).toString(36)}`)
   const publishers = generatePublishers(rng, (p) => `${p}${(counter++).toString(36)}`)
+  const investors = generateInvestors(rng, (p) => `${p}${(counter++).toString(36)}`)
 
   const state: GameState = {
     version: SAVE_VERSION,
@@ -37,6 +43,7 @@ export function createInitialState(seed?: number): GameState {
       name: '星光影业',
       cash: ECONOMY.startingCash,
       reputation: ECONOMY.startingReputation,
+      schoolLevel: 0,
       loans: [],
       ownedScriptIds: [],
       employeeIds: [],
@@ -54,6 +61,7 @@ export function createInitialState(seed?: number): GameState {
       competitors,
       critics,
       publishers,
+      investors,
       news: [
         {
           id: 'news0',

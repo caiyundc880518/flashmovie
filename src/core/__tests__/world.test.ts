@@ -75,12 +75,13 @@ describe('世界模拟', () => {
     delete (v1.world as { publishers?: unknown }).publishers
     for (const p of v1.projects) delete (p as { channels?: unknown }).channels
     const migrated = migrateSave(v1)
-    expect(migrated.version).toBe(3)
+    expect(migrated.version).toBe(4)
     expect(migrated.world.competitors.length).toBeGreaterThanOrEqual(
       WORLD_CONFIG.competitorCount[0],
     )
     expect(migrated.world.critics.length).toBeGreaterThanOrEqual(WORLD_CONFIG.criticCount[0])
     expect(migrated.world.publishers.length).toBeGreaterThan(0)
+    expect(migrated.world.investors.length).toBeGreaterThan(0)
   })
 
   it('v2 空世界档也能补生成（兼容早期 v2）', () => {
@@ -89,10 +90,12 @@ describe('世界模拟', () => {
     s.world.competitors = []
     s.world.critics = []
     delete (s.world as { publishers?: unknown }).publishers
+    delete (s.world as { investors?: unknown }).investors
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(3)
+    expect(migrated.version).toBe(4)
     expect(migrated.world.competitors.length).toBeGreaterThan(0)
     expect(migrated.world.critics.length).toBeGreaterThan(0)
     expect(migrated.world.publishers.length).toBeGreaterThan(0)
+    expect(migrated.world.investors.length).toBeGreaterThan(0)
   })
 })

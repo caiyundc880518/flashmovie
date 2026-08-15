@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { SEASON_ZH, STAGE_ZH, TYPE_ZH, fmtWan } from '../format'
 import { ECONOMY } from '../../core/config/economy'
+import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
 import { PosterCard } from '../components/PosterCard'
 import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
@@ -81,6 +82,74 @@ export function CompanyScreen({ onOpenProject }: { onOpenProject: (id: string) =
           </div>
           <div className="cal-row">剧本市场刷新：{world.marketRefreshIn} 周后</div>
           <div className="cal-row">签约编剧创作中：{Object.keys(state.writerQueues).length} 位</div>
+        </section>
+      </div>
+
+      <div className="grid-2">
+        <section className="panel">
+          <h2>写作学校</h2>
+          <div className="stat-row">
+            <span className="stat-label">等级</span>
+            <span>{company.schoolLevel} / 3</span>
+          </div>
+          <p className="dim">
+            签约编剧产出质量 +{Math.round(SCHOOL_CONFIG.writerQualityPerLevel * company.schoolLevel * 100)}%，
+            精品剧本概率 +{Math.round(SCHOOL_CONFIG.boutiqueChancePerLevel * company.schoolLevel * 100)}%。
+          </p>
+          {company.schoolLevel < 3 ? (
+            <button
+              disabled={company.cash < SCHOOL_CONFIG.upgradeCost[company.schoolLevel + 1]}
+              onClick={() => dispatch({ type: 'upgradeSchool' })}
+            >
+              升级到 {company.schoolLevel + 1} 级（
+              <MoneyText value={SCHOOL_CONFIG.upgradeCost[company.schoolLevel + 1]} />）
+            </button>
+          ) : (
+            <p className="dim">学校已满级。</p>
+          )}
+        </section>
+
+        <section className="panel">
+          <h2>融资 · 投资人</h2>
+          {company.investor ? (
+            <>
+              <div className="stat-row">
+                <span className="stat-label">投资人</span>
+                <span>{company.investor.name}</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">分成</span>
+                <span>{Math.round(company.investor.share * 100)}% 片方收入</span>
+              </div>
+              <div className="stat-row">
+                <span className="stat-label">待回收</span>
+                <MoneyText value={company.investor.remainingToCollect} />
+              </div>
+              <p className="dim">上映结算时自动扣除分成，回收完毕投资人退出。</p>
+            </>
+          ) : (
+            <div className="investor-list">
+              {world.investors.map((inv) => {
+                const investment = Math.round(
+                  inv.investmentBase + company.reputation * inv.investmentPerRep,
+                )
+                return (
+                  <div key={inv.id} className="investor-row">
+                    <div>
+                      <div className="table-name">{inv.name}</div>
+                      <div className="dim">
+                        出资 {fmtWan(investment)} · 分成 {Math.round(inv.share * 100)}% · 需回收{' '}
+                        {fmtWan(Math.round(investment * INVESTOR_CONFIG.repayMultiplier))}
+                      </div>
+                    </div>
+                    <button onClick={() => dispatch({ type: 'signInvestor', investorId: inv.id })}>
+                      签约
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+          )}
         </section>
       </div>
 

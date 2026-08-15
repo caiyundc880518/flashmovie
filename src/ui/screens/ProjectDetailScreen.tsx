@@ -3,6 +3,7 @@ import type { Channel, CriticReview, FilmProject, GameState, ProjectEvent } from
 import { useGameStore } from '../store/gameStore'
 import { createRng } from '../../core/rng'
 import { computeFilmResult } from '../../core/rules/scoring'
+import { goldenCombos, teamChemistry } from '../../core/rules/chemistry'
 import { ECONOMY } from '../../core/config/economy'
 import { CHANNEL_INFO, CHANNEL_ORDER } from '../../core/config/channels'
 import { ROLE_ZH, STAGE_ZH, TYPE_ZH, fmtWan } from '../format'
@@ -93,6 +94,15 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
           {p.team.shooterId && <TeamLine state={state} id={p.team.shooterId} label="摄影" />}
           {p.team.editorId && <TeamLine state={state} id={p.team.editorId} label="剪辑" />}
           {p.team.marketId && <TeamLine state={state} id={p.team.marketId} label="市场" />}
+          <div className="chem-line">
+            <span className="slot-label">团队化学</span>
+            <Bar value={teamChemistry(state, p)} max={100} color="var(--gold)" showValue />
+            {goldenCombos(state, p).map(([a, b]) => (
+              <span key={`${a}-${b}`} className="tag tag-gold">
+                ⭐ {state.workers[a]?.name} × {state.workers[b]?.name} 黄金组合
+              </span>
+            ))}
+          </div>
         </section>
       </div>
 

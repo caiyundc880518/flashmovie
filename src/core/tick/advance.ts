@@ -1,12 +1,14 @@
 import type { Competitor, CompetitorFilm, FilmProject, GameState, ProjectEvent, Script } from '../types'
 import { FILM_TYPES } from '../types'
 import { ECONOMY } from '../config/economy'
+import { SCHOOL_CONFIG } from '../config/company'
 import { SCRIPT_POOL } from '../config/scripts'
 import { SHOOTING_EVENTS } from '../config/events'
 import { WORLD_CONFIG } from '../config/world'
 import type { Rng } from '../rng'
 import { chance, clamp, pick, randInt, round1, weightedPick } from '../rng'
 import { applyWeeklyWorkerState } from '../rules/growth'
+import { chemistrySpeedFactor } from '../rules/chemistry'
 import { generateScript } from '../generators/scriptGen'
 import { generateMarketScripts } from '../generators/scriptGen'
 import { generateCandidates } from '../generators/workerGen'
@@ -76,6 +78,20 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
       const script: Script = generateScript(rng, 'company', writerId)
       script.id = uid(draft, 'scr')
       if (writer) script.title = `《${writer.name}新作·${script.title}》`
+      // 写作学校：质量加成 + 精品概率（GDD §3.1 自建写作学校）
+      const level = draft.company.schoolLevel
+      if (level > 0) {
+        const q = 1 + level * SCHOOL_CONFIG.writerQualityPerLevel
+        script.storyPoint = clamp(Math.round(script.storyPoint * q), 0, 100)
+        script.artPot = clamp(Math.round(script.artPot * q), 0, 100)
+        script.marketPot = clamp(Math.round(script.marketPot * q), 0, 100)
+        if (chance(rng, level * SCHOOL_CONFIG.boutiqueChancePerLevel)) {
+          script.storyPoint = clamp(script.storyPoint + SCHOOL_CONFIG.boutiqueBonus, 0, 100)
+          script.artPot = clamp(script.artPot + SCHOOL_CONFIG.boutiqueBonus, 0, 100)
+          script.marketPot = clamp(script.marketPot + SCHOOL_CONFIG.boutiqueBonus, 0, 100)
+          pushNews(draft, `写作学校产出精品剧本《${script.title}》！`)
+        }
+      }
       draft.scripts[script.id] = script
       draft.company.ownedScriptIds.push(script.id)
       if (writer) writer.experience += 20 // 写作实践（Post-Scripting Buff 基础）
@@ -91,9 +107,10 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     const directorSkill = draft.workers[p.team.directorId ?? '']?.skills.direct ?? 40
     const shooterSkill = draft.workers[p.team.shooterId ?? '']?.skills.shoot ?? 40
     const avgMood = teamAvgMood(draft, p)
+    const chemSpeed = chemistrySpeedFactor(draft, p)
     const speed = Math.max(
       1,
-      Math.round(1 + directorSkill * 0.02 + shooterSkill * 0.015 + avgMood * 0.003),
+      Math.round((1 + directorSkill * 0.02 + shooterSkill * 0.015 + avgMood * 0.003) * chemSpeed),
     )
     p.shotStages = Math.min(p.totalStages, p.shotStages + speed)
     const weeklyCost = (p.budget / p.totalStages) * speed

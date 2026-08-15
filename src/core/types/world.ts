@@ -66,7 +66,18 @@ export interface Publisher {
   prepayPerRep: number
 }
 
-/** 世界状态（V1 精简：剧本市场 / 招聘市场 / 新闻 / 趋势 / 对手 / 影评人 / 发行商） */
+/** 投资人（融资来源：出资 + 分成） */
+export interface Investor {
+  id: string
+  name: string
+  /** 出资 = investmentBase + 声誉 × investmentPerRep（万） */
+  investmentBase: number
+  investmentPerRep: number
+  /** 片方收入分成比例 0–1 */
+  share: number
+}
+
+/** 世界状态（剧本市场 / 招聘市场 / 新闻 / 趋势 / 对手 / 影评人 / 发行商 / 投资人） */
 export interface World {
   /** 剧本市场在售剧本 */
   marketScripts: Script[]
@@ -82,6 +93,8 @@ export interface World {
   critics: Critic[]
   /** 发行商 */
   publishers: Publisher[]
+  /** 投资人（可签约其一） */
+  investors: Investor[]
 }
 
 export interface GameState {

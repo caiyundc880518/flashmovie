@@ -19,4 +19,6 @@ export type Action =
   | { type: 'resolveEvent'; projectId: string; eventId: string; optionIndex: number }
   | { type: 'setChannels'; projectId: string; channels: Channel[] }
   | { type: 'selectPublisher'; projectId: string; publisherId: string }
+  | { type: 'upgradeSchool' }
+  | { type: 'signInvestor'; investorId: string }
   | { type: 'release'; projectId: string }

@@ -7,6 +7,7 @@ import { applyProjectGrowth } from '../rules/growth'
 import { generateWorker } from '../generators/workerGen'
 import { ECONOMY } from '../config/economy'
 import { SCRIPT_POOL } from '../config/scripts'
+import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../config/company'
 import type { Action } from './actions'
 
 /**
@@ -238,6 +239,38 @@ export function reduce(state: GameState, action: Action): GameState {
       break
     }
 
+    case 'upgradeSchool': {
+      const next = draft.company.schoolLevel + 1
+      if (next >= SCHOOL_CONFIG.upgradeCost.length) return state
+      const cost = SCHOOL_CONFIG.upgradeCost[next]
+      if (draft.company.cash < cost) return state
+      draft.company.cash -= cost
+      draft.company.schoolLevel = next
+      pushNews(draft, `写作学校升级到 ${next} 级，编剧产出质量提升。`)
+      break
+    }
+
+    case 'signInvestor': {
+      if (draft.company.investor) return state
+      const inv = draft.world.investors.find((x) => x.id === action.investorId)
+      if (!inv) return state
+      const investment = Math.round(
+        inv.investmentBase + draft.company.reputation * inv.investmentPerRep,
+      )
+      draft.company.cash += investment
+      draft.company.investor = {
+        id: inv.id,
+        name: inv.name,
+        share: inv.share,
+        remainingToCollect: Math.round(investment * INVESTOR_CONFIG.repayMultiplier),
+      }
+      pushNews(
+        draft,
+        `投资人「${inv.name}」注资 ${investment} 万元，将按 ${Math.round(inv.share * 100)}% 分成片方收入直至回收 ${Math.round(investment * INVESTOR_CONFIG.repayMultiplier)} 万元。`,
+      )
+      break
+    }
+
     case 'resolveEvent': {
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p) return state
@@ -275,6 +308,17 @@ export function reduce(state: GameState, action: Action): GameState {
         : 0
       const revenue = backEnd + prepayment
       draft.company.cash += round1(revenue)
+      // 投资人分成：按片方收入比例扣除，直至回收完毕退出
+      const investor = draft.company.investor
+      if (investor) {
+        const investorIncome = revenue * investor.share
+        draft.company.cash -= round1(investorIncome)
+        investor.remainingToCollect = round1(investor.remainingToCollect - investorIncome)
+        if (investor.remainingToCollect <= 0) {
+          draft.company.investor = undefined
+          pushNews(draft, `投资人「${investor.name}」已回收全部投资，退出公司。`)
+        }
+      }
       // 免费渠道：换口碑
       let repGain = result.reputationGain
       if (channels.includes('free')) repGain = clamp(repGain + 2, -3, 6)

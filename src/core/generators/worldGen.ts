@@ -1,7 +1,8 @@
-import type { Competitor, Critic, Publisher } from '../types'
+import type { Competitor, Critic, Investor, Publisher } from '../types'
 import { FILM_TYPES } from '../types'
 import { WORLD_CONFIG } from '../config/world'
 import { PUBLISHER_CONFIG } from '../config/channels'
+import { INVESTOR_CONFIG } from '../config/company'
 import type { Rng } from '../rng'
 import { pick, randInt, round1 } from '../rng'
 
@@ -58,6 +59,25 @@ export function generatePublishers(rng: Rng, uid: (prefix: string) => string): P
       shareRate: round1(randInt(rng, PUBLISHER_CONFIG.shareRateRange[0] * 100, PUBLISHER_CONFIG.shareRateRange[1] * 100) / 100),
       prepayBase: randInt(rng, PUBLISHER_CONFIG.prepayBaseRange[0], PUBLISHER_CONFIG.prepayBaseRange[1]),
       prepayPerRep: PUBLISHER_CONFIG.prepayPerRep,
+    }),
+  )
+}
+
+/** 生成投资人（2–4 家） */
+export function generateInvestors(rng: Rng, uid: (prefix: string) => string): Investor[] {
+  const namePool = [...INVESTOR_CONFIG.names]
+  return Array.from(
+    { length: randInt(rng, INVESTOR_CONFIG.count[0], INVESTOR_CONFIG.count[1]) },
+    () => ({
+      id: uid('inv'),
+      name: pick(rng, namePool),
+      investmentBase: randInt(
+        rng,
+        INVESTOR_CONFIG.investmentBaseRange[0],
+        INVESTOR_CONFIG.investmentBaseRange[1],
+      ),
+      investmentPerRep: INVESTOR_CONFIG.investmentPerRep,
+      share: round1(randInt(rng, INVESTOR_CONFIG.shareRange[0] * 100, INVESTOR_CONFIG.shareRange[1] * 100) / 100),
     }),
   )
 }

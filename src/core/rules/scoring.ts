@@ -3,6 +3,8 @@ import { SCORE_WEIGHTS } from '../config/weights'
 import { ECONOMY } from '../config/economy'
 import { CHANNEL_INFO } from '../config/channels'
 import { WORLD_CONFIG } from '../config/world'
+import { CHEMISTRY } from '../config/company'
+import { chemistryScoreFactor, goldenCombos } from './chemistry'
 import type { Rng } from '../rng'
 import { clamp, round1 } from '../rng'
 
@@ -54,12 +56,17 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
     SCORE_WEIGHTS.vfxMax,
   )
   const specific = clamp(
-    5 + project.buffs * 0.5 + project.apAdjust * 0.3,
+    5 +
+      project.buffs * 0.5 +
+      project.apAdjust * 0.3 +
+      (goldenCombos(state, project).length > 0 ? CHEMISTRY.goldenSpecificBonus : 0),
     0,
     SCORE_WEIGHTS.specificMax,
   )
 
   const base = BASE_KEYS.reduce((s, k) => s + SCORE_WEIGHTS.base[k] * scores[k], 0)
+  // 化学反应：团队相性影响成片（AP/MP ×0.9–1.1）
+  const chemFactor = chemistryScoreFactor(state, project)
   void base
 
   // AP / MP（0–100）
@@ -69,14 +76,15 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
     scores.directing * SCORE_WEIGHTS.ap.directing +
     scores.shooting * SCORE_WEIGHTS.ap.shooting
   const ap = clamp(
-    project.hasAd ? apRaw - ECONOMY.adDealApPenalty : apRaw,
+    (project.hasAd ? apRaw - ECONOMY.adDealApPenalty : apRaw) * chemFactor,
     0,
     100,
   )
   const mp = clamp(
-    script.marketPot * SCORE_WEIGHTS.mp.marketPot +
+    (script.marketPot * SCORE_WEIGHTS.mp.marketPot +
       actorSkill * SCORE_WEIGHTS.mp.acting +
-      project.hype * SCORE_WEIGHTS.mp.hype,
+      project.hype * SCORE_WEIGHTS.mp.hype) *
+      chemFactor,
     0,
     100,
   )

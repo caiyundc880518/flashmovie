@@ -666,6 +666,33 @@ input[type='range'] {
   color: var(--gold);
   font-weight: 600;
 }
+.investor-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.investor-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.chem-line {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.tag-gold {
+  color: var(--gold);
+  border: 1px solid rgba(232, 182, 76, 0.6);
+  background: rgba(232, 182, 76, 0.08);
+}
 
 /* ===== 数据表格 ===== */
 .table-wrap {

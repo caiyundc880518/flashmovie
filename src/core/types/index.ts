@@ -46,6 +46,7 @@ export type {
 } from './film'
 export type {
   Company,
+  CompanyInvestor,
   FinancialReport,
   Loan,
 } from './company'
@@ -60,4 +61,5 @@ export type {
   CompetitorFilm,
   Critic,
   Publisher,
+  Investor,
 } from './world'
