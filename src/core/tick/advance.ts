@@ -1,0 +1,144 @@
+import type { FilmProject, GameState, ProjectEvent, Script } from '../types'
+import { FILM_TYPES } from '../types'
+import { ECONOMY } from '../config/economy'
+import { SCRIPT_POOL } from '../config/scripts'
+import { SHOOTING_EVENTS } from '../config/events'
+import type { Rng } from '../rng'
+import { chance, pick, randInt, round1, weightedPick } from '../rng'
+import { applyWeeklyWorkerState } from '../rules/growth'
+import { generateScript } from '../generators/scriptGen'
+import { generateMarketScripts } from '../generators/scriptGen'
+import { generateCandidates } from '../generators/workerGen'
+import { pushNews, teamIds, uid } from '../state/utils'
+import { advanceWeek as advCalendar } from '../types/calendar'
+
+/** 剧组平均心情（影响拍摄速度） */
+function teamAvgMood(state: GameState, project: FilmProject): number {
+  const ids = teamIds(project.team)
+  if (ids.length === 0) return 60
+  const sum = ids.reduce((s, id) => s + (state.workers[id]?.active.mood ?? 60), 0)
+  return sum / ids.length
+}
+
+function generateProjectEvent(state: GameState, rng: Rng): ProjectEvent {
+  const def = weightedPick(
+    rng,
+    SHOOTING_EVENTS.map((e) => [e.weight, e] as const),
+  )
+  return {
+    id: uid(state, 'evt'),
+    kind: def.kind,
+    title: def.title,
+    desc: def.desc,
+    options: def.options.map((o) => ({ ...o })),
+  }
+}
+
+/**
+ * 推进一周（GDD §2 / §3.3）：
+ * 日历 → 周成本/薪酬 → 贷款 → 员工状态 → 编剧产出 → 项目推进 → 市场刷新 → 趋势 → 年度钩子
+ */
+export function advanceWeek(draft: GameState, rng: Rng): void {
+  draft.calendar = advCalendar(draft.calendar)
+
+  // 1. 每周固定成本 + 薪酬
+  draft.company.cash -= ECONOMY.weeklyOfficeCost
+  for (const id of draft.company.employeeIds) {
+    const w = draft.workers[id]
+    if (w) draft.company.cash -= w.salary
+  }
+
+  // 2. 贷款每周还款
+  for (const loan of draft.company.loans) {
+    const payment =
+      loan.principal / ECONOMY.loanWeeks + (loan.principal * loan.rate) / ECONOMY.weeksPerYear
+    draft.company.cash -= payment
+    loan.weeksLeft -= 1
+  }
+  draft.company.loans = draft.company.loans.filter((l) => l.weeksLeft > 0)
+
+  // 3. 员工状态（项目内/空闲）
+  const busy = new Set<string>()
+  for (const p of draft.projects) {
+    if (p.stage !== 'released') for (const id of teamIds(p.team)) busy.add(id)
+  }
+  for (const id of draft.company.employeeIds) {
+    const w = draft.workers[id]
+    if (w) applyWeeklyWorkerState(w, busy.has(id), rng)
+  }
+
+  // 4. 编剧产出剧本
+  for (const [writerId, left] of Object.entries(draft.writerQueues)) {
+    const next = left - 1
+    if (next <= 0) {
+      const writer = draft.workers[writerId]
+      const script: Script = generateScript(rng, 'company', writerId)
+      script.id = uid(draft, 'scr')
+      if (writer) script.title = `《${writer.name}新作·${script.title}》`
+      draft.scripts[script.id] = script
+      draft.company.ownedScriptIds.push(script.id)
+      if (writer) writer.experience += 20 // 写作实践（Post-Scripting Buff 基础）
+      delete draft.writerQueues[writerId]
+    } else {
+      draft.writerQueues[writerId] = next
+    }
+  }
+
+  // 5. 项目推进
+  for (const p of draft.projects) {
+    if (p.stage !== 'shooting') continue
+    const directorSkill = draft.workers[p.team.directorId ?? '']?.skills.direct ?? 40
+    const shooterSkill = draft.workers[p.team.shooterId ?? '']?.skills.shoot ?? 40
+    const avgMood = teamAvgMood(draft, p)
+    const speed = Math.max(
+      1,
+      Math.round(1 + directorSkill * 0.02 + shooterSkill * 0.015 + avgMood * 0.003),
+    )
+    p.shotStages = Math.min(p.totalStages, p.shotStages + speed)
+    const weeklyCost = (p.budget / p.totalStages) * speed
+    p.spent = round1(p.spent + weeklyCost)
+    draft.company.cash -= weeklyCost
+
+    if (p.pendingEvents.length === 0 && p.shotStages < p.totalStages && chance(rng, 0.35)) {
+      p.pendingEvents.push(generateProjectEvent(draft, rng))
+    }
+    if (p.shotStages >= p.totalStages && p.stage === 'shooting') {
+      p.stage = 'editing'
+    }
+  }
+
+  // 6. 市场刷新（剧本 + 候选人）
+  draft.world.marketRefreshIn -= 1
+  if (draft.world.marketRefreshIn <= 0) {
+    const scripts = generateMarketScripts(
+      rng,
+      randInt(rng, SCRIPT_POOL.marketScriptCount[0], SCRIPT_POOL.marketScriptCount[1]),
+    )
+    for (const s of scripts) s.id = uid(draft, 'scr')
+    draft.world.marketScripts = scripts
+    const candidates = generateCandidates(rng, randInt(rng, 4, 6))
+    for (const c of candidates) c.id = uid(draft, 'wrk')
+    draft.world.candidates = candidates
+    draft.world.marketRefreshIn = randInt(
+      rng,
+      SCRIPT_POOL.marketRefreshWeeks[0],
+      SCRIPT_POOL.marketRefreshWeeks[1],
+    )
+  }
+
+  // 7. 趋势过期 → 新趋势
+  if (draft.world.trend && draft.calendar.week > draft.world.trend.untilWeek) {
+    draft.world.trend = {
+      type: pick(rng, FILM_TYPES),
+      untilWeek: draft.calendar.week + randInt(rng, 20, 52),
+    }
+  }
+
+  // 8. 年度切换钩子（V1 预留）
+  if (draft.calendar.week === 1 && draft.calendar.year > 1) {
+    pushNews(draft, `第 ${draft.calendar.year - 1} 年收官，迎来新的一年。`)
+  }
+
+  draft.company.cash = round1(draft.company.cash)
+  draft.world.news = draft.world.news.slice(-30)
+}

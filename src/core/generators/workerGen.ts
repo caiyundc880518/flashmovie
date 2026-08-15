@@ -1,0 +1,95 @@
+import type { Gender, RoleId, SkillMap, Worker } from '../types'
+import { FILM_TYPES, ROLE_IDS, SKILL_KEYS } from '../types'
+import { BASE_SALARY_BY_ROLE, ROLES } from '../config/roles'
+import { ECONOMY } from '../config/economy'
+import { generateName } from '../config/names'
+import type { Rng } from '../rng'
+import { clamp, pick, randInt, round1 } from '../rng'
+
+export type WorkerTier = 'rookie' | 'pro'
+
+/**
+ * 生成员工（V1 基础属性与技能，来源 GDD §4.2/§4.3）
+ * @param tier rookie=高潜力新人（PA 高 CA 低），pro=熟手（CA 高）
+ */
+export function generateWorker(rng: Rng, role?: RoleId, tier: WorkerTier = 'rookie'): Worker {
+  const gender: Gender = rng() < 0.5 ? 'male' : 'female'
+  const roleId = role ?? pick(rng, ROLE_IDS)
+  const age = randInt(rng, 20, 45)
+  const height = gender === 'male' ? randInt(rng, 168, 188) : randInt(rng, 158, 176)
+  const weight = gender === 'male' ? randInt(rng, 58, 85) : randInt(rng, 45, 65)
+
+  // 潜力与当前能力
+  const pa = randInt(rng, 40, 95)
+  const ca =
+    tier === 'rookie'
+      ? Math.min(pa, randInt(rng, 15, 45))
+      : Math.min(pa, randInt(rng, 55, 85))
+
+  const fame = tier === 'rookie' ? randInt(rng, 0, 20) : randInt(rng, 30, 70)
+  const hype = randInt(rng, 0, 30)
+
+  // 精神/身体属性
+  const mental = {
+    intelligence: randInt(rng, 30, 80),
+    focus: randInt(rng, 30, 80),
+    gift: randInt(rng, 30, 85),
+    dedication: randInt(rng, 30, 85),
+    leader: randInt(rng, 20, 80),
+    adaptability: randInt(rng, 30, 80),
+    versatility: randInt(rng, 20, 70),
+  }
+  const physical = {
+    strong: randInt(rng, 30, 80),
+    agility: randInt(rng, 30, 80),
+    initiative: randInt(rng, 30, 80),
+    disease: randInt(rng, 40, 90),
+    charisma: randInt(rng, 30, 85),
+    sexy: randInt(rng, 20, 80),
+  }
+
+  // 技能：主职位技能接近 CA，其余为 CA 的一定比例
+  const skills: SkillMap = { act: 0, direct: 0, shoot: 0, edit: 0, market: 0, technical: 0, advertise: 0, vfx: 0 }
+  const mainSkill = ROLES[roleId].skill
+  for (const key of SKILL_KEYS) {
+    if (mainSkill === key) {
+      skills[key] = clamp(Math.round(ca * randInt(rng, 80, 110) / 100), 0, 100)
+    } else {
+      skills[key] = clamp(Math.round(ca * randInt(rng, 30, 60) / 100), 0, 100)
+    }
+  }
+
+  const avgSkill = SKILL_KEYS.reduce((s, k) => s + skills[k], 0) / SKILL_KEYS.length
+  const salary = round1(BASE_SALARY_BY_ROLE[roleId] + avgSkill * ECONOMY.salaryPerSkillPoint)
+
+  const mainType = rng() < 0.3 ? 'none' : pick(rng, FILM_TYPES)
+
+  return {
+    id: '',
+    name: generateName(rng),
+    role: roleId,
+    gender,
+    age,
+    basic: { pa, ca, fame, hype, mainType, height, weight },
+    mental,
+    physical,
+    active: { mood: randInt(rng, 55, 85), volume: randInt(rng, 55, 90) },
+    skills,
+    salary,
+    currentProjectId: null,
+    idleWeeks: 0,
+    career: [],
+    awards: [],
+    experience: 0,
+  }
+}
+
+/** 生成一批候选人（招聘市场） */
+export function generateCandidates(rng: Rng, count: number): Worker[] {
+  const out: Worker[] = []
+  for (let i = 0; i < count; i++) {
+    const tier: WorkerTier = rng() < 0.7 ? 'rookie' : 'pro'
+    out.push(generateWorker(rng, undefined, tier))
+  }
+  return out
+}
