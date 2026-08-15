@@ -977,6 +977,20 @@ input[type='range'] {
   margin: 22px 0 10px;
   letter-spacing: 1px;
 }
+.worker-detail .tabs {
+  gap: 14px;
+}
+.worker-attr-tab {
+  gap: 24px;
+}
+.detail-list {
+  padding: 4px 2px;
+}
+.worker-detail-actions {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
 .detail-left .attr-line,
 .detail-right .attr-line {
   font-size: 14px;
