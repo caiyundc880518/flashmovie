@@ -115,6 +115,8 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'startProject': {
       const script = draft.scripts[action.scriptId]
       if (!script || script.owner !== 'company') return state
+      // 流程约束：同一剧本只能立项一次（含已上映的历史项目）
+      if (draft.projects.some((p) => p.scriptId === action.scriptId)) return state
       if (
         !action.team.directorId ||
         action.team.actorIds.length === 0 ||

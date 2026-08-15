@@ -69,7 +69,11 @@ export function TeamBuildScreen({ initialScriptId }: { initialScriptId?: string 
 
   if (!state) return null
 
-  const owned = state.company.ownedScriptIds.map((id) => state.scripts[id]).filter(Boolean)
+  // 已用于立项的剧本不可再筹拍
+  const usedScriptIds = new Set(state.projects.map((p) => p.scriptId))
+  const owned = state.company.ownedScriptIds
+    .map((id) => state.scripts[id])
+    .filter((sc) => sc && !usedScriptIds.has(sc.id))
   const busyIds = new Set(state.projects.filter((p) => p.stage !== 'released').flatMap((p) => Object.values(p.team).flat()))
   const available = state.company.employeeIds
     .map((id) => state.workers[id])
@@ -117,6 +121,7 @@ export function TeamBuildScreen({ initialScriptId }: { initialScriptId?: string 
     <div className="screen">
       <section className="panel">
         <h2>选择剧本</h2>
+        {owned.length === 0 && <p className="dim">没有可立项的剧本（已拍过的剧本不能重复筹拍）。</p>}
         <div className="poster-grid">
           {owned.map((sc) => (
             <PosterCard

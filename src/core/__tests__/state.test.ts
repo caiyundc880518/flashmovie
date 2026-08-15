@@ -200,4 +200,22 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
     s = reduce(s, { type: 'applyShotBuff', projectId: pid, success: true })
     expect(s.projects[0].buffs).toBeGreaterThan(buffBefore)
   })
+
+  it('同一剧本不能重复立项（含已上映后）', () => {
+    let s = buildReadyState(11)
+    const scriptId = s.world.marketScripts[0].id
+    s = reduce(s, { type: 'buyScript', scriptId })
+    const team = {
+      directorId: 'test-director',
+      actorIds: ['test-actor'],
+      shooterId: 'test-shooter',
+      editorId: 'test-editor',
+      marketId: 'test-market',
+    }
+    s = reduce(s, { type: 'startProject', scriptId, team, vfxPercent: 0, hasAd: false })
+    expect(s.projects).toHaveLength(1)
+    // 第二次立项同一剧本 → 拒绝
+    s = reduce(s, { type: 'startProject', scriptId, team, vfxPercent: 0, hasAd: false })
+    expect(s.projects).toHaveLength(1)
+  })
 })

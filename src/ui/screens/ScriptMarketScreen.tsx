@@ -10,6 +10,7 @@ export function ScriptMarketScreen({ onBuildTeam }: { onBuildTeam: (scriptId: st
   if (!state) return null
 
   const { world, company, scripts } = state
+  const usedScriptIds = new Set(state.projects.map((p) => p.scriptId))
   const owned = company.ownedScriptIds.map((id) => scripts[id]).filter(Boolean)
   const writerQueue = Object.entries(state.writerQueues)
 
@@ -47,22 +48,34 @@ export function ScriptMarketScreen({ onBuildTeam }: { onBuildTeam: (scriptId: st
       <section className="panel">
         <h2>公司剧本库</h2>
         <div className="poster-grid">
-          {owned.map((sc) => (
-            <PosterCard key={sc.id} title={sc.title} type={sc.type}>
-              <div className="attr-line">
-                艺术 {sc.artPot} · 市场 {sc.marketPot} · 规模 {sc.scale} 场
-              </div>
-              <div className="attr-line">
-                编剧：{sc.writerId && state.workers[sc.writerId] ? state.workers[sc.writerId].name : '外部'}
-              </div>
-              <div className="btn-row">
-                <button className="btn-primary" onClick={() => onBuildTeam(sc.id)}>
-                  用此剧本立项
-                </button>
-                <button onClick={() => dispatch({ type: 'sellScript', scriptId: sc.id })}>出售</button>
-              </div>
-            </PosterCard>
-          ))}
+          {owned.map((sc) => {
+            const used = usedScriptIds.has(sc.id)
+            return (
+              <PosterCard key={sc.id} title={sc.title} type={sc.type}>
+                <div className="attr-line">
+                  艺术 {sc.artPot} · 市场 {sc.marketPot} · 规模 {sc.scale} 场
+                </div>
+                <div className="attr-line">
+                  编剧：
+                  {sc.writerId && state.workers[sc.writerId]
+                    ? state.workers[sc.writerId].name
+                    : '外部'}
+                </div>
+                {used ? (
+                  <span className="tag tag-pro">已拍摄 · 不可复用</span>
+                ) : (
+                  <div className="btn-row">
+                    <button className="btn-primary" onClick={() => onBuildTeam(sc.id)}>
+                      用此剧本立项
+                    </button>
+                    <button onClick={() => dispatch({ type: 'sellScript', scriptId: sc.id })}>
+                      出售
+                    </button>
+                  </div>
+                )}
+              </PosterCard>
+            )
+          })}
           {owned.length === 0 && <p className="dim">剧本库为空，先买一个吧。</p>}
         </div>
       </section>
