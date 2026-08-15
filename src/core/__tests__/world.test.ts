@@ -65,7 +65,7 @@ describe('世界模拟', () => {
     expect(score).toBeGreaterThan(60) // 偏好 +10
   })
 
-  it('v1 存档迁移到 v2 补齐世界字段', () => {
+  it('v1 存档迁移到 v2 并自动补生成世界实体', () => {
     const s = createInitialState(13)
     const v1 = JSON.parse(JSON.stringify(s)) as GameState
     v1.version = 1
@@ -73,7 +73,19 @@ describe('世界模拟', () => {
     delete (v1.world as { critics?: unknown }).critics
     const migrated = migrateSave(v1)
     expect(migrated.version).toBe(2)
-    expect(migrated.world.competitors).toEqual([])
-    expect(migrated.world.critics).toEqual([])
+    expect(migrated.world.competitors.length).toBeGreaterThanOrEqual(
+      WORLD_CONFIG.competitorCount[0],
+    )
+    expect(migrated.world.critics.length).toBeGreaterThanOrEqual(WORLD_CONFIG.criticCount[0])
+  })
+
+  it('v2 空世界档也能补生成（兼容早期 v2）', () => {
+    const s = createInitialState(17)
+    s.version = 2
+    s.world.competitors = []
+    s.world.critics = []
+    const migrated = migrateSave(s)
+    expect(migrated.world.competitors.length).toBeGreaterThan(0)
+    expect(migrated.world.critics.length).toBeGreaterThan(0)
   })
 })

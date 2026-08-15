@@ -2,12 +2,12 @@ import type { GameState } from '../types'
 import { FILM_TYPES } from '../types'
 import { ECONOMY } from '../config/economy'
 import { SCRIPT_POOL } from '../config/scripts'
-import { WORLD_CONFIG } from '../config/world'
 import { SAVE_VERSION } from '../save/schema'
 import type { Rng } from '../rng'
 import { createRng, pick, randInt } from '../rng'
 import { generateMarketScripts } from '../generators/scriptGen'
 import { generateCandidates } from '../generators/workerGen'
+import { generateCompetitors, generateCritics } from '../generators/worldGen'
 
 /** 创建新档（种子可复现） */
 export function createInitialState(seed?: number): GameState {
@@ -24,42 +24,8 @@ export function createInitialState(seed?: number): GameState {
     id: `wrk${(counter++).toString(36)}`,
   }))
 
-  // AI 竞争对手（2–5 家）
-  const namePool = [...WORLD_CONFIG.competitorNames]
-  const competitors = Array.from(
-    { length: randInt(rng, WORLD_CONFIG.competitorCount[0], WORLD_CONFIG.competitorCount[1]) },
-    () => ({
-      id: `comp${(counter++).toString(36)}`,
-      name: pick(rng, namePool),
-      reputation: randInt(
-        rng,
-        WORLD_CONFIG.competitorBaseReputation[0],
-        WORLD_CONFIG.competitorBaseReputation[1],
-      ),
-      nextReleaseIn: randInt(
-        rng,
-        WORLD_CONFIG.competitorFirstReleaseDelay[0],
-        WORLD_CONFIG.competitorFirstReleaseDelay[1],
-      ),
-      history: [],
-    }),
-  )
-
-  // 影评人（3–5 位）
-  const criticNamePool = [...WORLD_CONFIG.criticNames]
-  const critics = Array.from(
-    { length: randInt(rng, WORLD_CONFIG.criticCount[0], WORLD_CONFIG.criticCount[1]) },
-    () => ({
-      id: `crit${(counter++).toString(36)}`,
-      name: pick(rng, criticNamePool),
-      taste: rng() < 0.6 ? pick(rng, FILM_TYPES) : ('none' as const),
-      influence: randInt(
-        rng,
-        WORLD_CONFIG.criticInfluenceRange[0],
-        WORLD_CONFIG.criticInfluenceRange[1],
-      ),
-    }),
-  )
+  const competitors = generateCompetitors(rng, (p) => `${p}${(counter++).toString(36)}`)
+  const critics = generateCritics(rng, (p) => `${p}${(counter++).toString(36)}`)
 
   const state: GameState = {
     version: SAVE_VERSION,
