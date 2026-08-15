@@ -1,0 +1,56 @@
+import type { FilmType, RoleId, ProjectStage } from '../core/types'
+
+export const TYPE_ZH: Record<FilmType, string> = {
+  comedy: '喜剧',
+  horror: '恐怖',
+  action: '动作',
+  love: '爱情',
+  war: '战争',
+  drama: '剧情',
+}
+
+export const TYPE_COLOR: Record<FilmType, string> = {
+  comedy: '#f5a623',
+  horror: '#8a5cff',
+  action: '#e05555',
+  love: '#ff7ab8',
+  war: '#7a8a9a',
+  drama: '#4c8bf5',
+}
+
+export const ROLE_ZH: Record<RoleId, string> = {
+  producer: '制片人',
+  director: '导演',
+  writer: '编剧',
+  actor: '演员',
+  shooter: '摄影',
+  editor: '剪辑',
+  technician: '技术',
+  market: '市场',
+  assistant: '助理',
+}
+
+export const STAGE_ZH: Record<ProjectStage, string> = {
+  preparing: '筹备中',
+  shooting: '拍摄中',
+  editing: '剪辑中',
+  marketing: '宣发中',
+  released: '已上映',
+}
+
+export const SEASON_ZH = (week: number): string => {
+  if (week <= 12) return '春季档'
+  if (week <= 26) return '夏季档'
+  if (week <= 39) return '秋季档'
+  return '冬季档'
+}
+
+export function fmtWan(value: number): string {
+  const abs = Math.abs(value)
+  if (abs >= 10000) return `${(value / 10000).toFixed(2)}亿`
+  return `${Math.round(value).toLocaleString()}万`
+}
+
+export function fmtWeek(week: number): string {
+  return `第${week}周`
+}

@@ -108,7 +108,7 @@ export function computeBoxOfficeAndGain(
   const script = state.scripts[project.scriptId]
   const f = ECONOMY.boxOfficeFactor
 
-  const base = project.budget * ECONOMY.boxOfficeBaseFactor
+  const base = project.totalStages * ECONOMY.boxOfficeBasePerStage
   const mpFactor = f.mpMin + (mp / 100) * f.mpSpan
   const hypeFactor = 1 + (project.hype / 100) * f.hypeSpan
   const trendActive = state.world.trend !== null && script.type === state.world.trend.type

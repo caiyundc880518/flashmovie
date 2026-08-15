@@ -1,13 +1,16 @@
 :root {
   --bg: #0d1321;
-  --bg-panel: #16203a;
-  --bg-card: #1d2a4d;
+  --bg-panel: #131c33;
+  --bg-card: #1a2440;
+  --bg-hover: #223056;
   --gold: #e8b64c;
   --text: #e8ecf4;
   --text-dim: #8fa0bd;
   --accent: #4c8bf5;
   --danger: #e05555;
   --ok: #4cc38a;
+  --border: #2a3a63;
+  --radius: 8px;
 }
 
 * {
@@ -25,26 +28,549 @@ body {
   background: var(--bg);
   color: var(--text);
   font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
+  font-size: 14px;
+}
+
+button {
+  font-family: inherit;
+  font-size: 13px;
+  color: var(--text);
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+}
+button:hover:not(:disabled) {
+  background: var(--bg-hover);
+  border-color: var(--gold);
+}
+button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: linear-gradient(135deg, #b8860b, #e8b64c);
+  color: #1a1200;
+  font-weight: 600;
+  border-color: transparent;
+}
+.btn-primary:hover:not(:disabled) {
+  filter: brightness(1.08);
+}
+.btn-danger {
+  color: var(--danger);
+  border-color: rgba(224, 85, 85, 0.4);
+}
+.btn-ghost {
+  background: transparent;
+}
+
+input[type='number'],
+input[type='text'],
+select {
+  font-family: inherit;
+  font-size: 13px;
+  background: var(--bg);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 6px 8px;
+}
+select {
+  min-width: 140px;
 }
 
 .app-shell {
+  display: flex;
   min-height: 100vh;
-  padding: 24px;
 }
 
-.app-header h1 {
-  margin: 0 0 8px;
-  color: var(--text);
-  font-size: 28px;
+/* ===== 侧边栏 ===== */
+.sidebar {
+  width: 180px;
+  flex-shrink: 0;
+  background: var(--bg-panel);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 16px 10px;
+  gap: 8px;
+}
+.logo {
+  font-size: 20px;
+  font-weight: 700;
   letter-spacing: 2px;
+  color: var(--text);
+  padding: 4px 8px 14px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 8px;
+}
+.logo small {
+  display: block;
+  font-size: 11px;
+  font-weight: 400;
+  color: var(--gold);
+  letter-spacing: 1px;
+}
+.side-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.nav-item {
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+  padding: 9px 12px;
+  font-size: 14px;
+}
+.nav-item:hover {
+  background: var(--bg-card);
+  border-color: transparent;
+}
+.nav-active {
+  background: var(--bg-card);
+  color: var(--gold);
+  border-color: var(--border);
+}
+.sidebar-bottom {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.app-sub {
+/* ===== 主区域 ===== */
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--bg-panel);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.topbar-info {
+  display: flex;
+  gap: 20px;
+  align-items: center;
+}
+.top-cal {
   color: var(--gold);
+  font-weight: 600;
+}
+.top-stat {
+  color: var(--text-dim);
+}
+.btn-advance {
+  padding: 8px 18px;
+}
+.content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.boot-screen {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  color: var(--text-dim);
+}
+
+/* ===== 面板与栅格 ===== */
+.panel {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+.panel h2 {
+  margin: 0 0 12px;
   font-size: 16px;
+  color: var(--text);
+  letter-spacing: 1px;
+  border-left: 3px solid var(--gold);
+  padding-left: 8px;
+}
+.panel h3 {
+  margin: 14px 0 8px;
+  font-size: 13px;
+  color: var(--gold);
+}
+.grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  align-items: start;
+}
+@media (max-width: 1000px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+.dim {
+  color: var(--text-dim);
+}
+.good {
+  color: var(--ok);
+}
+.bad {
+  color: var(--danger);
+}
+.money {
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+.money-neg {
+  color: var(--danger);
+}
+
+/* ===== 海报卡片 ===== */
+.poster-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+  gap: 14px;
+}
+.poster {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-top: 4px solid var(--accent);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.poster-active {
+  outline: 2px solid var(--gold);
+}
+.poster-clickable {
+  cursor: pointer;
+}
+.poster-clickable:hover {
+  background: var(--bg-hover);
+}
+.poster-head {
+  padding: 10px 12px;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.poster-type {
+  font-size: 11px;
+  opacity: 0.9;
+}
+.poster-title {
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.poster-body {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  flex: 1;
+}
+.attr-line {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.btn-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+}
+
+/* ===== 统计行 / 贷款 / 日历 ===== */
+.stat-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.stat-label {
+  color: var(--text-dim);
+  font-size: 12px;
+  min-width: 64px;
+}
+.loan-box {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.loan-input-row {
+  display: flex;
+  gap: 8px;
+}
+.loan-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.cal-row {
+  padding: 6px 0;
+  border-bottom: 1px dashed var(--border);
+  color: var(--text-dim);
+}
+
+/* ===== 项目列表 / 新闻 ===== */
+.project-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
+}
+.clickable {
+  cursor: pointer;
+}
+.news-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow-y: auto;
+}
+.news-list li {
+  color: var(--text-dim);
+  font-size: 12px;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+/* ===== 员工卡片 ===== */
+.worker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
+  gap: 12px;
+}
+.worker-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.worker-card.clickable {
+  cursor: pointer;
+}
+.worker-card.clickable:hover {
+  background: var(--bg-hover);
+}
+.worker-head {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+.avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), #7a5cff);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  font-weight: 700;
+  flex-shrink: 0;
+}
+.worker-name {
+  font-weight: 600;
+}
+.worker-role {
+  color: var(--gold);
+  font-size: 12px;
   font-weight: 400;
 }
-
-.app-body {
+.worker-sub {
   color: var(--text-dim);
+  font-size: 11px;
+}
+.worker-meta {
+  display: flex;
+  justify-content: space-between;
+  color: var(--text-dim);
+  font-size: 11px;
+}
+.worker-detail {
+  margin-top: 4px;
+}
+.detail-left {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.detail-right {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.career-list {
+  margin: 0;
+  padding: 0 0 0 16px;
+  color: var(--text-dim);
+  font-size: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+/* ===== 条形 / 雷达 ===== */
+.bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.bar-label {
+  min-width: 56px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.bar {
+  flex: 1;
+  height: 8px;
+  background: var(--bg);
+  border-radius: 4px;
+  overflow: hidden;
+}
+.bar-fill {
+  height: 100%;
+  border-radius: 4px;
+}
+.bar-value {
+  min-width: 28px;
+  text-align: right;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.radar-grid {
+  fill: none;
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.radar-axis {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+.radar-fill {
+  fill: rgba(232, 182, 76, 0.25);
+}
+.radar-stroke {
+  stroke: var(--gold);
+  stroke-width: 1.5;
+}
+.radar-label {
+  fill: var(--text-dim);
+  font-size: 10px;
+}
+
+/* ===== 组队 / 配置 ===== */
+.slot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.slot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.slot-label {
+  min-width: 110px;
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.config-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+.config-label {
+  color: var(--text-dim);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.config-value {
+  color: var(--gold);
+  min-width: 40px;
+}
+input[type='range'] {
+  flex: 1;
+  accent-color: var(--gold);
+}
+.budget-line {
+  padding: 10px 0;
+  color: var(--text);
+  border-top: 1px dashed var(--border);
+  margin-top: 8px;
+}
+.msg {
+  color: var(--gold);
+  font-size: 13px;
+}
+
+/* ===== 项目详情 ===== */
+.team-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 0;
+  border-bottom: 1px dashed var(--border);
+}
+.score-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.event-list {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.event-block {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--danger);
+  border-radius: var(--radius);
+  padding: 10px 12px;
+}
+.event-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.event-desc {
+  color: var(--text-dim);
+  font-size: 12px;
+  margin-bottom: 8px;
+}
+.writer-row {
+  padding: 6px 0;
+  color: var(--text-dim);
+  font-size: 13px;
 }

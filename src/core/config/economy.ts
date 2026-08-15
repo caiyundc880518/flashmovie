@@ -45,13 +45,17 @@ export const ECONOMY = {
 
   /** 影院分账（片方所得比例，自发行） */
   cinemaShare: 0.45,
-  /** 票房基准 = 预算 × 系数（GDD §7.5 成本基准 1.0，票房 0.8–1.6） */
-  boxOfficeBaseFactor: 1.2,
+  /**
+   * 票房基准 = 场次数 × boxOfficeBasePerStage（万）。
+   * 目标平衡：中型电影总成本约 500–800 万（预算+薪酬+宣发），
+   * 平均票房分账后应让"决策达标"的片盈利 30%–100%。
+   */
+  boxOfficeBasePerStage: 150,
   /** 票房修正系数范围 */
   boxOfficeFactor: {
-    /** mp 0–100 → 0.5–2.5 */
-    mpMin: 0.5,
-    mpSpan: 2.0,
+    /** mp 0–100 → 0.4–2.0 */
+    mpMin: 0.4,
+    mpSpan: 1.6,
     /** hype 0–100 → 1–2 */
     hypeSpan: 1.0,
     /** trend 契合 0–1 → 1–1.3 */
