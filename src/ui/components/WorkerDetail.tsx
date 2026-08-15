@@ -54,6 +54,21 @@ export function WorkerDetail({ worker, actions }: { worker: Worker; actions?: Re
                 </li>
               ))}
           </ul>
+          <h3>获奖履历</h3>
+          {worker.awards.length === 0 ? (
+            <p className="dim">暂无获奖记录</p>
+          ) : (
+            <ul className="career-list award-history-list">
+              {[...worker.awards]
+                .reverse()
+                .slice(0, 8)
+                .map((a, i) => (
+                  <li key={i}>
+                    🏆 「{a.award}」 · 《{a.projectName}》
+                  </li>
+                ))}
+            </ul>
+          )}
         </div>
       </div>
     </div>
