@@ -6,6 +6,8 @@ import { EmployeesScreen } from '../ui/screens/EmployeesScreen'
 import { RecruitScreen } from '../ui/screens/RecruitScreen'
 import { TeamBuildScreen } from '../ui/screens/TeamBuildScreen'
 import { ProjectDetailScreen } from '../ui/screens/ProjectDetailScreen'
+import { CriticsScreen } from '../ui/screens/CriticsScreen'
+import { NewsScreen } from '../ui/screens/NewsScreen'
 import { MoneyText } from '../ui/components/MoneyText'
 import { SEASON_ZH } from '../ui/format'
 
@@ -15,6 +17,8 @@ type Nav =
   | { screen: 'employees' }
   | { screen: 'recruit' }
   | { screen: 'team'; teamScriptId?: string }
+  | { screen: 'critics' }
+  | { screen: 'news' }
   | { screen: 'project'; projectId: string }
 
 type NavKey = Exclude<Nav['screen'], 'project'>
@@ -25,6 +29,8 @@ const NAV_ITEMS: Array<{ key: NavKey; label: string }> = [
   { key: 'employees', label: '员工' },
   { key: 'recruit', label: '招聘' },
   { key: 'team', label: '组队立项' },
+  { key: 'critics', label: '影评人' },
+  { key: 'news', label: '新闻' },
 ]
 
 export function App() {
@@ -105,6 +111,8 @@ export function App() {
           )}
           {nav.screen === 'employees' && <EmployeesScreen />}
           {nav.screen === 'recruit' && <RecruitScreen />}
+          {nav.screen === 'critics' && <CriticsScreen />}
+          {nav.screen === 'news' && <NewsScreen />}
           {nav.screen === 'team' && (
             <TeamBuildScreen key={nav.teamScriptId ?? 'team'} initialScriptId={nav.teamScriptId} />
           )}

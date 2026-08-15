@@ -381,6 +381,25 @@ select {
   border-bottom: 1px dashed var(--border);
   line-height: 1.7;
 }
+.news-list-full {
+  max-height: none;
+  gap: 0;
+}
+.news-list-full li {
+  display: flex;
+  gap: 14px;
+  align-items: baseline;
+  font-size: 13px;
+}
+.news-week {
+  color: var(--gold);
+  font-size: 12px;
+  flex-shrink: 0;
+  min-width: 52px;
+}
+.news-text {
+  color: var(--text);
+}
 
 /* ===== 员工卡片 ===== */
 .worker-grid {

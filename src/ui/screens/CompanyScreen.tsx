@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import { useGameStore } from '../store/gameStore'
-import { SEASON_ZH, STAGE_ZH, TYPE_ZH, fmtWan, fmtWeek } from '../format'
+import { SEASON_ZH, STAGE_ZH, TYPE_ZH, fmtWan } from '../format'
 import { ECONOMY } from '../../core/config/economy'
 import { PosterCard } from '../components/PosterCard'
 import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
-import type { Competitor, Critic } from '../../core/types'
+import type { Competitor } from '../../core/types'
 
 export function CompanyScreen({ onOpenProject }: { onOpenProject: (id: string) => void }) {
   const state = useGameStore((s) => s.state)
@@ -116,34 +116,12 @@ export function CompanyScreen({ onOpenProject }: { onOpenProject: (id: string) =
 
       <section className="panel">
         <h2>市场动态</h2>
-        <h3>竞争对手</h3>
         <DataTable<Competitor>
           columns={competitorColumns}
           rows={world.competitors}
           rowKey={(c) => c.id}
           emptyText="暂无竞争对手"
         />
-        <h3>影评人</h3>
-        <DataTable<Critic>
-          columns={criticColumns}
-          rows={world.critics}
-          rowKey={(c) => c.id}
-          emptyText="暂无影评人"
-        />
-      </section>
-
-      <section className="panel">
-        <h2>新闻</h2>
-        <ul className="news-list">
-          {[...world.news]
-            .reverse()
-            .slice(0, 15)
-            .map((n) => (
-              <li key={n.id}>
-                {fmtWeek(n.week)} · {n.text}
-              </li>
-            ))}
-        </ul>
       </section>
     </div>
   )
@@ -165,10 +143,4 @@ const competitorColumns: Column<Competitor>[] = [
       return last ? `${last.name} · ${fmtWan(last.boxOffice)}` : '—'
     },
   },
-]
-
-const criticColumns: Column<Critic>[] = [
-  { key: 'name', label: '影评人', render: (c) => <span className="table-name">{c.name}</span> },
-  { key: 'taste', label: '偏好', render: (c) => (c.taste === 'none' ? '无偏好' : TYPE_ZH[c.taste]) },
-  { key: 'influence', label: '影响力', render: (c) => c.influence },
 ]

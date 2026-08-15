@@ -94,8 +94,17 @@ export interface GroupPerformance {
   performance: number
 }
 
+/** 单条影评 */
+export interface CriticReview {
+  criticId: string
+  criticName: string
+  score: number
+}
+
 /** 电影结算结果 */
 export interface FilmResult {
+  /** 片名（展示用） */
+  name: string
   scores: FilmScores
   vfx: number
   specific: number
@@ -103,6 +112,8 @@ export interface FilmResult {
   mp: number
   /** 影评人平均分 0–100 */
   criticScore: number
+  /** 逐影评人评分 */
+  reviews: CriticReview[]
   boxOffice: number
   reputationGain: number
   groupPerformance: GroupPerformance[]

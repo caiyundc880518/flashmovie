@@ -1,4 +1,4 @@
-import type { FilmProject, FilmResult, FilmScores, GameState, RoleId } from '../types'
+import type { CriticReview, FilmProject, FilmResult, FilmScores, GameState, RoleId } from '../types'
 import { SCORE_WEIGHTS } from '../config/weights'
 import { ECONOMY } from '../config/economy'
 import { WORLD_CONFIG } from '../config/world'
@@ -81,19 +81,25 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
   )
 
   const { boxOffice, reputationGain } = computeBoxOfficeAndGain(state, project, ap, mp, rng)
-  const criticScore = computeCriticScore(state, project, ap, rng)
+  const reviews = computeCriticReviews(state, project, ap, rng)
+  const criticScore =
+    reviews.length > 0
+      ? Math.round(reviews.reduce((a, r) => a + r.score, 0) / reviews.length)
+      : Math.round(ap)
   // 影评口碑影响声誉（±6 封顶）
   const finalRepGain = clamp(reputationGain + Math.round((criticScore - 50) / 15), -3, 6)
 
   const groupPerformance = buildGroupPerformance(state, project, rng)
 
   return {
+    name: project.name,
     scores,
     vfx: round1(vfx),
     specific: round1(specific),
     ap: round1(ap),
     mp: round1(mp),
     criticScore,
+    reviews,
     boxOffice: round1(boxOffice),
     reputationGain: finalRepGain,
     groupPerformance,
@@ -119,10 +125,15 @@ export function competitionPenalty(state: GameState, week: number): number {
   )
 }
 
-/** 影评人平均分：以 AP 为基础，按类型偏好加减分 + 小幅波动 */
-export function computeCriticScore(state: GameState, project: FilmProject, ap: number, rng: Rng): number {
+/** 逐影评人评分：以 AP 为基础，按类型偏好加减分 + 小幅波动 */
+export function computeCriticReviews(
+  state: GameState,
+  project: FilmProject,
+  ap: number,
+  rng: Rng,
+): CriticReview[] {
   const script = state.scripts[project.scriptId]
-  const scores = state.world.critics.map((c) => {
+  return state.world.critics.map((c) => {
     let s = ap
     if (c.taste === 'none') {
       // 无偏好
@@ -132,10 +143,20 @@ export function computeCriticScore(state: GameState, project: FilmProject, ap: n
       s -= WORLD_CONFIG.tasteMismatchPenalty
     }
     s += (rng() - 0.5) * 10
-    return clamp(s, 0, 100)
+    return { criticId: c.id, criticName: c.name, score: Math.round(clamp(s, 0, 100)) }
   })
-  if (scores.length === 0) return Math.round(ap)
-  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
+}
+
+/** 影评人平均分（兼容旧调用） */
+export function computeCriticScore(
+  state: GameState,
+  project: FilmProject,
+  ap: number,
+  rng: Rng,
+): number {
+  const reviews = computeCriticReviews(state, project, ap, rng)
+  if (reviews.length === 0) return Math.round(ap)
+  return Math.round(reviews.reduce((a, r) => a + r.score, 0) / reviews.length)
 }
 
 /** 票房与声誉（GDD §7.3） */

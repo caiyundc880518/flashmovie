@@ -41,6 +41,7 @@ export type {
   ProjectEventOption,
   ProjectStage,
   TeamAssignments,
+  CriticReview,
 } from './film'
 export type {
   Company,
