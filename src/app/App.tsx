@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import { useGameStore } from '../ui/store/gameStore'
 import { CompanyScreen } from '../ui/screens/CompanyScreen'
 import { ScriptMarketScreen } from '../ui/screens/ScriptMarketScreen'
-import { WorkersScreen } from '../ui/screens/WorkersScreen'
+import { EmployeesScreen } from '../ui/screens/EmployeesScreen'
+import { RecruitScreen } from '../ui/screens/RecruitScreen'
 import { TeamBuildScreen } from '../ui/screens/TeamBuildScreen'
 import { ProjectDetailScreen } from '../ui/screens/ProjectDetailScreen'
 import { MoneyText } from '../ui/components/MoneyText'
@@ -11,7 +12,8 @@ import { SEASON_ZH } from '../ui/format'
 type Nav =
   | { screen: 'company' }
   | { screen: 'market' }
-  | { screen: 'workers' }
+  | { screen: 'employees' }
+  | { screen: 'recruit' }
   | { screen: 'team'; teamScriptId?: string }
   | { screen: 'project'; projectId: string }
 
@@ -20,7 +22,8 @@ type NavKey = Exclude<Nav['screen'], 'project'>
 const NAV_ITEMS: Array<{ key: NavKey; label: string }> = [
   { key: 'company', label: '公司' },
   { key: 'market', label: '剧本市场' },
-  { key: 'workers', label: '员工' },
+  { key: 'employees', label: '员工' },
+  { key: 'recruit', label: '招聘' },
   { key: 'team', label: '组队立项' },
 ]
 
@@ -100,7 +103,8 @@ export function App() {
           {nav.screen === 'market' && (
             <ScriptMarketScreen onBuildTeam={(id) => setNav({ screen: 'team', teamScriptId: id })} />
           )}
-          {nav.screen === 'workers' && <WorkersScreen />}
+          {nav.screen === 'employees' && <EmployeesScreen />}
+          {nav.screen === 'recruit' && <RecruitScreen />}
           {nav.screen === 'team' && (
             <TeamBuildScreen key={nav.teamScriptId ?? 'team'} initialScriptId={nav.teamScriptId} />
           )}
