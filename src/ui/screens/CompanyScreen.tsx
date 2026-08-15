@@ -1,14 +1,13 @@
 import { useState } from 'react'
 import { useGameStore } from '../store/gameStore'
-import { SEASON_ZH, STAGE_ZH, TYPE_ZH, fmtWan } from '../format'
+import { SEASON_ZH, TYPE_ZH, fmtWan } from '../format'
 import { ECONOMY } from '../../core/config/economy'
 import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
-import { PosterCard } from '../components/PosterCard'
 import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
 import type { Competitor } from '../../core/types'
 
-export function CompanyScreen({ onOpenProject }: { onOpenProject: (id: string) => void }) {
+export function CompanyScreen() {
   const state = useGameStore((s) => s.state)
   const dispatch = useGameStore((s) => s.dispatch)
   const [loanAmount, setLoanAmount] = useState('500')
@@ -152,36 +151,6 @@ export function CompanyScreen({ onOpenProject }: { onOpenProject: (id: string) =
           )}
         </section>
       </div>
-
-      <section className="panel">
-        <h2>项目</h2>
-        {state.projects.length === 0 && (
-          <p className="dim">还没有项目。去「剧本市场」买一个剧本，再到「组队立项」开拍吧。</p>
-        )}
-        <div className="project-list">
-          {state.projects.map((p) => {
-            const script = state.scripts[p.scriptId]
-            return (
-              <div key={p.id} className="project-row clickable" onClick={() => onOpenProject(p.id)}>
-                <PosterCard title={p.name} type={script?.type ?? 'drama'}>
-                  <div>
-                    阶段：<b>{STAGE_ZH[p.stage]}</b>
-                  </div>
-                  {p.stage === 'shooting' && <div>场次 {p.shotStages}/{p.totalStages}</div>}
-                  {p.stage === 'marketing' && <div>Hype {Math.round(p.hype)}</div>}
-                  {p.stage === 'released' && p.result && (
-                    <div>
-                      票房 {fmtWan(p.result.boxOffice)} · AP {p.result.ap} / MP {p.result.mp}
-                    </div>
-                  )}
-                  {p.stage === 'editing' && <div>等待剪辑决策</div>}
-                  {p.stage === 'preparing' && <div>等待开拍</div>}
-                </PosterCard>
-              </div>
-            )
-          })}
-        </div>
-      </section>
 
       <section className="panel">
         <h2>市场动态</h2>

@@ -5,6 +5,7 @@ import { ScriptMarketScreen } from '../ui/screens/ScriptMarketScreen'
 import { EmployeesScreen } from '../ui/screens/EmployeesScreen'
 import { RecruitScreen } from '../ui/screens/RecruitScreen'
 import { TeamBuildScreen } from '../ui/screens/TeamBuildScreen'
+import { ProjectsScreen } from '../ui/screens/ProjectsScreen'
 import { ProjectDetailScreen } from '../ui/screens/ProjectDetailScreen'
 import { CriticsScreen } from '../ui/screens/CriticsScreen'
 import { NewsScreen } from '../ui/screens/NewsScreen'
@@ -18,6 +19,7 @@ type Nav =
   | { screen: 'employees' }
   | { screen: 'recruit' }
   | { screen: 'team'; teamScriptId?: string }
+  | { screen: 'projects' }
   | { screen: 'critics' }
   | { screen: 'news' }
   | { screen: 'leaderboard' }
@@ -31,6 +33,7 @@ const NAV_ITEMS: Array<{ key: NavKey; label: string }> = [
   { key: 'employees', label: '员工' },
   { key: 'recruit', label: '招聘' },
   { key: 'team', label: '组队立项' },
+  { key: 'projects', label: '项目' },
   { key: 'critics', label: '影评人' },
   { key: 'news', label: '新闻' },
   { key: 'leaderboard', label: '排行榜' },
@@ -106,9 +109,7 @@ export function App() {
         </header>
 
         <div className="content">
-          {nav.screen === 'company' && (
-            <CompanyScreen onOpenProject={(id) => setNav({ screen: 'project', projectId: id })} />
-          )}
+          {nav.screen === 'company' && <CompanyScreen />}
           {nav.screen === 'market' && (
             <ScriptMarketScreen onBuildTeam={(id) => setNav({ screen: 'team', teamScriptId: id })} />
           )}
@@ -117,8 +118,15 @@ export function App() {
           {nav.screen === 'critics' && <CriticsScreen />}
           {nav.screen === 'news' && <NewsScreen />}
           {nav.screen === 'leaderboard' && <LeaderboardScreen />}
+          {nav.screen === 'projects' && (
+            <ProjectsScreen onOpenProject={(id) => setNav({ screen: 'project', projectId: id })} />
+          )}
           {nav.screen === 'team' && (
-            <TeamBuildScreen key={nav.teamScriptId ?? 'team'} initialScriptId={nav.teamScriptId} />
+            <TeamBuildScreen
+              key={nav.teamScriptId ?? 'team'}
+              initialScriptId={nav.teamScriptId}
+              onGoToProject={(id) => setNav({ screen: 'project', projectId: id })}
+            />
           )}
           {nav.screen === 'project' && (
             <ProjectDetailScreen

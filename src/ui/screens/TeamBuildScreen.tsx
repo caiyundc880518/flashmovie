@@ -4,6 +4,7 @@ import { ECONOMY } from '../../core/config/economy'
 import { TYPE_ZH, fmtWan } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { MoneyText } from '../components/MoneyText'
+import { Modal } from '../components/Modal'
 
 interface Slots {
   directorId: string
@@ -51,7 +52,13 @@ function RoleSelect({
   )
 }
 
-export function TeamBuildScreen({ initialScriptId }: { initialScriptId?: string | null }) {
+export function TeamBuildScreen({
+  initialScriptId,
+  onGoToProject,
+}: {
+  initialScriptId?: string | null
+  onGoToProject: (id: string) => void
+}) {
   const state = useGameStore((s) => s.state)
   const dispatch = useGameStore((s) => s.dispatch)
   const [scriptId, setScriptId] = useState(initialScriptId ?? '')
@@ -66,6 +73,7 @@ export function TeamBuildScreen({ initialScriptId }: { initialScriptId?: string 
   const [vfx, setVfx] = useState(20)
   const [hasAd, setHasAd] = useState(false)
   const [msg, setMsg] = useState('')
+  const [created, setCreated] = useState<{ id: string; name: string } | null>(null)
 
   if (!state) return null
 
@@ -112,7 +120,13 @@ export function TeamBuildScreen({ initialScriptId }: { initialScriptId?: string 
       vfxPercent: vfx,
       hasAd,
     })
-    setMsg(`《${script.title}》立项成功！可在「公司」查看并开拍。`)
+    // 从最新状态找到刚创建的项目，弹窗引导前往项目页
+    const latest = useGameStore.getState().state
+    const createdProject = latest?.projects.find((x) => x.scriptId === scriptId)
+    if (createdProject) {
+      setCreated({ id: createdProject.id, name: createdProject.name })
+    }
+    setMsg('')
     setScriptId('')
     setSlots({ directorId: '', actorIds: [''], shooterId: '', editorId: '', marketId: '', producerId: '' })
   }
@@ -191,6 +205,30 @@ export function TeamBuildScreen({ initialScriptId }: { initialScriptId?: string 
             立项
           </button>
         </section>
+      )}
+
+      {created && (
+        <Modal title="🎬 立项成功" onClose={() => setCreated(null)}>
+          <p>
+            《{created.name}》剧组已组建完成，等待开拍。
+          </p>
+          <p className="dim">
+            前往「项目」页开拍吧——拍摄途中会遇到随机事件，别忘了参与拍摄小游戏赚取 Buff。
+          </p>
+          <div className="btn-row">
+            <button
+              className="btn-primary"
+              onClick={() => {
+                const id = created.id
+                setCreated(null)
+                onGoToProject(id)
+              }}
+            >
+              前往拍摄 ▶
+            </button>
+            <button onClick={() => setCreated(null)}>继续立项</button>
+          </div>
+        </Modal>
       )}
     </div>
   )
