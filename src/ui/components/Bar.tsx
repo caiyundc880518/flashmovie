@@ -3,11 +3,14 @@ export function Bar({
   max = 100,
   color = 'var(--accent)',
   label,
+  showValue = true,
 }: {
   value: number
   max?: number
   color?: string
   label?: string
+  /** 是否在条形右侧显示数值（默认显示） */
+  showValue?: boolean
 }) {
   const pct = Math.min(100, Math.max(0, (value / max) * 100))
   return (
@@ -16,7 +19,7 @@ export function Bar({
       <div className="bar">
         <div className="bar-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span className="bar-value">{Math.round(value)}</span>
+      {showValue && <span className="bar-value">{Math.round(value)}</span>}
     </div>
   )
 }

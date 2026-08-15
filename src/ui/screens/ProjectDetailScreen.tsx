@@ -362,7 +362,7 @@ function CriticReviews({
       {reviews.map((r) => (
         <div key={r.criticId} className="critic-row">
           <span className="critic-name">{r.criticName}</span>
-          <Bar value={r.score} max={100} color={scoreColor(r.score)} />
+          <Bar value={r.score} max={100} color={scoreColor(r.score)} showValue={false} />
           <span className="critic-score" style={{ color: scoreColor(r.score) }}>
             {r.score}
           </span>
@@ -371,7 +371,7 @@ function CriticReviews({
       {average !== undefined && (
         <div className="critic-row critic-avg">
           <span className="critic-name">平均</span>
-          <Bar value={average} max={100} color={scoreColor(average)} />
+          <Bar value={average} max={100} color={scoreColor(average)} showValue={false} />
           <span className="critic-score" style={{ color: scoreColor(average) }}>
             {average}
           </span>
