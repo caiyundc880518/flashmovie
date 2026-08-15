@@ -703,6 +703,41 @@ input[type='range'] {
   color: var(--text-dim);
   font-weight: 600;
 }
+
+/* ===== 标签页 ===== */
+.tabs {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.tab-head {
+  display: flex;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.tab-btn {
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 9px 18px;
+  color: var(--text-dim);
+  font-size: 13px;
+  letter-spacing: 1px;
+}
+.tab-btn:hover:not(.tab-active) {
+  color: var(--text);
+  background: transparent;
+  border-color: transparent;
+}
+.tab-active {
+  color: var(--gold);
+  border-bottom-color: var(--gold);
+  background: transparent;
+}
+.tab-body {
+  padding-top: 6px;
+}
 .data-table tbody tr:nth-child(1) .rank-num {
   background: linear-gradient(135deg, #b8860b, #e8b64c);
   color: #1a1200;
