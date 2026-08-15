@@ -1,8 +1,8 @@
-import type { GameState, ProjectStage } from '../types'
+import type { Channel, GameState, ProjectStage } from '../types'
 import { createRng, clamp, randInt, round1 } from '../rng'
 import { uid, teamIds, pushNews } from './utils'
 import { advanceWeek as tickAdvance } from '../tick/advance'
-import { computeFilmResult } from '../rules/scoring'
+import { channelRevenue, computeFilmResult } from '../rules/scoring'
 import { applyProjectGrowth } from '../rules/growth'
 import { generateWorker } from '../generators/workerGen'
 import { ECONOMY } from '../config/economy'
@@ -147,6 +147,7 @@ export function reduce(state: GameState, action: Action): GameState {
         buffs: 0,
         apAdjust: 0,
         pendingEvents: [],
+        channels: [] as Channel[],
       })
       const projectId = draft.projects[draft.projects.length - 1].id
       for (const id of teamIds(action.team)) {
@@ -218,6 +219,25 @@ export function reduce(state: GameState, action: Action): GameState {
       break
     }
 
+    case 'setChannels': {
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'marketing') return state
+      p.channels = action.channels.filter((c, i, arr) => arr.indexOf(c) === i)
+      break
+    }
+
+    case 'selectPublisher': {
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'marketing' || p.publisherId) return state
+      const pub = draft.world.publishers.find((x) => x.id === action.publisherId)
+      if (!pub) return state
+      const prepay = Math.round(pub.prepayBase + pub.reputation * pub.prepayPerRep)
+      draft.company.cash += prepay
+      p.publisherId = pub.id
+      pushNews(draft, `与发行商「${pub.name}」签约，获得预付款 ${prepay} 万元。`)
+      break
+    }
+
     case 'resolveEvent': {
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p) return state
@@ -243,18 +263,32 @@ export function reduce(state: GameState, action: Action): GameState {
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p || p.stage !== 'marketing') return state
       const result = computeFilmResult(draft, p, rng)
-      const revenue = result.boxOffice * ECONOMY.cinemaShare
+      // 渠道结算：票房 × 各渠道系数；发行商：预付款 + 后端分成
+      const channels: Channel[] = p.channels.length > 0 ? p.channels : ['cinema']
+      const baseRevenue = channelRevenue(p, result.boxOffice)
+      const publisher = p.publisherId
+        ? draft.world.publishers.find((x) => x.id === p.publisherId)
+        : undefined
+      const backEnd = publisher ? baseRevenue * (1 - publisher.shareRate) : baseRevenue
+      const prepayment = publisher
+        ? Math.round(publisher.prepayBase + publisher.reputation * publisher.prepayPerRep)
+        : 0
+      const revenue = backEnd + prepayment
       draft.company.cash += round1(revenue)
-      draft.company.reputation = clamp(
-        draft.company.reputation + result.reputationGain,
-        0,
-        100,
-      )
+      // 免费渠道：换口碑
+      let repGain = result.reputationGain
+      if (channels.includes('free')) repGain = clamp(repGain + 2, -3, 6)
+      draft.company.reputation = clamp(draft.company.reputation + repGain, 0, 100)
       applyProjectGrowth(draft, p, result)
-      p.result = result
+      p.result = {
+        ...result,
+        revenue: round1(revenue),
+        channels,
+        publisherName: publisher?.name,
+      }
       p.stage = 'released'
       p.releasedWeek = draft.calendar.week
-      draft.company.history.push(result)
+      draft.company.history.push(p.result)
       for (const id of teamIds(p.team)) {
         const w = draft.workers[id]
         if (w) w.currentProjectId = null

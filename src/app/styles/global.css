@@ -627,6 +627,12 @@ input[type='range'] {
   font-size: 13px;
   border-bottom: 1px dashed var(--border);
 }
+.channel-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 6px 0 12px;
+}
 
 /* ===== 数据表格 ===== */
 .table-wrap {

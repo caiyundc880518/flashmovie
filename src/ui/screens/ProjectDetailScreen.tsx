@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import type { FilmProject, GameState, ProjectEvent } from '../../core/types'
+import type { Channel, FilmProject, GameState, ProjectEvent } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { createRng } from '../../core/rng'
 import { computeFilmResult } from '../../core/rules/scoring'
 import { ECONOMY } from '../../core/config/economy'
+import { CHANNEL_INFO, CHANNEL_ORDER } from '../../core/config/channels'
 import { ROLE_ZH, STAGE_ZH, TYPE_ZH, fmtWan } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { Bar } from '../components/Bar'
@@ -44,6 +45,7 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
   const dispatch = useGameStore((s) => s.dispatch)
   const [shotMsg, setShotMsg] = useState('')
   const [budgetInput, setBudgetInput] = useState('100')
+  const [pubSel, setPubSel] = useState('')
 
   if (!state) return null
   const p = state.projects.find((x) => x.id === projectId)
@@ -169,9 +171,61 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
             <button onClick={() => dispatch({ type: 'setMarketingBudget', projectId, budget: Number(budgetInput) || 0 })}>
               设定
             </button>
-          </div>
-          <div className="btn-row">
             <button onClick={() => dispatch({ type: 'launchMarketing', projectId })}>投放宣发</button>
+          </div>
+          {p.marketingBudget > 0 && <p className="dim">待投放预算 {fmtWan(p.marketingBudget)}</p>}
+
+          <h3>发行渠道（片方所得 = 票房 × 渠道比例）</h3>
+          <div className="channel-row">
+            {CHANNEL_ORDER.map((ch) => {
+              const cur: Channel[] = p.channels.length > 0 ? p.channels : ['cinema']
+              const on = cur.includes(ch)
+              return (
+                <label key={ch} className="config-label">
+                  <input
+                    type="checkbox"
+                    checked={on}
+                    onChange={() => {
+                      const next = on ? cur.filter((c) => c !== ch) : [...cur, ch]
+                      dispatch({ type: 'setChannels', projectId, channels: next })
+                    }}
+                  />
+                  {CHANNEL_INFO[ch].label}（{Math.round(CHANNEL_INFO[ch].factor * 100)}%）
+                </label>
+              )
+            })}
+          </div>
+
+          <h3>发行方式</h3>
+          {p.publisherId ? (
+            <p className="dim">
+              已与发行商签约，预付款已到账；后端分成将在上映结算时扣除。
+            </p>
+          ) : (
+            <div className="slot-row">
+              <span className="slot-label">发行商</span>
+              <select value={pubSel} onChange={(e) => setPubSel(e.target.value)}>
+                <option value="">自发行（拿全部份额）</option>
+                {state.world.publishers.map((pb) => (
+                  <option key={pb.id} value={pb.id}>
+                    {pb.name}（预付款 {Math.round(pb.prepayBase + pb.reputation * pb.prepayPerRep)}万 · 后端分成{' '}
+                    {Math.round(pb.shareRate * 100)}%）
+                  </option>
+                ))}
+              </select>
+              {pubSel && (
+                <button
+                  onClick={() =>
+                    dispatch({ type: 'selectPublisher', projectId, publisherId: pubSel })
+                  }
+                >
+                  签约
+                </button>
+              )}
+            </div>
+          )}
+
+          <div className="btn-row">
             <button
               className="btn-primary"
               onClick={() => {
@@ -181,7 +235,6 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
               🎞 上映
             </button>
           </div>
-          {p.marketingBudget > 0 && <p className="dim">待投放预算 {fmtWan(p.marketingBudget)}</p>}
         </section>
       )}
 
@@ -220,8 +273,20 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
                 <MoneyText value={p.result.boxOffice} />
               </div>
               <div className="stat-row">
-                <span className="stat-label">片方收入（{Math.round(ECONOMY.cinemaShare * 100)}% 分账）</span>
-                <MoneyText value={p.result.boxOffice * ECONOMY.cinemaShare} />
+                <span className="stat-label">发行渠道</span>
+                <span>
+                  {(p.result.channels ?? ['cinema']).map((c) => CHANNEL_INFO[c].label).join(' / ')}
+                </span>
+              </div>
+              {p.result.publisherName && (
+                <div className="stat-row">
+                  <span className="stat-label">发行商</span>
+                  <span>{p.result.publisherName}</span>
+                </div>
+              )}
+              <div className="stat-row">
+                <span className="stat-label">片方总收入</span>
+                <MoneyText value={p.result.revenue ?? p.result.boxOffice * ECONOMY.cinemaShare} />
               </div>
               <h3>成员表现（Group Performance）</h3>
               <ul className="career-list">

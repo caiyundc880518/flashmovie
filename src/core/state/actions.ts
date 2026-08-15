@@ -1,4 +1,4 @@
-import type { TeamAssignments } from '../types'
+import type { Channel, TeamAssignments } from '../types'
 
 /** 玩家动作（判别联合） */
 export type Action =
@@ -17,4 +17,6 @@ export type Action =
   | { type: 'launchMarketing'; projectId: string }
   | { type: 'applyShotBuff'; projectId: string; success: boolean }
   | { type: 'resolveEvent'; projectId: string; eventId: string; optionIndex: number }
+  | { type: 'setChannels'; projectId: string; channels: Channel[] }
+  | { type: 'selectPublisher'; projectId: string; publisherId: string }
   | { type: 'release'; projectId: string }

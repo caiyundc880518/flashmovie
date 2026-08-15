@@ -42,6 +42,7 @@ export type {
   ProjectStage,
   TeamAssignments,
   CriticReview,
+  Channel,
 } from './film'
 export type {
   Company,
@@ -58,4 +59,5 @@ export type {
   Competitor,
   CompetitorFilm,
   Critic,
+  Publisher,
 } from './world'

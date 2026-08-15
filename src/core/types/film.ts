@@ -16,6 +16,9 @@ export interface TeamAssignments {
 /** 项目阶段状态机：preparing → shooting → editing → marketing → released */
 export type ProjectStage = 'preparing' | 'shooting' | 'editing' | 'marketing' | 'released'
 
+/** 发行渠道（GDD §3.6 五渠道） */
+export type Channel = 'cinema' | 'web' | 'dvd' | 'streaming' | 'free'
+
 /** 电影项目 */
 export interface FilmProject {
   id: string
@@ -47,6 +50,10 @@ export interface FilmProject {
   apAdjust: number
   /** 拍摄中随机事件队列（tick 生成，UI 逐个处理） */
   pendingEvents: ProjectEvent[]
+  /** 发行渠道（空 = 上映时默认影院） */
+  channels: Channel[]
+  /** 已签约发行商 id */
+  publisherId?: string
   /** 结算结果（released 后写入） */
   result?: FilmResult
   /** 进入 released 的周（用于结果记录） */
@@ -120,4 +127,10 @@ export interface FilmResult {
   /** 上映周 */
   week: number
   year: number
+  /** 片方总收入（万）：渠道分账 + 发行商预付款（旧档可能缺省） */
+  revenue?: number
+  /** 发行渠道（旧档可能缺省） */
+  channels?: Channel[]
+  /** 发行商名（旧档可能缺省） */
+  publisherName?: string
 }

@@ -11,11 +11,12 @@ describe('存档迁移', () => {
     expect(() => migrateSave({ version: -1 })).toThrow()
   })
 
-  it('接受 v2 存档（恒等迁移）', () => {
+  it('接受 v3 存档（恒等迁移）', () => {
     const s = createInitialState(1)
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(2)
+    expect(migrated.version).toBe(3)
     expect(migrated.company.name).toBe('星光影业')
     expect(migrated.world.competitors.length).toBeGreaterThan(0)
+    expect(migrated.world.publishers.length).toBeGreaterThan(0)
   })
 })

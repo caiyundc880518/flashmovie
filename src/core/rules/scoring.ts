@@ -1,6 +1,7 @@
-import type { CriticReview, FilmProject, FilmResult, FilmScores, GameState, RoleId } from '../types'
+import type { Channel, CriticReview, FilmProject, FilmResult, FilmScores, GameState, RoleId } from '../types'
 import { SCORE_WEIGHTS } from '../config/weights'
 import { ECONOMY } from '../config/economy'
+import { CHANNEL_INFO } from '../config/channels'
 import { WORLD_CONFIG } from '../config/world'
 import type { Rng } from '../rng'
 import { clamp, round1 } from '../rng'
@@ -123,6 +124,12 @@ export function competitionPenalty(state: GameState, week: number): number {
     WORLD_CONFIG.competition.maxPenalty,
     count * WORLD_CONFIG.competition.penaltyPerFilm,
   )
+}
+
+/** 渠道分账收入：票房 × Σ(所选渠道 factor)；未选渠道时默认仅影院 */
+export function channelRevenue(project: FilmProject, boxOffice: number): number {
+  const channels: Channel[] = project.channels.length > 0 ? project.channels : ['cinema']
+  return channels.reduce((s, ch) => s + boxOffice * CHANNEL_INFO[ch].factor, 0)
 }
 
 /** 逐影评人评分：以 AP 为基础，按类型偏好加减分 + 小幅波动 */

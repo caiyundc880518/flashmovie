@@ -1,8 +1,9 @@
-import type { Competitor, Critic } from '../types'
+import type { Competitor, Critic, Publisher } from '../types'
 import { FILM_TYPES } from '../types'
 import { WORLD_CONFIG } from '../config/world'
+import { PUBLISHER_CONFIG } from '../config/channels'
 import type { Rng } from '../rng'
-import { pick, randInt } from '../rng'
+import { pick, randInt, round1 } from '../rng'
 
 /** 生成 AI 竞争对手（2–5 家） */
 export function generateCompetitors(rng: Rng, uid: (prefix: string) => string): Competitor[] {
@@ -41,6 +42,22 @@ export function generateCritics(rng: Rng, uid: (prefix: string) => string): Crit
         WORLD_CONFIG.criticInfluenceRange[0],
         WORLD_CONFIG.criticInfluenceRange[1],
       ),
+    }),
+  )
+}
+
+/** 生成发行商（2–4 家） */
+export function generatePublishers(rng: Rng, uid: (prefix: string) => string): Publisher[] {
+  const namePool = [...PUBLISHER_CONFIG.names]
+  return Array.from(
+    { length: randInt(rng, PUBLISHER_CONFIG.count[0], PUBLISHER_CONFIG.count[1]) },
+    () => ({
+      id: uid('pub'),
+      name: pick(rng, namePool),
+      reputation: randInt(rng, 30, 80),
+      shareRate: round1(randInt(rng, PUBLISHER_CONFIG.shareRateRange[0] * 100, PUBLISHER_CONFIG.shareRateRange[1] * 100) / 100),
+      prepayBase: randInt(rng, PUBLISHER_CONFIG.prepayBaseRange[0], PUBLISHER_CONFIG.prepayBaseRange[1]),
+      prepayPerRep: PUBLISHER_CONFIG.prepayPerRep,
     }),
   )
 }

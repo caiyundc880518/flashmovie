@@ -53,7 +53,20 @@ export interface Critic {
   influence: number
 }
 
-/** 世界状态（V1 精简：剧本市场 / 招聘市场 / 新闻 / 趋势 / 对手 / 影评人） */
+/** 发行商（Publish Contract：预付款 + 后端分成） */
+export interface Publisher {
+  id: string
+  name: string
+  /** 声誉 0–100 */
+  reputation: number
+  /** 后端分成比例 0–1 */
+  shareRate: number
+  /** 预付款 = prepayBase + reputation × prepayPerRep（万） */
+  prepayBase: number
+  prepayPerRep: number
+}
+
+/** 世界状态（V1 精简：剧本市场 / 招聘市场 / 新闻 / 趋势 / 对手 / 影评人 / 发行商） */
 export interface World {
   /** 剧本市场在售剧本 */
   marketScripts: Script[]
@@ -67,6 +80,8 @@ export interface World {
   competitors: Competitor[]
   /** 影评人 */
   critics: Critic[]
+  /** 发行商 */
+  publishers: Publisher[]
 }
 
 export interface GameState {

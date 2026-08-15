@@ -219,3 +219,79 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
     expect(s.projects).toHaveLength(1)
   })
 })
+
+const RELEASE_TEAM = {
+  directorId: 'test-director',
+  actorIds: ['test-actor'],
+  shooterId: 'test-shooter',
+  editorId: 'test-editor',
+  marketId: 'test-market',
+}
+
+describe('发行渠道与发行商', () => {
+  /** 走完 立项→开拍→剪辑→宣发阶段，返回 marketing 阶段状态 */
+  function setupFilm(seed: number) {
+    let s = buildReadyState(seed)
+    const scriptId = s.world.marketScripts[0].id
+    s = reduce(s, { type: 'buyScript', scriptId })
+    s = reduce(s, {
+      type: 'startProject',
+      scriptId,
+      team: RELEASE_TEAM,
+      vfxPercent: 0,
+      hasAd: false,
+    })
+    const pid = s.projects[0].id
+    s = reduce(s, { type: 'startShooting', projectId: pid })
+    for (let i = 0; i < 24 && s.projects[0].stage === 'shooting'; i++) {
+      s = reduce(s, { type: 'advanceWeek' })
+      for (const ev of [...s.projects[0].pendingEvents]) {
+        s = reduce(s, { type: 'resolveEvent', projectId: pid, eventId: ev.id, optionIndex: 0 })
+      }
+    }
+    s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
+    return { s, pid }
+  }
+
+  it('多渠道结算：收入 = 票房 × 渠道系数之和', () => {
+    let { s, pid } = setupFilm(21)
+    s = reduce(s, { type: 'setChannels', projectId: pid, channels: ['cinema', 'streaming'] })
+    s = reduce(s, { type: 'release', projectId: pid })
+    const r = s.projects[0].result!
+    expect(r.channels).toEqual(['cinema', 'streaming'])
+    expect(Math.abs(r.revenue! - r.boxOffice * 0.75)).toBeLessThan(1)
+  })
+
+  it('发行商签约：预付款入账，结算按后端分成扣减', () => {
+    let { s, pid } = setupFilm(22)
+    const pub = s.world.publishers[0]
+    const prepay = Math.round(pub.prepayBase + pub.reputation * pub.prepayPerRep)
+    const cashBefore = s.company.cash
+    s = reduce(s, { type: 'selectPublisher', projectId: pid, publisherId: pub.id })
+    expect(s.company.cash).toBe(cashBefore + prepay)
+    s = reduce(s, { type: 'release', projectId: pid })
+    const r = s.projects[0].result!
+    expect(r.publisherName).toBe(pub.name)
+    const backEnd = r.boxOffice * 0.45 * (1 - pub.shareRate)
+    expect(Math.abs(r.revenue! - (prepay + backEnd))).toBeLessThan(1)
+  })
+
+  it('免费渠道：收入为 0（换口碑）', () => {
+    let { s, pid } = setupFilm(23)
+    s = reduce(s, { type: 'setChannels', projectId: pid, channels: ['free'] })
+    s = reduce(s, { type: 'release', projectId: pid })
+    const r = s.projects[0].result!
+    expect(r.channels).toEqual(['free'])
+    expect(r.revenue).toBe(0)
+  })
+
+  it('宣发阶段之外不能改渠道', () => {
+    let { s, pid } = setupFilm(24)
+    // 已上映后改渠道 → 拒绝
+    s = reduce(s, { type: 'setChannels', projectId: pid, channels: ['cinema'] })
+    s = reduce(s, { type: 'release', projectId: pid })
+    const r = s.projects[0].result!
+    s = reduce(s, { type: 'setChannels', projectId: pid, channels: ['dvd'] })
+    expect(s.projects[0].result!.channels).toEqual(r.channels ?? ['cinema'])
+  })
+})
