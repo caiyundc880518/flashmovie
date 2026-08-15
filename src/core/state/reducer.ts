@@ -8,6 +8,7 @@ import { generateWorker } from '../generators/workerGen'
 import { ECONOMY } from '../config/economy'
 import { SCRIPT_POOL } from '../config/scripts'
 import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../config/company'
+import { TIMING_CONFIG } from '../config/minigame'
 import type { Action } from './actions'
 
 /**
@@ -215,8 +216,15 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case 'applyShotBuff': {
       const p = draft.projects.find((x) => x.id === action.projectId)
-      if (!p) return state
-      p.buffs += action.success ? randInt(rng, 2, 5) : -randInt(rng, 1, 3)
+      if (!p || p.stage !== 'shooting') return state
+      p.buffs += TIMING_CONFIG.shotBuff[action.quality]
+      break
+    }
+
+    case 'applyEditBuff': {
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'editing') return state
+      p.buffs += TIMING_CONFIG.editBuff[action.quality]
       break
     }
 

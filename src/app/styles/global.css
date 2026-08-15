@@ -738,6 +738,69 @@ input[type='range'] {
 .tab-body {
   padding-top: 6px;
 }
+
+/* ===== 时机小游戏 ===== */
+.timing-track {
+  position: relative;
+  height: 34px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  margin: 14px 0 10px;
+}
+.timing-zone {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 30%;
+  width: 40%;
+  background: rgba(232, 182, 76, 0.18);
+  border-left: 1px solid rgba(232, 182, 76, 0.5);
+  border-right: 1px solid rgba(232, 182, 76, 0.5);
+}
+.timing-perfect {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 42%;
+  width: 16%;
+  background: rgba(232, 182, 76, 0.35);
+}
+.timing-marker {
+  position: absolute;
+  top: 3px;
+  bottom: 3px;
+  width: 6px;
+  border-radius: 3px;
+  background: var(--text);
+  transform: translateX(-50%);
+  box-shadow: 0 0 8px rgba(232, 182, 76, 0.9);
+}
+.timing-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--text-dim);
+  font-size: 13px;
+  margin-bottom: 10px;
+}
+.timing-results {
+  display: flex;
+  gap: 8px;
+}
+.timing-dot {
+  font-size: 12px;
+}
+.dot-perfect {
+  color: var(--ok);
+}
+.dot-good {
+  color: var(--gold);
+}
+.dot-miss {
+  color: var(--danger);
+}
 .data-table tbody tr:nth-child(1) .rank-num {
   background: linear-gradient(135deg, #b8860b, #e8b64c);
   color: #1a1200;

@@ -15,7 +15,8 @@ export type Action =
   | { type: 'chooseEditStyle'; projectId: string; style: 'market' | 'art' }
   | { type: 'setMarketingBudget'; projectId: string; budget: number }
   | { type: 'launchMarketing'; projectId: string }
-  | { type: 'applyShotBuff'; projectId: string; success: boolean }
+  | { type: 'applyShotBuff'; projectId: string; quality: 'perfect' | 'good' | 'miss' }
+  | { type: 'applyEditBuff'; projectId: string; quality: 'perfect' | 'good' | 'miss' }
   | { type: 'resolveEvent'; projectId: string; eventId: string; optionIndex: number }
   | { type: 'setChannels'; projectId: string; channels: Channel[] }
   | { type: 'selectPublisher'; projectId: string; publisherId: string }

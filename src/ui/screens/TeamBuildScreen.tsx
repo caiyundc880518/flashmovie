@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { ECONOMY } from '../../core/config/economy'
+import { vfxTier, vfxTypeFactor } from '../../core/rules/scoring'
 import { TYPE_ZH, fmtWan } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { MoneyText } from '../components/MoneyText'
@@ -13,6 +14,7 @@ interface Slots {
   editorId: string
   marketId: string
   producerId: string
+  technicianId: string
 }
 
 const SLOT_LABEL: Record<keyof Slots, string> = {
@@ -22,6 +24,7 @@ const SLOT_LABEL: Record<keyof Slots, string> = {
   editorId: '剪辑',
   marketId: '市场',
   producerId: '制片人（可选）',
+  technicianId: '技术/特效（可选）',
 }
 
 function RoleSelect({
@@ -69,6 +72,7 @@ export function TeamBuildScreen({
     editorId: '',
     marketId: '',
     producerId: '',
+    technicianId: '',
   })
   const [vfx, setVfx] = useState(20)
   const [hasAd, setHasAd] = useState(false)
@@ -88,6 +92,7 @@ export function TeamBuildScreen({
     .filter((w) => w && !busyIds.has(w.id))
 
   const script = state.scripts[scriptId]
+  const techSkill = state.workers[slots.technicianId]?.skills.vfx ?? 40
   const budget = script
     ? script.scale * ECONOMY.costPerStage * (1 + (vfx / 100) * ECONOMY.vfxCostFactor)
     : 0
@@ -116,6 +121,7 @@ export function TeamBuildScreen({
         editorId: slots.editorId,
         marketId: slots.marketId,
         producerId: slots.producerId || undefined,
+        technicianId: slots.technicianId || undefined,
       },
       vfxPercent: vfx,
       hasAd,
@@ -128,7 +134,7 @@ export function TeamBuildScreen({
     }
     setMsg('')
     setScriptId('')
-    setSlots({ directorId: '', actorIds: [''], shooterId: '', editorId: '', marketId: '', producerId: '' })
+    setSlots({ directorId: '', actorIds: [''], shooterId: '', editorId: '', marketId: '', producerId: '', technicianId: '' })
   }
 
   return (
@@ -181,6 +187,7 @@ export function TeamBuildScreen({
             <RoleSelect label={SLOT_LABEL.editorId} value={slots.editorId} employees={available} onChange={(v) => setSlot('editorId', v)} />
             <RoleSelect label={SLOT_LABEL.marketId} value={slots.marketId} employees={available} onChange={(v) => setSlot('marketId', v)} />
             <RoleSelect label={SLOT_LABEL.producerId} value={slots.producerId} employees={available} onChange={(v) => setSlot('producerId', v)} />
+            <RoleSelect label={SLOT_LABEL.technicianId} value={slots.technicianId} employees={available} onChange={(v) => setSlot('technicianId', v)} />
           </div>
 
           <div className="config-row">
@@ -188,6 +195,13 @@ export function TeamBuildScreen({
             <input type="range" min={0} max={100} step={5} value={vfx} onChange={(e) => setVfx(Number(e.target.value))} />
             <span className="config-value">{vfx}%</span>
           </div>
+          {script && (
+            <p className="dim">
+              当前特效等级：<b>{vfxTier(techSkill).label}</b>（VFX 分上限 {vfxTier(techSkill).max}）
+              · {TYPE_ZH[script.type]}类型特效 ×{vfxTypeFactor(script.type)}
+              {techSkill >= 50 ? '' : '（配置技术/特效可升级特效等级）'}
+            </p>
+          )}
           <div className="config-row">
             <label className="config-label">
               <input type="checkbox" checked={hasAd} onChange={(e) => setHasAd(e.target.checked)} />

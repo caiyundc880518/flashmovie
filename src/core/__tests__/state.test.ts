@@ -177,7 +177,7 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
     expect(s.workers['test-director'].currentProjectId).toBeNull()
   })
 
-  it('小游戏 Buff 影响成片', () => {
+  it('小游戏 Buff 影响成片（质量判定）', () => {
     let s = buildReadyState(7)
     const scriptId = s.world.marketScripts[0].id
     s = reduce(s, { type: 'buyScript', scriptId })
@@ -197,8 +197,34 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
     const pid = s.projects[0].id
     s = reduce(s, { type: 'startShooting', projectId: pid })
     const buffBefore = s.projects[0].buffs
-    s = reduce(s, { type: 'applyShotBuff', projectId: pid, success: true })
+    s = reduce(s, { type: 'applyShotBuff', projectId: pid, quality: 'perfect' })
     expect(s.projects[0].buffs).toBeGreaterThan(buffBefore)
+    s = reduce(s, { type: 'applyShotBuff', projectId: pid, quality: 'miss' })
+    expect(s.projects[0].buffs).toBe(buffBefore + 3 - 1)
+  })
+
+  it('剪辑小游戏仅在剪辑阶段生效', () => {
+    let s = buildReadyState(8)
+    const scriptId = s.world.marketScripts[0].id
+    s = reduce(s, { type: 'buyScript', scriptId })
+    s = reduce(s, {
+      type: 'startProject',
+      scriptId,
+      team: {
+        directorId: 'test-director',
+        actorIds: ['test-actor'],
+        shooterId: 'test-shooter',
+        editorId: 'test-editor',
+        marketId: 'test-market',
+      },
+      vfxPercent: 0,
+      hasAd: false,
+    })
+    const pid = s.projects[0].id
+    s = reduce(s, { type: 'startShooting', projectId: pid })
+    // 拍摄阶段剪辑 Buff 无效
+    s = reduce(s, { type: 'applyEditBuff', projectId: pid, quality: 'perfect' })
+    expect(s.projects[0].buffs).toBe(0)
   })
 
   it('同一剧本不能重复立项（含已上映后）', () => {

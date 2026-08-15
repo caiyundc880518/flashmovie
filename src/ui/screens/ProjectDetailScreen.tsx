@@ -2,7 +2,7 @@ import { useState } from 'react'
 import type { Channel, CriticReview, FilmProject, GameState, ProjectEvent } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { createRng } from '../../core/rng'
-import { computeFilmResult } from '../../core/rules/scoring'
+import { computeFilmResult, vfxTier, vfxTypeFactor } from '../../core/rules/scoring'
 import { goldenCombos, teamChemistry } from '../../core/rules/chemistry'
 import { ECONOMY } from '../../core/config/economy'
 import { CHANNEL_INFO, CHANNEL_ORDER } from '../../core/config/channels'
@@ -10,6 +10,7 @@ import { ROLE_ZH, STAGE_ZH, TYPE_ZH, fmtWan } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { Bar } from '../components/Bar'
 import { MoneyText } from '../components/MoneyText'
+import { TimingMinigame } from '../components/TimingMinigame'
 
 /** 剪辑/宣发阶段的成片预测（用固定种子 rng 给出确定性估算） */
 function estimate(state: GameState, p: FilmProject) {
@@ -44,20 +45,15 @@ function EventBlock({
 export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; onBack: () => void }) {
   const state = useGameStore((s) => s.state)
   const dispatch = useGameStore((s) => s.dispatch)
-  const [shotMsg, setShotMsg] = useState('')
   const [budgetInput, setBudgetInput] = useState('100')
   const [pubSel, setPubSel] = useState('')
+  const [shotGame, setShotGame] = useState(false)
+  const [editGame, setEditGame] = useState(false)
 
   if (!state) return null
   const p = state.projects.find((x) => x.id === projectId)
   if (!p) return null
   const script = state.scripts[p.scriptId]
-
-  const shotChallenge = () => {
-    const success = Math.random() < 0.6
-    dispatch({ type: 'applyShotBuff', projectId, success })
-    setShotMsg(success ? '漂亮！运镜时机完美，拍摄分提升。' : '手抖了……运镜失误，轻微减益。')
-  }
 
   const preview = p.stage === 'editing' || p.stage === 'marketing' ? estimate(state, p) : null
 
@@ -78,6 +74,13 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
                 预算 <MoneyText value={p.budget} /> · 已花 <MoneyText value={p.spent} />
               </div>
               <div className="attr-line">VFX {p.vfxPercent}%{p.hasAd ? ' · 含植入广告' : ''}</div>
+              <div className="attr-line">
+                特效等级：
+                <b>{vfxTier(state.workers[p.team.technicianId ?? '']?.skills.vfx ?? 40).label}</b>
+                {script && (
+                  <span className="dim">（{TYPE_ZH[script.type]} ×{vfxTypeFactor(script.type)}）</span>
+                )}
+              </div>
               <div className="attr-line">Buff {p.buffs > 0 ? `+${p.buffs}` : p.buffs}</div>
               <Bar label="Hype" value={p.hype} color="var(--gold)" />
             </PosterCard>
@@ -121,9 +124,11 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
           <h2>拍摄中</h2>
           <Bar label={`拍摄进度 ${p.shotStages}/${p.totalStages} 场`} value={p.shotStages} max={p.totalStages} color="var(--ok)" />
           <div className="btn-row">
-            <button onClick={shotChallenge}>🎬 拍摄时机挑战（小游戏）</button>
+            <button className="btn-primary" onClick={() => setShotGame(true)}>
+              🎬 拍摄运镜挑战（小游戏）
+            </button>
           </div>
-          {shotMsg && <p className="msg">{shotMsg}</p>}
+          <p className="dim">小游戏表现影响成片拍摄分与最终评分。</p>
           {p.pendingEvents.length > 0 && (
             <div className="event-list">
               {p.pendingEvents.map((ev) => (
@@ -156,7 +161,12 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
             预测 AP <b>{preview.ap}</b> · MP <b>{preview.mp}</b>
           </div>
           <div className="btn-row">
-            <button className="btn-primary" onClick={() => dispatch({ type: 'chooseEditStyle', projectId, style: 'market' })}>
+            <button className="btn-primary" onClick={() => setEditGame(true)}>
+              ✂ 剪辑节奏挑战（小游戏）
+            </button>
+          </div>
+          <div className="btn-row">
+            <button onClick={() => dispatch({ type: 'chooseEditStyle', projectId, style: 'market' })}>
               市场向剪辑（更卖座）
             </button>
             <button onClick={() => dispatch({ type: 'chooseEditStyle', projectId, style: 'art' })}>
@@ -322,6 +332,25 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
             <CriticReviews reviews={preview.reviews} title="影评预测" />
           ) : null}
         </section>
+      )}
+
+      {shotGame && (
+        <TimingMinigame
+          title="🎬 拍摄运镜挑战"
+          desc="标记循环移动，在金色亮带处点击「运镜」。共 3 轮，判定影响成片拍摄分。"
+          actionLabel="运镜"
+          onResult={(q) => dispatch({ type: 'applyShotBuff', projectId, quality: q })}
+          onClose={() => setShotGame(false)}
+        />
+      )}
+      {editGame && (
+        <TimingMinigame
+          title="✂ 剪辑节奏挑战"
+          desc="在节奏点处点击「剪」，保留精彩镜头。共 3 轮，判定影响剪辑 Buff。"
+          actionLabel="剪！"
+          onResult={(q) => dispatch({ type: 'applyEditBuff', projectId, quality: q })}
+          onClose={() => setEditGame(false)}
+        />
       )}
     </div>
   )

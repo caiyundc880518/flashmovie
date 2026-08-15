@@ -1,9 +1,10 @@
-import type { Channel, CriticReview, FilmProject, FilmResult, FilmScores, GameState, RoleId } from '../types'
+import type { Channel, CriticReview, FilmProject, FilmResult, FilmScores, FilmType, GameState, RoleId } from '../types'
 import { SCORE_WEIGHTS } from '../config/weights'
 import { ECONOMY } from '../config/economy'
 import { CHANNEL_INFO } from '../config/channels'
 import { WORLD_CONFIG } from '../config/world'
 import { CHEMISTRY } from '../config/company'
+import { VFX_CONFIG } from '../config/minigame'
 import { chemistryScoreFactor, goldenCombos } from './chemistry'
 import type { Rng } from '../rng'
 import { clamp, round1 } from '../rng'
@@ -50,10 +51,15 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
   }
 
   const vfxSkill = state.workers[project.team.technicianId ?? '']?.skills.vfx ?? 40
+  const tier = vfxTier(vfxSkill)
   const vfx = clamp(
-    (project.vfxPercent / 100) * (vfxSkill / 100) * SCORE_WEIGHTS.vfxMax * variance(),
+    (project.vfxPercent / 100) *
+      (vfxSkill / 100) *
+      tier.max *
+      vfxTypeFactor(script.type) *
+      variance(),
     0,
-    SCORE_WEIGHTS.vfxMax,
+    tier.max,
   )
   const specific = clamp(
     5 +
@@ -132,6 +138,17 @@ export function competitionPenalty(state: GameState, week: number): number {
     WORLD_CONFIG.competition.maxPenalty,
     count * WORLD_CONFIG.competition.penaltyPerFilm,
   )
+}
+
+/** 特效等级：按 VFX 技能取最高档 */
+export function vfxTier(vfxSkill: number): { minSkill: number; label: string; max: number } {
+  const valid = VFX_CONFIG.tiers.filter((t) => vfxSkill >= t.minSkill)
+  return valid[valid.length - 1]
+}
+
+/** 类型特效加成系数 */
+export function vfxTypeFactor(type: FilmType): number {
+  return VFX_CONFIG.typeFactor[type]
 }
 
 /** 渠道分账收入：票房 × Σ(所选渠道 factor)；未选渠道时默认仅影院 */

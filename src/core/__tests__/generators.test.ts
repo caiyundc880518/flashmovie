@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import { createRng } from '../rng'
 import { generateWorker, generateCandidates } from '../generators/workerGen'
 import { generateScript, generateMarketScripts } from '../generators/scriptGen'
-import { ROLE_IDS } from '../types'
+import { ROLE_IDS, FILM_TYPES } from '../types'
+import { vfxTier, vfxTypeFactor } from '../rules/scoring'
 
 describe('worker generator', () => {
   it('属性与技能在合法范围，CA ≤ PA', () => {
@@ -61,5 +62,25 @@ describe('script generator', () => {
   it('generateMarketScripts 数量正确', () => {
     const r = createRng(2)
     expect(generateMarketScripts(r, 4)).toHaveLength(4)
+  })
+})
+
+describe('VFX 分级', () => {
+  it('技能越高特效等级越高', () => {
+    expect(vfxTier(10).label).toBe('基础特效')
+    expect(vfxTier(50).label).toBe('标准特效')
+    expect(vfxTier(75).label).toBe('顶级特效')
+    expect(vfxTier(90).max).toBeGreaterThan(vfxTier(10).max)
+  })
+
+  it('动作/战争类型特效加成更高', () => {
+    expect(vfxTypeFactor('action')).toBeGreaterThan(vfxTypeFactor('drama'))
+    expect(vfxTypeFactor('war')).toBe(1.2)
+  })
+
+  it('所有类型都有加成系数', () => {
+    for (const t of FILM_TYPES) {
+      expect(vfxTypeFactor(t)).toBeGreaterThan(0)
+    }
   })
 })
