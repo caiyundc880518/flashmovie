@@ -4,6 +4,8 @@ import { SEASON_ZH, STAGE_ZH, TYPE_ZH, fmtWan, fmtWeek } from '../format'
 import { ECONOMY } from '../../core/config/economy'
 import { PosterCard } from '../components/PosterCard'
 import { MoneyText } from '../components/MoneyText'
+import { DataTable, type Column } from '../components/DataTable'
+import type { Competitor, Critic } from '../../core/types'
 
 export function CompanyScreen({ onOpenProject }: { onOpenProject: (id: string) => void }) {
   const state = useGameStore((s) => s.state)
@@ -113,6 +115,24 @@ export function CompanyScreen({ onOpenProject }: { onOpenProject: (id: string) =
       </section>
 
       <section className="panel">
+        <h2>市场动态</h2>
+        <h3>竞争对手</h3>
+        <DataTable<Competitor>
+          columns={competitorColumns}
+          rows={world.competitors}
+          rowKey={(c) => c.id}
+          emptyText="暂无竞争对手"
+        />
+        <h3>影评人</h3>
+        <DataTable<Critic>
+          columns={criticColumns}
+          rows={world.critics}
+          rowKey={(c) => c.id}
+          emptyText="暂无影评人"
+        />
+      </section>
+
+      <section className="panel">
         <h2>新闻</h2>
         <ul className="news-list">
           {[...world.news]
@@ -128,3 +148,27 @@ export function CompanyScreen({ onOpenProject }: { onOpenProject: (id: string) =
     </div>
   )
 }
+
+const competitorColumns: Column<Competitor>[] = [
+  { key: 'name', label: '影业', render: (c) => <span className="table-name">{c.name}</span> },
+  { key: 'rep', label: '声誉', render: (c) => c.reputation },
+  {
+    key: 'next',
+    label: '下次上映',
+    render: (c) => `${c.nextReleaseIn} 周后`,
+  },
+  {
+    key: 'last',
+    label: '近作',
+    render: (c) => {
+      const last = c.history[c.history.length - 1]
+      return last ? `${last.name} · ${fmtWan(last.boxOffice)}` : '—'
+    },
+  },
+]
+
+const criticColumns: Column<Critic>[] = [
+  { key: 'name', label: '影评人', render: (c) => <span className="table-name">{c.name}</span> },
+  { key: 'taste', label: '偏好', render: (c) => (c.taste === 'none' ? '无偏好' : TYPE_ZH[c.taste]) },
+  { key: 'influence', label: '影响力', render: (c) => c.influence },
+]

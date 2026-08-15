@@ -1,12 +1,12 @@
 import { get, set, del } from 'idb-keyval'
 import type { GameState } from '../types'
-import { SAVE_KEY } from './schema'
+import { LEGACY_SAVE_KEY, SAVE_KEY } from './schema'
 import { migrateSave } from './migrate'
 
-/** 读取存档（无存档返回 null） */
+/** 读取存档（无存档返回 null；兼容 v1 旧键） */
 export async function loadSave(): Promise<GameState | null> {
   try {
-    const raw = await get(SAVE_KEY)
+    const raw = (await get(SAVE_KEY)) ?? (await get(LEGACY_SAVE_KEY))
     if (!raw) return null
     return migrateSave(raw)
   } catch {

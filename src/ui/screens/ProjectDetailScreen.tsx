@@ -207,19 +207,21 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
                 <b>{p.result.mp}</b>
               </div>
               <div className="stat-row">
+                <span className="stat-label">影评口碑</span>
+                <b>{p.result.criticScore}</b>
+                <span className="stat-label">声誉变化</span>
+                <span className={p.result.reputationGain >= 0 ? 'good' : 'bad'}>
+                  {p.result.reputationGain >= 0 ? '+' : ''}
+                  {p.result.reputationGain}
+                </span>
+              </div>
+              <div className="stat-row">
                 <span className="stat-label">票房</span>
                 <MoneyText value={p.result.boxOffice} />
               </div>
               <div className="stat-row">
                 <span className="stat-label">片方收入（{Math.round(ECONOMY.cinemaShare * 100)}% 分账）</span>
                 <MoneyText value={p.result.boxOffice * ECONOMY.cinemaShare} />
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">声誉变化</span>
-                <span className={p.result.reputationGain >= 0 ? 'good' : 'bad'}>
-                  {p.result.reputationGain >= 0 ? '+' : ''}
-                  {p.result.reputationGain}
-                </span>
               </div>
               <h3>成员表现（Group Performance）</h3>
               <ul className="career-list">

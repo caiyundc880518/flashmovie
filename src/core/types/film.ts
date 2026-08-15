@@ -101,6 +101,8 @@ export interface FilmResult {
   specific: number
   ap: number
   mp: number
+  /** 影评人平均分 0–100 */
+  criticScore: number
   boxOffice: number
   reputationGain: number
   groupPerformance: GroupPerformance[]

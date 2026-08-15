@@ -1,10 +1,11 @@
-import type { FilmProject, GameState, ProjectEvent, Script } from '../types'
+import type { Competitor, CompetitorFilm, FilmProject, GameState, ProjectEvent, Script } from '../types'
 import { FILM_TYPES } from '../types'
 import { ECONOMY } from '../config/economy'
 import { SCRIPT_POOL } from '../config/scripts'
 import { SHOOTING_EVENTS } from '../config/events'
+import { WORLD_CONFIG } from '../config/world'
 import type { Rng } from '../rng'
-import { chance, pick, randInt, round1, weightedPick } from '../rng'
+import { chance, clamp, pick, randInt, round1, weightedPick } from '../rng'
 import { applyWeeklyWorkerState } from '../rules/growth'
 import { generateScript } from '../generators/scriptGen'
 import { generateMarketScripts } from '../generators/scriptGen'
@@ -134,6 +135,20 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     }
   }
 
+  // 7.5 竞争对手周期：倒计时归零 → 上映一部影片
+  for (const c of draft.world.competitors) {
+    c.nextReleaseIn -= 1
+    if (c.nextReleaseIn <= 0) {
+      const film = releaseCompetitorFilm(draft, c, rng)
+      pushNews(draft, `竞争对手「${c.name}」本周上映《${film.name}》，档期竞争加剧！`)
+      c.nextReleaseIn = randInt(
+        rng,
+        WORLD_CONFIG.competitorReleaseWeeks[0],
+        WORLD_CONFIG.competitorReleaseWeeks[1],
+      )
+    }
+  }
+
   // 8. 年度切换钩子（V1 预留）
   if (draft.calendar.week === 1 && draft.calendar.year > 1) {
     pushNews(draft, `第 ${draft.calendar.year - 1} 年收官，迎来新的一年。`)
@@ -141,4 +156,29 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
 
   draft.company.cash = round1(draft.company.cash)
   draft.world.news = draft.world.news.slice(-30)
+}
+
+/** 对手上映一部影片（简化质量模型，声誉越高出品越强） */
+export function releaseCompetitorFilm(
+  state: GameState,
+  c: Competitor,
+  rng: Rng,
+): CompetitorFilm {
+  const type = pick(rng, FILM_TYPES)
+  const title = pick(rng, SCRIPT_POOL.titles[type])
+  const ap = clamp(Math.round(randInt(rng, 20, 60) + c.reputation * 0.4), 0, 100)
+  const mp = clamp(Math.round(randInt(rng, 25, 65) + c.reputation * 0.5), 0, 100)
+  const boxOffice = Math.round((randInt(rng, 400, 900) + c.reputation * 15) * (0.8 + mp / 100))
+  const film: CompetitorFilm = {
+    week: state.calendar.week,
+    year: state.calendar.year,
+    name: title,
+    ap,
+    mp,
+    boxOffice,
+  }
+  c.history.push(film)
+  c.history = c.history.slice(-10)
+  c.reputation = clamp(c.reputation + (mp >= 50 ? 1 : -1), 0, 100)
+  return film
 }

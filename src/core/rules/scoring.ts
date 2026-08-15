@@ -1,6 +1,7 @@
 import type { FilmProject, FilmResult, FilmScores, GameState, RoleId } from '../types'
 import { SCORE_WEIGHTS } from '../config/weights'
 import { ECONOMY } from '../config/economy'
+import { WORLD_CONFIG } from '../config/world'
 import type { Rng } from '../rng'
 import { clamp, round1 } from '../rng'
 
@@ -80,6 +81,9 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
   )
 
   const { boxOffice, reputationGain } = computeBoxOfficeAndGain(state, project, ap, mp, rng)
+  const criticScore = computeCriticScore(state, project, ap, rng)
+  // 影评口碑影响声誉（±6 封顶）
+  const finalRepGain = clamp(reputationGain + Math.round((criticScore - 50) / 15), -3, 6)
 
   const groupPerformance = buildGroupPerformance(state, project, rng)
 
@@ -89,12 +93,49 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
     specific: round1(specific),
     ap: round1(ap),
     mp: round1(mp),
+    criticScore,
     boxOffice: round1(boxOffice),
-    reputationGain,
+    reputationGain: finalRepGain,
     groupPerformance,
     week: state.calendar.week,
     year: state.calendar.year,
   }
+}
+
+/** 档期竞争惩罚：本周与上一周上映的对手片数 × 系数（上限 maxPenalty） */
+export function competitionPenalty(state: GameState, week: number): number {
+  const overlapStart = week - WORLD_CONFIG.competition.overlapWeeks
+  let count = 0
+  for (const c of state.world.competitors) {
+    for (const f of c.history) {
+      if (f.year === state.calendar.year && f.week >= overlapStart && f.week <= week) {
+        count += 1
+      }
+    }
+  }
+  return Math.min(
+    WORLD_CONFIG.competition.maxPenalty,
+    count * WORLD_CONFIG.competition.penaltyPerFilm,
+  )
+}
+
+/** 影评人平均分：以 AP 为基础，按类型偏好加减分 + 小幅波动 */
+export function computeCriticScore(state: GameState, project: FilmProject, ap: number, rng: Rng): number {
+  const script = state.scripts[project.scriptId]
+  const scores = state.world.critics.map((c) => {
+    let s = ap
+    if (c.taste === 'none') {
+      // 无偏好
+    } else if (c.taste === script.type) {
+      s += WORLD_CONFIG.tasteBonus
+    } else {
+      s -= WORLD_CONFIG.tasteMismatchPenalty
+    }
+    s += (rng() - 0.5) * 10
+    return clamp(s, 0, 100)
+  })
+  if (scores.length === 0) return Math.round(ap)
+  return Math.round(scores.reduce((a, b) => a + b, 0) / scores.length)
 }
 
 /** 票房与声誉（GDD §7.3） */
@@ -114,9 +155,10 @@ export function computeBoxOfficeAndGain(
   const trendActive = state.world.trend !== null && script.type === state.world.trend.type
   const trendFactor = trendActive ? 1 + f.trendSpan : 1
   const repFactor = 1 + (state.company.reputation / 100) * f.reputationSpan
+  const compFactor = 1 - competitionPenalty(state, state.calendar.week)
   const random = 1 + (rng() - 0.5) * 2 * SCORE_WEIGHTS.variance
 
-  const boxOffice = base * mpFactor * hypeFactor * trendFactor * repFactor * random
+  const boxOffice = base * mpFactor * hypeFactor * trendFactor * repFactor * compFactor * random
   const reputationGain = clamp(Math.round((ap - 45) / 10), -3, 5)
   return { boxOffice, reputationGain }
 }

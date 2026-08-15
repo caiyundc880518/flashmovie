@@ -53,3 +53,8 @@ export type {
   Trend,
   World,
 } from './world'
+export type {
+  Competitor,
+  CompetitorFilm,
+  Critic,
+} from './world'

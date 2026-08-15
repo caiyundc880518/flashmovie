@@ -22,7 +22,38 @@ export interface Trend {
   untilWeek: number
 }
 
-/** 世界状态（V1 精简：剧本市场 / 招聘市场 / 新闻 / 趋势） */
+/** 竞争对手的一部影片 */
+export interface CompetitorFilm {
+  week: number
+  year: number
+  name: string
+  ap: number
+  mp: number
+  boxOffice: number
+}
+
+/** AI 竞争对手影业 */
+export interface Competitor {
+  id: string
+  name: string
+  /** 声誉 0–100 */
+  reputation: number
+  /** 距下次上映周数 */
+  nextReleaseIn: number
+  history: CompetitorFilm[]
+}
+
+/** 影评人 */
+export interface Critic {
+  id: string
+  name: string
+  /** 类型偏好：匹配时加分；none 表示无偏好 */
+  taste: FilmType | 'none'
+  /** 影响力 0–100（影响口碑传播） */
+  influence: number
+}
+
+/** 世界状态（V1 精简：剧本市场 / 招聘市场 / 新闻 / 趋势 / 对手 / 影评人） */
 export interface World {
   /** 剧本市场在售剧本 */
   marketScripts: Script[]
@@ -32,6 +63,10 @@ export interface World {
   candidates: Worker[]
   trend: Trend | null
   news: NewsItem[]
+  /** AI 竞争对手 */
+  competitors: Competitor[]
+  /** 影评人 */
+  critics: Critic[]
 }
 
 export interface GameState {

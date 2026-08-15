@@ -263,6 +263,7 @@ export function reduce(state: GameState, action: Action): GameState {
         draft,
         `《${p.name}》上映！票房 ${Math.round(result.boxOffice)} 万元，AP ${result.ap} / MP ${result.mp}。`,
       )
+      pushNews(draft, `《${p.name}》口碑出炉：影评人平均 ${result.criticScore} 分。`)
       break
     }
   }
