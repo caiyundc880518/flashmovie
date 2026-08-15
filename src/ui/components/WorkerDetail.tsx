@@ -22,7 +22,7 @@ export function WorkerDetail({ worker, actions }: { worker: Worker; actions?: Re
     <div className="worker-detail">
       <div className="grid-2">
         <div className="detail-left">
-          <RadarChart values={skills} labels={skillLabels} />
+          <RadarChart values={skills} labels={skillLabels} size={240} />
           <div className="attr-line">
             性别 {worker.gender === 'male' ? '男' : '女'} · {worker.age}岁 · 周薪
             <MoneyText value={worker.salary} />
