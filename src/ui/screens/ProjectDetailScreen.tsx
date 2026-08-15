@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Channel, FilmProject, GameState, ProjectEvent } from '../../core/types'
+import type { Channel, CriticReview, FilmProject, GameState, ProjectEvent } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { createRng } from '../../core/rng'
 import { computeFilmResult } from '../../core/rules/scoring'
@@ -145,6 +145,7 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
           <div className="attr-line">
             预测 AP <b>{preview.ap}</b> · MP <b>{preview.mp}</b>
           </div>
+          <CriticReviews reviews={preview.reviews} title="影评预测" />
           <div className="btn-row">
             <button className="btn-primary" onClick={() => dispatch({ type: 'chooseEditStyle', projectId, style: 'market' })}>
               市场向剪辑（更卖座）
@@ -288,6 +289,7 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
                 <span className="stat-label">片方总收入</span>
                 <MoneyText value={p.result.revenue ?? p.result.boxOffice * ECONOMY.cinemaShare} />
               </div>
+              <CriticReviews reviews={p.result.reviews} title="影评人评分" />
               <h3>成员表现（Group Performance）</h3>
               <ul className="career-list">
                 {p.result.groupPerformance.map((g) => (
@@ -323,6 +325,31 @@ function TeamLine({
       <span className="dim">
         CA {w.basic.ca} · 心情 {Math.round(w.active.mood)}
       </span>
+    </div>
+  )
+}
+
+function scoreColor(score: number): string {
+  if (score >= 80) return 'var(--ok)'
+  if (score >= 60) return 'var(--gold)'
+  return 'var(--danger)'
+}
+
+/** 影评人评分列表（含预测） */
+function CriticReviews({ reviews, title }: { reviews: CriticReview[] | undefined; title: string }) {
+  if (!reviews || reviews.length === 0) return null
+  return (
+    <div className="critic-list">
+      <h3>{title}</h3>
+      {reviews.map((r) => (
+        <div key={r.criticId} className="critic-row">
+          <span className="critic-name">{r.criticName}</span>
+          <Bar value={r.score} max={100} color={scoreColor(r.score)} />
+          <span className="critic-score" style={{ color: scoreColor(r.score) }}>
+            {r.score}
+          </span>
+        </div>
+      ))}
     </div>
   )
 }

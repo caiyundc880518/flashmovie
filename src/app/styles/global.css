@@ -633,6 +633,30 @@ input[type='range'] {
   gap: 14px;
   padding: 6px 0 12px;
 }
+.critic-list {
+  margin-top: 10px;
+}
+.critic-list h3 {
+  margin: 14px 0 8px;
+  font-size: 14px;
+}
+.critic-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 0;
+}
+.critic-name {
+  min-width: 72px;
+  color: var(--text);
+  font-size: 13px;
+}
+.critic-score {
+  min-width: 30px;
+  text-align: right;
+  font-weight: 600;
+  font-size: 13px;
+}
 
 /* ===== 数据表格 ===== */
 .table-wrap {
