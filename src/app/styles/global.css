@@ -11,6 +11,7 @@
   --ok: #4cc38a;
   --border: #2a3a63;
   --radius: 8px;
+  --content-max: 1600px;
 }
 
 * {
@@ -29,16 +30,18 @@ body {
   color: var(--text);
   font-family: 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', system-ui, sans-serif;
   font-size: 14px;
+  line-height: 1.6;
 }
 
 button {
   font-family: inherit;
   font-size: 13px;
+  line-height: 1.4;
   color: var(--text);
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 6px 12px;
+  padding: 8px 14px;
   cursor: pointer;
   transition: background 0.15s, border-color 0.15s;
 }
@@ -76,10 +79,10 @@ select {
   color: var(--text);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 6px 8px;
+  padding: 8px 10px;
 }
 select {
-  min-width: 140px;
+  min-width: 150px;
 }
 
 .app-shell {
@@ -89,23 +92,23 @@ select {
 
 /* ===== 侧边栏 ===== */
 .sidebar {
-  width: 180px;
+  width: 190px;
   flex-shrink: 0;
   background: var(--bg-panel);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
-  padding: 16px 10px;
-  gap: 8px;
+  padding: 20px 12px;
+  gap: 10px;
 }
 .logo {
   font-size: 20px;
   font-weight: 700;
   letter-spacing: 2px;
   color: var(--text);
-  padding: 4px 8px 14px;
+  padding: 4px 8px 16px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 8px;
+  margin-bottom: 10px;
 }
 .logo small {
   display: block;
@@ -113,17 +116,18 @@ select {
   font-weight: 400;
   color: var(--gold);
   letter-spacing: 1px;
+  margin-top: 2px;
 }
 .side-nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 .nav-item {
   text-align: left;
   background: transparent;
   border-color: transparent;
-  padding: 9px 12px;
+  padding: 10px 12px;
   font-size: 14px;
 }
 .nav-item:hover {
@@ -139,21 +143,22 @@ select {
   margin-top: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 
-/* ===== 主区域 ===== */
+/* ===== 主区域：铺满视口 + 内容限宽居中 ===== */
 .main {
   flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
+  min-height: 100vh;
 }
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px 20px;
+  padding: 14px 28px;
   background: var(--bg-panel);
   border-bottom: 1px solid var(--border);
   position: sticky;
@@ -162,7 +167,7 @@ select {
 }
 .topbar-info {
   display: flex;
-  gap: 20px;
+  gap: 24px;
   align-items: center;
 }
 .top-cal {
@@ -173,13 +178,26 @@ select {
   color: var(--text-dim);
 }
 .btn-advance {
-  padding: 8px 18px;
+  padding: 9px 20px;
 }
+
+/* 内容区：flex:1 铺满剩余高度，内部限宽 1600 居中 */
 .content {
-  padding: 20px;
+  flex: 1;
+  overflow-y: auto;
+  width: 100%;
+  max-width: var(--content-max);
+  margin: 0 auto;
+  padding: 24px 28px 48px;
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: 20px;
+}
+.screen {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
 }
 .boot-screen {
   display: flex;
@@ -194,26 +212,29 @@ select {
   background: var(--bg-panel);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 16px 18px;
+  padding: 20px 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 .panel h2 {
-  margin: 0 0 12px;
+  margin: 0 0 6px;
   font-size: 16px;
-  color: var(--text);
   letter-spacing: 1px;
   border-left: 3px solid var(--gold);
-  padding-left: 8px;
+  padding-left: 10px;
+  line-height: 1.4;
 }
 .panel h3 {
-  margin: 14px 0 8px;
+  margin: 18px 0 6px;
   font-size: 13px;
   color: var(--gold);
 }
 .grid-2 {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  align-items: start;
+  gap: 20px;
+  align-items: stretch;
 }
 @media (max-width: 1000px) {
   .grid-2 {
@@ -240,8 +261,8 @@ select {
 /* ===== 海报卡片 ===== */
 .poster-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 18px;
 }
 .poster {
   background: var(--bg-card);
@@ -262,15 +283,16 @@ select {
   background: var(--bg-hover);
 }
 .poster-head {
-  padding: 10px 12px;
+  padding: 12px 14px;
   color: #fff;
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
 }
 .poster-type {
   font-size: 11px;
   opacity: 0.9;
+  letter-spacing: 2px;
 }
 .poster-title {
   font-size: 16px;
@@ -278,45 +300,46 @@ select {
   letter-spacing: 1px;
 }
 .poster-body {
-  padding: 12px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   flex: 1;
 }
 .attr-line {
   color: var(--text-dim);
   font-size: 12px;
+  line-height: 1.7;
 }
 .btn-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
   flex-wrap: wrap;
-  margin-top: 4px;
+  margin-top: 8px;
 }
 
 /* ===== 统计行 / 贷款 / 日历 ===== */
 .stat-row {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 0;
+  gap: 10px;
+  padding: 9px 0;
   border-bottom: 1px dashed var(--border);
 }
 .stat-label {
   color: var(--text-dim);
   font-size: 12px;
-  min-width: 64px;
+  min-width: 68px;
 }
 .loan-box {
-  margin-top: 10px;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 .loan-input-row {
   display: flex;
-  gap: 8px;
+  gap: 10px;
 }
 .loan-row {
   display: flex;
@@ -324,9 +347,10 @@ select {
   align-items: center;
   color: var(--text-dim);
   font-size: 12px;
+  padding: 6px 0;
 }
 .cal-row {
-  padding: 6px 0;
+  padding: 9px 0;
   border-bottom: 1px dashed var(--border);
   color: var(--text-dim);
 }
@@ -334,8 +358,8 @@ select {
 /* ===== 项目列表 / 新闻 ===== */
 .project-list {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 18px;
 }
 .clickable {
   cursor: pointer;
@@ -346,31 +370,32 @@ select {
   list-style: none;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  max-height: 260px;
+  gap: 2px;
+  max-height: 280px;
   overflow-y: auto;
 }
 .news-list li {
   color: var(--text-dim);
   font-size: 12px;
-  padding: 4px 0;
+  padding: 8px 4px;
   border-bottom: 1px dashed var(--border);
+  line-height: 1.7;
 }
 
 /* ===== 员工卡片 ===== */
 .worker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 14px;
 }
 .worker-card {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
 }
 .worker-card.clickable {
   cursor: pointer;
@@ -380,18 +405,18 @@ select {
 }
 .worker-head {
   display: flex;
-  gap: 10px;
+  gap: 12px;
   align-items: center;
 }
 .avatar {
-  width: 38px;
-  height: 38px;
+  width: 40px;
+  height: 40px;
   border-radius: 50%;
   background: linear-gradient(135deg, var(--accent), #7a5cff);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 17px;
   font-weight: 700;
   flex-shrink: 0;
 }
@@ -406,12 +431,14 @@ select {
 .worker-sub {
   color: var(--text-dim);
   font-size: 11px;
+  line-height: 1.6;
 }
 .worker-meta {
   display: flex;
   justify-content: space-between;
   color: var(--text-dim);
   font-size: 11px;
+  padding-top: 2px;
 }
 .worker-detail {
   margin-top: 4px;
@@ -420,37 +447,40 @@ select {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 10px;
 }
 .detail-right {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 4px;
 }
 .career-list {
   margin: 0;
-  padding: 0 0 0 16px;
+  padding: 0 0 0 18px;
   color: var(--text-dim);
   font-size: 12px;
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 6px;
+  line-height: 1.6;
 }
 
 /* ===== 条形 / 雷达 ===== */
 .bar-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
+  padding: 3px 0;
 }
 .bar-label {
-  min-width: 56px;
+  min-width: 64px;
   color: var(--text-dim);
   font-size: 12px;
+  flex-shrink: 0;
 }
 .bar {
   flex: 1;
-  height: 8px;
+  height: 9px;
   background: var(--bg);
   border-radius: 4px;
   overflow: hidden;
@@ -460,7 +490,7 @@ select {
   border-radius: 4px;
 }
 .bar-value {
-  min-width: 28px;
+  min-width: 30px;
   text-align: right;
   color: var(--text-dim);
   font-size: 12px;
@@ -490,44 +520,46 @@ select {
 .slot-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 12px;
 }
 .slot-row {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 .slot-label {
-  min-width: 110px;
+  min-width: 120px;
   color: var(--text-dim);
   font-size: 12px;
+  flex-shrink: 0;
 }
 .config-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 12px;
+  padding: 10px 0;
 }
 .config-label {
   color: var(--text-dim);
   font-size: 13px;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
+  flex-wrap: wrap;
 }
 .config-value {
   color: var(--gold);
-  min-width: 40px;
+  min-width: 44px;
 }
 input[type='range'] {
   flex: 1;
   accent-color: var(--gold);
+  margin: 6px 0;
 }
 .budget-line {
-  padding: 10px 0;
-  color: var(--text);
+  padding: 12px 0;
   border-top: 1px dashed var(--border);
-  margin-top: 8px;
+  margin-top: 10px;
 }
 .msg {
   color: var(--gold);
@@ -538,39 +570,41 @@ input[type='range'] {
 .team-line {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 5px 0;
+  gap: 12px;
+  padding: 7px 0;
   border-bottom: 1px dashed var(--border);
 }
 .score-preview {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 5px;
 }
 .event-list {
-  margin-top: 10px;
+  margin-top: 14px;
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 12px;
 }
 .event-block {
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-left: 3px solid var(--danger);
   border-radius: var(--radius);
-  padding: 10px 12px;
+  padding: 14px 16px;
 }
 .event-title {
   font-weight: 600;
-  margin-bottom: 4px;
+  margin-bottom: 6px;
 }
 .event-desc {
   color: var(--text-dim);
   font-size: 12px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
+  line-height: 1.7;
 }
 .writer-row {
-  padding: 6px 0;
+  padding: 8px 0;
   color: var(--text-dim);
   font-size: 13px;
+  border-bottom: 1px dashed var(--border);
 }
