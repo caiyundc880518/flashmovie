@@ -4,6 +4,7 @@ import { useGameStore } from '../store/gameStore'
 import { ROLE_ZH } from '../format'
 import { DataTable, type Column } from '../components/DataTable'
 import { WorkerDetail } from '../components/WorkerDetail'
+import { Modal } from '../components/Modal'
 import { MoneyText } from '../components/MoneyText'
 
 export function RecruitScreen() {
@@ -68,14 +69,30 @@ export function RecruitScreen() {
         />
       </section>
       {selected && (
-        <WorkerDetail
-          worker={selected}
-          actions={
-            <button className="btn-primary" onClick={() => dispatch({ type: 'hireWorker', candidateId: selected.id })}>
-              雇佣
-            </button>
+        <Modal
+          title={
+            <>
+              {selected.name} <span className="dim">{ROLE_ZH[selected.role]}</span>
+            </>
           }
-        />
+          wide
+          onClose={() => setSelectedId(null)}
+        >
+          <WorkerDetail
+            worker={selected}
+            actions={
+              <button
+                className="btn-primary"
+                onClick={() => {
+                  dispatch({ type: 'hireWorker', candidateId: selected.id })
+                  setSelectedId(null)
+                }}
+              >
+                雇佣
+              </button>
+            }
+          />
+        </Modal>
       )}
     </div>
   )

@@ -4,6 +4,7 @@ import { useGameStore } from '../store/gameStore'
 import { ROLE_ZH } from '../format'
 import { DataTable, type Column } from '../components/DataTable'
 import { WorkerDetail } from '../components/WorkerDetail'
+import { Modal } from '../components/Modal'
 import { MoneyText } from '../components/MoneyText'
 
 function moodColor(mood: number): string {
@@ -67,14 +68,30 @@ export function EmployeesScreen() {
         />
       </section>
       {selected && (
-        <WorkerDetail
-          worker={selected}
-          actions={
-            <button className="btn-danger" onClick={() => dispatch({ type: 'fireWorker', workerId: selected.id })}>
-              解雇
-            </button>
+        <Modal
+          title={
+            <>
+              {selected.name} <span className="dim">{ROLE_ZH[selected.role]}</span>
+            </>
           }
-        />
+          wide
+          onClose={() => setSelectedId(null)}
+        >
+          <WorkerDetail
+            worker={selected}
+            actions={
+              <button
+                className="btn-danger"
+                onClick={() => {
+                  dispatch({ type: 'fireWorker', workerId: selected.id })
+                  setSelectedId(null)
+                }}
+              >
+                解雇
+              </button>
+            }
+          />
+        </Modal>
       )}
     </div>
   )

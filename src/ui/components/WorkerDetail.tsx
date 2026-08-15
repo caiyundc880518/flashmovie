@@ -5,7 +5,7 @@ import { RadarChart } from './RadarChart'
 import { Bar } from './Bar'
 import { MoneyText } from './MoneyText'
 
-/** 员工详情面板（属性雷达 + 精神属性 + 履历） */
+/** 员工详情（用于弹窗内展示：属性雷达 + 精神属性 + 履历） */
 export function WorkerDetail({ worker, actions }: { worker: Worker; actions?: ReactNode }) {
   const skills = Object.values(worker.skills)
   const skillLabels = ['演技', '导演', '摄影', '剪辑', '市场', '技术', '广告', '特效']
@@ -19,10 +19,7 @@ export function WorkerDetail({ worker, actions }: { worker: Worker; actions?: Re
     ['全能', worker.mental.versatility],
   ] as const
   return (
-    <section className="panel worker-detail">
-      <h2>
-        {worker.name} <span className="dim">{ROLE_ZH[worker.role]}</span>
-      </h2>
+    <div className="worker-detail">
       <div className="grid-2">
         <div className="detail-left">
           <RadarChart values={skills} labels={skillLabels} />
@@ -59,6 +56,6 @@ export function WorkerDetail({ worker, actions }: { worker: Worker; actions?: Re
           </ul>
         </div>
       </div>
-    </section>
+    </div>
   )
 }
