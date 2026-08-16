@@ -4,6 +4,8 @@ import { reduce } from '../state/reducer'
 import { createRng } from '../rng'
 import { generateScript } from '../generators/scriptGen'
 import { generateWorker } from '../generators/workerGen'
+import { applyWeeklyWorkerState } from '../rules/growth'
+import { GROWTH } from '../config/growth'
 import type { FilmProject, GameState, SkillKey } from '../types'
 
 /** 构造一部「宣发中」的项目（含 5 名成员），直接上映结算 */
@@ -112,5 +114,29 @@ describe('上映结算：成员成长明细', () => {
     // 直接构造一个无 settlement 的 result 模拟旧档
     const legacy = { ...s.projects[0], result: { settlement: undefined } } as FilmProject
     expect(legacy.result!.settlement).toBeUndefined()
+  })
+
+  it('空闲衰减同步到 CA：结算时不再出现大幅 CA 下跌', () => {
+    let s = makeReadyState(21)
+    const actor = s.workers['w-actor']
+    actor.idleWeeks = GROWTH.decayAfterWeeks + 1
+    const caBefore = actor.basic.ca
+    const rng = createRng(5)
+    // 模拟 20 周空闲（衰减生效）
+    for (let i = 0; i < 20; i++) applyWeeklyWorkerState(actor, false, rng)
+    // CA 已同步重算（不滞后）：等于当前技能的加权均值
+    const keys = Object.keys(actor.skills) as SkillKey[]
+    const avg = keys.reduce((s2, k) => s2 + actor.skills[k], 0) / keys.length
+    const max = Math.max(...keys.map((k) => actor.skills[k]))
+    expect(actor.basic.ca).toBe(Math.round(avg * 0.7 + max * 0.3))
+    expect(actor.basic.ca).toBeLessThanOrEqual(caBefore)
+
+    // 随后参与项目结算：技能只增 → CA 不再暴跌（caGain ≥ 0）
+    actor.idleWeeks = 0
+    s = reduce(s, { type: 'release', projectId: 'prj-settle' })
+    const st = s.projects[0].result!.settlement!.find((x) => x.workerId === 'w-actor')!
+    expect(st.caGain).toBeGreaterThanOrEqual(0)
+    // 衰减已削弱：20 周空闲 CA 跌幅显著收敛（远小于此前 20+ 点的暴跌）
+    expect(caBefore - actor.basic.ca).toBeLessThan(12)
   })
 })

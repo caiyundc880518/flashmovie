@@ -26,10 +26,10 @@ export const GROWTH = {
   intelBonus: 0.005,
   /** 连续空闲多少周后开始衰减 */
   decayAfterWeeks: 8,
-  /** 技能每周衰减比例 */
-  decayPerWeek: 0.01,
+  /** 技能每周衰减比例（长期闲置才会明显退化） */
+  decayPerWeek: 0.004,
   /** Fame 每周衰减比例 */
-  fameDecayPerWeek: 0.005,
+  fameDecayPerWeek: 0.002,
   /** 升级所需累计经验阈值（V2 起用） */
   levelThreshold: 200,
 } as const

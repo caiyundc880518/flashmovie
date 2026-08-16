@@ -138,6 +138,11 @@ export function applyWeeklyWorkerState(w: Worker, inProject: boolean, rng: Rng):
       for (const k of keys) {
         w.skills[k] = clamp(w.skills[k] * (1 - GROWTH.decayPerWeek), 0, 100)
       }
+      // 同步重算 CA：让 CA 平时就反映真实状态，
+      // 避免「空闲期技能衰减、结算时才一次性暴露导致 CA 暴跌」的体验断层
+      const avg = keys.reduce((s, k) => s + w.skills[k], 0) / keys.length
+      const max = Math.max(...keys.map((k) => w.skills[k]))
+      w.basic.ca = clamp(Math.round(avg * 0.7 + max * 0.3), 0, w.basic.pa)
       w.basic.fame = clamp(w.basic.fame * (1 - GROWTH.fameDecayPerWeek), 0, 100)
     }
   }

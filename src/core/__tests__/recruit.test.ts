@@ -168,8 +168,10 @@ describe('招聘抽卡（单演员计价，1 抽 / 10 连）', () => {
     for (const c of s.world.candidates) {
       expect(c.role).toBe('actor')
     }
-    // 不传 role：职位仍按权重混合
-    s = reduce(s, { type: 'refreshCandidates', pool: 'flow', count: 20 })
+    // 不传 role：职位仍按权重混合（抽 2 次各 10 连）
+    for (let i = 0; i < 2; i++) {
+      s = reduce(s, { type: 'refreshCandidates', pool: 'flow', count: 10 })
+    }
     const roles = new Set(s.world.candidates.map((c) => c.role))
     expect(roles.size).toBeGreaterThan(1)
   })
