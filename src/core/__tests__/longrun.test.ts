@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../state/initialState'
 import { reduce } from '../state/reducer'
-import type { GameState, ProjectEvent, Script } from '../types'
+import type { ProjectEvent, Script } from '../types'
 import { ECONOMY } from '../config/economy'
 import { IPO_CONFIG } from '../config/company'
 
