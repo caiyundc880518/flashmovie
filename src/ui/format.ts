@@ -30,6 +30,23 @@ export const ROLE_ZH: Record<RoleId, string> = {
   assistant: '助理',
 }
 
+export const SKILL_ZH: Record<string, string> = {
+  act: '演技',
+  direct: '导演',
+  shoot: '摄影',
+  edit: '剪辑',
+  market: '市场',
+  advertise: '广告',
+  vfx: '特效',
+  technical: '技术',
+}
+
+/** 有符号数字：正数带 +，负数带 -，整数不补 .0 */
+export function signedDelta(v: number): string {
+  const s = Number.isInteger(v) ? String(Math.round(v)) : v.toFixed(1)
+  return v > 0 ? `+${s}` : s
+}
+
 export const STAGE_ZH: Record<ProjectStage, string> = {
   preparing: '筹备中',
   shooting: '拍摄中',

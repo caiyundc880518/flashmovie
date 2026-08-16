@@ -94,6 +94,8 @@ export interface CareerEntry {
   role: RoleId
   /** 本片个人成绩 0–100 */
   performance: number
+  /** 本片 CA 涨跌（整数，可负；旧档可能缺省） */
+  caGain?: number
 }
 
 export interface AwardEntry {

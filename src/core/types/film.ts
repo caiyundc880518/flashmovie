@@ -1,4 +1,4 @@
-import type { RoleId } from './worker'
+import type { RoleId, SkillKey } from './worker'
 
 /** 剧组职位分配（V1 最小集：导演/演员/摄影/剪辑/市场 必配，制片/编剧可选，技术/助理暂缓） */
 export interface TeamAssignments {
@@ -105,6 +105,25 @@ export interface GroupPerformance {
   performance: number
 }
 
+/** 上映结算：单名成员在本片的属性变化明细（GDD §7.4） */
+export interface WorkerSettlement {
+  workerId: string
+  /** 参与角色（所填槽位） */
+  role: RoleId
+  /** 表现评分 0–100 */
+  performance: number
+  /** CA 涨跌（整数，可负） */
+  caGain: number
+  /** 经验获取 */
+  expGain: number
+  /** 技能变化（仅记录发生变化的项，delta 可负） */
+  skillChanges: { key: SkillKey; delta: number }[]
+  /** Fame 涨跌 */
+  fameGain: number
+  /** 心情涨跌 */
+  moodGain: number
+}
+
 /** 单条影评 */
 export interface CriticReview {
   criticId: string
@@ -141,4 +160,6 @@ export interface FilmResult {
   ipName?: string
   /** 本片在系列中的部数（旧档可能缺省） */
   ipEntry?: number
+  /** 成员成长结算明细（旧档可能缺省） */
+  settlement?: WorkerSettlement[]
 }

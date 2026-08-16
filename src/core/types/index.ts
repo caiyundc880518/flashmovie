@@ -43,6 +43,7 @@ export type {
   TeamAssignments,
   CriticReview,
   Channel,
+  WorkerSettlement,
 } from './film'
 export type {
   Company,

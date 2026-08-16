@@ -1,4 +1,13 @@
-import type { FilmProject, FilmResult, GameState, RoleId, SkillKey, Worker } from '../types'
+import type {
+  FilmProject,
+  FilmResult,
+  GameState,
+  RoleId,
+  SkillKey,
+  Worker,
+  WorkerSettlement,
+} from '../types'
+import { SKILL_KEYS } from '../types'
 import { GROWTH } from '../config/growth'
 import { clamp, round1 } from '../rng'
 import type { Rng } from '../rng'
@@ -18,12 +27,13 @@ const MAIN_SKILL_BY_ROLE: Partial<Record<RoleId, SkillKey>> = {
  * - 技能点 = 经验 × 学习系数 × (1 + Gift/Intelligence 修正)
  * - CA = 0.7×技能均值 + 0.3×技能峰值，上限 PA
  * - Fame 按个人成绩增长；履历追加一条
+ * @returns 每位成员的属性变化结算明细（写入 FilmResult.settlement）
  */
 export function applyProjectGrowth(
   state: GameState,
   project: FilmProject,
   result: FilmResult,
-): void {
+): WorkerSettlement[] {
   const team = project.team
   const ids: string[] = []
   if (team.producerId) ids.push(team.producerId)
@@ -36,11 +46,19 @@ export function applyProjectGrowth(
   if (team.marketId) ids.push(team.marketId)
   if (team.assistantId) ids.push(team.assistantId)
 
+  const settlements: WorkerSettlement[] = []
+
   for (const workerId of ids) {
     const w = state.workers[workerId]
     if (!w) continue
     const gp = result.groupPerformance.find((g) => g.workerId === workerId)
     const performance = gp?.performance ?? 50
+    // 结算前快照
+    const caBefore = w.basic.ca
+    const skillsBefore = { ...w.skills }
+    const fameBefore = w.basic.fame
+    const moodBefore = w.active.mood
+
     const roleWeight = GROWTH.roleExperienceWeight[w.role] ?? 1
     const expGain = GROWTH.experiencePerProject * roleWeight
     w.experience += expGain
@@ -75,13 +93,34 @@ export function applyProjectGrowth(
     // 心情
     w.active.mood = clamp(w.active.mood + (performance >= 60 ? 2 : -2), 10, 95)
 
+    // 变化明细（只记录实际变化的技能）
+    const skillChanges: { key: SkillKey; delta: number }[] = []
+    for (const key of SKILL_KEYS) {
+      const delta = round1(w.skills[key] - skillsBefore[key])
+      if (delta !== 0) skillChanges.push({ key, delta })
+    }
+    const caGain = w.basic.ca - caBefore
+    settlements.push({
+      workerId,
+      role: gp?.role ?? w.role,
+      performance: round1(performance),
+      caGain,
+      expGain: round1(expGain),
+      skillChanges,
+      fameGain: round1(w.basic.fame - fameBefore),
+      moodGain: round1(w.active.mood - moodBefore),
+    })
+
     w.career.push({
       week: state.calendar.week,
       projectName: project.name,
-      role: w.role,
+      role: gp?.role ?? w.role,
       performance: round1(performance),
+      caGain,
     })
   }
+
+  return settlements
 }
 
 /** 每周员工状态推进：空闲累计与衰减（GDD §4.4） */

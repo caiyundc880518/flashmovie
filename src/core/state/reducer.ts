@@ -425,7 +425,7 @@ export function reduce(state: GameState, action: Action): GameState {
         ipName = newIp.name
         ipEntry = 1
       }
-      applyProjectGrowth(draft, p, result)
+      const settlements = applyProjectGrowth(draft, p, result)
       p.result = {
         ...result,
         revenue: round1(revenue),
@@ -433,6 +433,7 @@ export function reduce(state: GameState, action: Action): GameState {
         publisherName: publisher?.name,
         ipName,
         ipEntry,
+        settlement: settlements,
       }
       p.stage = 'released'
       p.releasedWeek = draft.calendar.week

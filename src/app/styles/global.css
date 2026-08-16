@@ -651,6 +651,12 @@ select {
 .ok {
   color: var(--ok);
 }
+.settle-skills {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 8px;
+  line-height: 1.7;
+}
 
 /* ===== 招聘刷新（抽卡） ===== */
 .gacha-options {

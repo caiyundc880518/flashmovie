@@ -41,7 +41,17 @@ export function WorkerDetail({ worker, actions }: { worker: Worker; actions?: Re
             .slice(0, 12)
             .map((c, i) => (
               <li key={i}>
-                {c.projectName} · {ROLE_ZH[c.role]} · 个人表现 {Math.round(c.performance)}
+                {c.projectName} · 以{ROLE_ZH[c.role]}参与 · 表现 {Math.round(c.performance)}
+                {typeof c.caGain === 'number' && (
+                  <>
+                    {' '}
+                    · CA{' '}
+                    <span className={c.caGain >= 0 ? 'good' : 'bad'}>
+                      {c.caGain >= 0 ? '+' : ''}
+                      {c.caGain}
+                    </span>
+                  </>
+                )}
               </li>
             ))}
         </ul>

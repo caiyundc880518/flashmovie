@@ -1,15 +1,24 @@
 import { useState } from 'react'
-import type { Channel, CriticReview, FilmProject, GameState, ProjectEvent } from '../../core/types'
+import type {
+  Channel,
+  CriticReview,
+  FilmProject,
+  GameState,
+  ProjectEvent,
+  WorkerSettlement,
+} from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { createRng } from '../../core/rng'
 import { computeFilmResult, vfxTier, vfxTypeFactor } from '../../core/rules/scoring'
 import { goldenCombos, teamChemistry } from '../../core/rules/chemistry'
 import { ECONOMY } from '../../core/config/economy'
 import { CHANNEL_INFO, CHANNEL_ORDER } from '../../core/config/channels'
-import { ROLE_ZH, STAGE_ZH, TYPE_ZH, fmtWan } from '../format'
+import { ROLE_ZH, SKILL_ZH, STAGE_ZH, TYPE_ZH, fmtWan, signedDelta } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { Bar } from '../components/Bar'
 import { MoneyText } from '../components/MoneyText'
+import { Modal } from '../components/Modal'
+import { DataTable, type Column } from '../components/DataTable'
 import { TimingMinigame } from '../components/TimingMinigame'
 
 /** 剪辑/宣发阶段的成片预测（用固定种子 rng 给出确定性估算） */
@@ -49,6 +58,7 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
   const [pubSel, setPubSel] = useState('')
   const [shotGame, setShotGame] = useState(false)
   const [editGame, setEditGame] = useState(false)
+  const [settlement, setSettlement] = useState<WorkerSettlement[] | null>(null)
 
   if (!state) return null
   const p = state.projects.find((x) => x.id === projectId)
@@ -258,7 +268,12 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
             <button
               className="btn-primary"
               onClick={() => {
-                if (window.confirm(`确认上映《${p.name}》？`)) dispatch({ type: 'release', projectId })
+                if (!window.confirm(`确认上映《${p.name}》？`)) return
+                dispatch({ type: 'release', projectId })
+                // 上映后读取结算结果，弹出成员成长结算
+                const latest = useGameStore.getState().state
+                const r = latest?.projects.find((x) => x.id === projectId)?.result
+                if (r?.settlement) setSettlement(r.settlement)
               }}
             >
               🎞 上映
@@ -317,15 +332,26 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
                 <span className="stat-label">片方总收入</span>
                 <MoneyText value={p.result.revenue ?? p.result.boxOffice * ECONOMY.cinemaShare} />
               </div>
-              <h3>成员表现（Group Performance）</h3>
-              <ul className="career-list">
-                {p.result.groupPerformance.map((g) => (
-                  <li key={g.workerId}>
-                    {state.workers[g.workerId]?.name ?? '未知'}（{ROLE_ZH[g.role]}） · 表现{' '}
-                    {Math.round(g.performance)}
-                  </li>
-                ))}
-              </ul>
+              <h3>成员成长结算</h3>
+              {p.result.settlement ? (
+                <p className="dim">
+                  每位成员的参与角色、表现评分与全部属性变化已入账，点击查看明细。
+                </p>
+              ) : null}
+              {p.result.settlement ? (
+                <button className="btn-primary" onClick={() => setSettlement(p.result!.settlement!)}>
+                  📊 查看全员属性变化
+                </button>
+              ) : (
+                <ul className="career-list">
+                  {p.result.groupPerformance.map((g) => (
+                    <li key={g.workerId}>
+                      {state.workers[g.workerId]?.name ?? '未知'}（{ROLE_ZH[g.role]}） · 表现{' '}
+                      {Math.round(g.performance)}
+                    </li>
+                  ))}
+                </ul>
+              )}
             </div>
           </div>
         </section>
@@ -341,6 +367,20 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
             <CriticReviews reviews={preview.reviews} title="影评预测" />
           ) : null}
         </section>
+      )}
+
+      {settlement && (
+        <Modal title="📊 上映结算 · 成员成长明细" wide onClose={() => setSettlement(null)}>
+          <p className="dim">
+            结算已入账：经验、技能、CA、Fame 与心情的变化会在上映时立即生效，并写入个人履历。
+          </p>
+          <DataTable<WorkerSettlement>
+            columns={settlementColumns(state)}
+            rows={settlement}
+            rowKey={(s) => s.workerId}
+            emptyText="无成员结算数据"
+          />
+        </Modal>
       )}
 
       {shotGame && (
@@ -363,6 +403,43 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
       )}
     </div>
   )
+}
+
+/** 上映结算表列（依赖 state 取员工名） */
+function settlementColumns(state: GameState): Column<WorkerSettlement>[] {
+  const delta = (v: number) => (
+    <span className={v >= 0 ? 'good' : 'bad'}>{signedDelta(v)}</span>
+  )
+  return [
+    {
+      key: 'name',
+      label: '成员',
+      render: (s) => <span className="table-name">{state.workers[s.workerId]?.name ?? '未知'}</span>,
+    },
+    { key: 'role', label: '参与角色', render: (s) => ROLE_ZH[s.role] },
+    { key: 'perf', label: '表现', render: (s) => Math.round(s.performance) },
+    { key: 'ca', label: 'CA', render: (s) => delta(s.caGain) },
+    { key: 'exp', label: '经验', render: (s) => `+${Math.round(s.expGain)}` },
+    { key: 'fame', label: 'Fame', render: (s) => delta(s.fameGain) },
+    { key: 'mood', label: '心情', render: (s) => delta(s.moodGain) },
+    {
+      key: 'skills',
+      label: '技能变化',
+      render: (s) =>
+        s.skillChanges.length === 0 ? (
+          <span className="dim">—</span>
+        ) : (
+          <span className="settle-skills">
+            {s.skillChanges.map((c, i) => (
+              <span key={c.key}>
+                {i > 0 ? '、' : ''}
+                {SKILL_ZH[c.key]} <span className={c.delta >= 0 ? 'good' : 'bad'}>{signedDelta(c.delta)}</span>
+              </span>
+            ))}
+          </span>
+        ),
+    },
+  ]
 }
 
 function TeamLine({
