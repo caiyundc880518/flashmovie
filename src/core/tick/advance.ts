@@ -65,6 +65,16 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     }
   }
 
+  // 1.6 观众群体偏好季度微调：类型关注度缓慢漂移（GDD §6）
+  if (draft.world.audience.length > 0 && draft.calendar.week % 13 === 0) {
+    const drift = WORLD_CONFIG.audience.drift
+    for (const g of draft.world.audience) {
+      for (const t of FILM_TYPES) {
+        g.focus[t] = round1(clamp(g.focus[t] + (rng() - 0.5) * 2 * drift, 0.05, 0.95))
+      }
+    }
+  }
+
   // 2. 贷款每周还款
   for (const loan of draft.company.loans) {
     const payment =

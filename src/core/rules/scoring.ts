@@ -8,6 +8,7 @@ import { IP_CONFIG } from '../config/ip'
 import { VFX_CONFIG } from '../config/minigame'
 import { chemistryScoreFactor, goldenCombos } from './chemistry'
 import { techBonuses } from './tech'
+import { audienceFit, tolerancePenalty } from './audience'
 import type { Rng } from '../rng'
 import { clamp, round1 } from '../rng'
 
@@ -107,8 +108,12 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
     reviews.length > 0
       ? Math.round(reviews.reduce((a, r) => a + r.score, 0) / reviews.length)
       : Math.round(ap)
-  // 影评口碑影响声誉（±6 封顶）
-  const finalRepGain = clamp(reputationGain + Math.round((criticScore - 50) / 15), -3, 6)
+  // 影评口碑影响声誉（±6 封顶）；观众容忍度惩罚低口碑片（GDD §6）
+  const finalRepGain = clamp(
+    reputationGain + Math.round((criticScore - 50) / 15) - tolerancePenalty(state, criticScore),
+    -3,
+    6,
+  )
 
   const groupPerformance = buildGroupPerformance(state, project, rng)
 
@@ -217,6 +222,8 @@ export function computeBoxOfficeAndGain(
   const hypeFactor = 1 + (project.hype / 100) * f.hypeSpan
   const trendActive = state.world.trend !== null && script.type === state.world.trend.type
   const trendFactor = trendActive ? 1 + f.trendSpan : 1
+  // 观众群体契合：类型偏好结构加成（GDD §6）
+  const audienceFactor = audienceFit(state, script.type)
   const repFactor = 1 + (state.company.reputation / 100) * f.reputationSpan
   // 续作基础观众加成（GDD §3.8）：IP 等级越高，系列观众基础越厚
   let ipFactor = 1
@@ -227,7 +234,8 @@ export function computeBoxOfficeAndGain(
   const compFactor = 1 - competitionPenalty(state, state.calendar.week)
   const random = 1 + (rng() - 0.5) * 2 * SCORE_WEIGHTS.variance
 
-  const boxOffice = base * mpFactor * hypeFactor * trendFactor * repFactor * compFactor * ipFactor * random
+  const boxOffice =
+    base * mpFactor * hypeFactor * trendFactor * audienceFactor * repFactor * compFactor * ipFactor * random
   const reputationGain = clamp(Math.round((ap - 45) / 10), -3, 5)
   return { boxOffice, reputationGain }
 }

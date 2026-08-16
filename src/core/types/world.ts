@@ -23,6 +23,20 @@ export interface Trend {
   untilWeek: number
 }
 
+/** 观众群体（GDD §6 Audience Group：按地区/类型分布，含容忍度与关注点） */
+export interface AudienceGroup {
+  id: string
+  name: string
+  /** 地区（为地区市场铺路） */
+  region: string
+  /** 规模占比 0–1（总和 ≈1） */
+  size: number
+  /** 容忍度 0–1：对低质量片的敏感度（低 = 挑剔，差片口碑受损更重） */
+  tolerance: number
+  /** 类型关注度 Focus 0–1（季度缓慢漂移） */
+  focus: Record<FilmType, number>
+}
+
 /** 竞争对手的一部影片 */
 export interface CompetitorFilm {
   week: number
@@ -92,6 +106,8 @@ export interface World {
   competitors: Competitor[]
   /** 影评人 */
   critics: Critic[]
+  /** 观众群体（GDD §6） */
+  audience: AudienceGroup[]
   /** 发行商 */
   publishers: Publisher[]
   /** 投资人（可签约其一） */

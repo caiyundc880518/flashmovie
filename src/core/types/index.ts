@@ -66,6 +66,7 @@ export type {
   Critic,
   Publisher,
   Investor,
+  AudienceGroup,
 } from './world'
 export type {
   AwardCategory,

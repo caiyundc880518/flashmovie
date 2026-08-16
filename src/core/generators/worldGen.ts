@@ -1,10 +1,10 @@
-import type { Competitor, Critic, Investor, Publisher } from '../types'
-import { FILM_TYPES } from '../types'
+import type { AudienceGroup, Competitor, Critic, Investor, Publisher } from '../types'
+import { FILM_TYPES, type FilmType } from '../types'
 import { WORLD_CONFIG } from '../config/world'
 import { PUBLISHER_CONFIG } from '../config/channels'
 import { INVESTOR_CONFIG } from '../config/company'
 import type { Rng } from '../rng'
-import { pick, randInt, round1 } from '../rng'
+import { clamp, pick, randInt, round1 } from '../rng'
 
 /** 生成 AI 竞争对手（2–5 家） */
 export function generateCompetitors(rng: Rng, uid: (prefix: string) => string): Competitor[] {
@@ -80,4 +80,43 @@ export function generateInvestors(rng: Rng, uid: (prefix: string) => string): In
       share: round1(randInt(rng, INVESTOR_CONFIG.shareRange[0] * 100, INVESTOR_CONFIG.shareRange[1] * 100) / 100),
     }),
   )
+}
+
+/** 生成观众群体（GDD §6）：6 组覆盖 6 类型，规模归一化为占比 */
+export function generateAudienceGroups(rng: Rng, uid: (prefix: string) => string): AudienceGroup[] {
+  const cfg = WORLD_CONFIG.audience
+  // 先生成规模权重，再归一化
+  const weights = cfg.groups.map(() => randInt(rng, cfg.sizeWeightRange[0], cfg.sizeWeightRange[1]))
+  const total = weights.reduce((s, w) => s + w, 0)
+
+  return cfg.groups.map((g, i) => {
+    const focus = {} as Record<FilmType, number>
+    // 洗牌挑次偏好类型
+    const others = FILM_TYPES.filter((t) => t !== g.mainType)
+    const subCount = randInt(rng, cfg.subFocusCount[0], cfg.subFocusCount[1])
+    for (let j = others.length - 1; j > 0; j--) {
+      const k = Math.floor(rng() * (j + 1))
+      ;[others[j], others[k]] = [others[k], others[j]]
+    }
+    const subs = new Set(others.slice(0, subCount))
+    const range = (lo: number, hi: number) => round1(lo + rng() * (hi - lo))
+    for (const t of FILM_TYPES) {
+      if (t === g.mainType) focus[t] = range(cfg.mainFocusRange[0], cfg.mainFocusRange[1])
+      else if (subs.has(t)) focus[t] = range(cfg.subFocusRange[0], cfg.subFocusRange[1])
+      else focus[t] = range(cfg.otherFocusRange[0], cfg.otherFocusRange[1])
+    }
+    return {
+      id: uid('aud'),
+      name: g.name,
+      region: g.region,
+      size: round1(weights[i] / total),
+      tolerance: round1(range(cfg.toleranceRange[0], cfg.toleranceRange[1])),
+      focus,
+    }
+  })
+}
+
+/** 类型焦点上限/下限（漂移用） */
+export function clampFocus(v: number): number {
+  return clamp(v, 0.05, 0.95)
 }

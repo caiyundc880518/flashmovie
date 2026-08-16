@@ -1,4 +1,5 @@
 import type {
+  AudienceGroup,
   Competitor,
   Critic,
   FilmProject,
@@ -10,6 +11,7 @@ import type {
 } from '../types'
 import { createRng } from '../rng'
 import {
+  generateAudienceGroups,
   generateCompetitors,
   generateCritics,
   generateInvestors,
@@ -24,6 +26,7 @@ import { SAVE_VERSION } from './schema'
  * v4：世界新增 investors（投资人）；公司新增 schoolLevel。
  * v5：公司新增 ips（IP 资产，GDD §3.8）。
  * v6：公司新增 tech（科技树研发进度）。
+ * v7：世界新增 audience（观众群体，GDD §6）。
  */
 export function migrateSave(raw: unknown): GameState {
   if (!raw || typeof raw !== 'object') {
@@ -40,6 +43,7 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 3) state = migrateV3toV4(state)
   if (state.version === 4) state = migrateV4toV5(state)
   if (state.version === 5) state = migrateV5toV6(state)
+  if (state.version === 6) state = migrateV6toV7(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
   return state
@@ -88,24 +92,34 @@ function migrateV5toV6(s: GameState): GameState {
   return { ...s, version: 6 }
 }
 
+/** v6 → v7：世界补观众群体（由 ensureWorldPopulated 实际生成） */
+function migrateV6toV7(s: GameState): GameState {
+  const world = s.world as World & { audience?: AudienceGroup[] }
+  if (!Array.isArray(world.audience)) world.audience = []
+  return { ...s, version: 7 }
+}
+
 /** 世界实体为空时，用存档种子派生确定性生成 */
 function ensureWorldPopulated(s: GameState): GameState {
   const world = s.world as World & {
     competitors?: Competitor[]
     critics?: Critic[]
+    audience?: AudienceGroup[]
     publishers?: Publisher[]
     investors?: Investor[]
   }
   const needAll = !Array.isArray(world.competitors) || world.competitors.length === 0
   const needCritics = !Array.isArray(world.critics) || world.critics.length === 0
+  const needAudience = !Array.isArray(world.audience) || world.audience.length === 0
   const needPubs = !Array.isArray(world.publishers) || world.publishers.length === 0
   const needInvs = !Array.isArray(world.investors) || world.investors.length === 0
-  if (needAll || needCritics || needPubs || needInvs) {
+  if (needAll || needCritics || needAudience || needPubs || needInvs) {
     const rng = createRng((s.seed ^ 0x51a7) >>> 0)
     let n = 1
     const uid = (p: string) => `${p}${(n++).toString(36)}`
     if (needAll) world.competitors = generateCompetitors(rng, uid)
     if (needCritics) world.critics = generateCritics(rng, uid)
+    if (needAudience) world.audience = generateAudienceGroups(rng, uid)
     if (needPubs) world.publishers = generatePublishers(rng, uid)
     if (needInvs) world.investors = generateInvestors(rng, uid)
   }

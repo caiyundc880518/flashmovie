@@ -8,6 +8,7 @@ import { createRng, pick, randInt } from '../rng'
 import { generateMarketScripts } from '../generators/scriptGen'
 import { generateCandidates } from '../generators/workerGen'
 import {
+  generateAudienceGroups,
   generateCompetitors,
   generateCritics,
   generateInvestors,
@@ -31,6 +32,7 @@ export function createInitialState(seed?: number): GameState {
 
   const competitors = generateCompetitors(rng, (p) => `${p}${(counter++).toString(36)}`)
   const critics = generateCritics(rng, (p) => `${p}${(counter++).toString(36)}`)
+  const audience = generateAudienceGroups(rng, (p) => `${p}${(counter++).toString(36)}`)
   const publishers = generatePublishers(rng, (p) => `${p}${(counter++).toString(36)}`)
   const investors = generateInvestors(rng, (p) => `${p}${(counter++).toString(36)}`)
 
@@ -62,6 +64,7 @@ export function createInitialState(seed?: number): GameState {
       trend: { type: pick(rng, FILM_TYPES), untilWeek: randInt(rng, 26, 52) },
       competitors,
       critics,
+      audience,
       publishers,
       investors,
       news: [

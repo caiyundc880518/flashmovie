@@ -5,6 +5,7 @@ import { ECONOMY } from '../../core/config/economy'
 import { IP_CONFIG } from '../../core/config/ip'
 import { vfxTier, vfxTypeFactor } from '../../core/rules/scoring'
 import { techBonuses } from '../../core/rules/tech'
+import { audienceFit } from '../../core/rules/audience'
 import { ROLE_ZH, TYPE_ZH, fmtWan } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { MoneyText } from '../components/MoneyText'
@@ -305,6 +306,10 @@ export function TeamBuildScreen({
             >
               <div className="attr-line">
                 {TYPE_ZH[sc.type]} · 规模 {sc.scale} 场 · 艺术 {sc.artPot} · 市场 {sc.marketPot}
+              </div>
+              <div className="attr-line">
+                观众契合 ×{audienceFit(state, sc.type).toFixed(2)}
+                {state.world.trend?.type === sc.type ? ' · 契合潮流' : ''}
               </div>
             </PosterCard>
           ))}

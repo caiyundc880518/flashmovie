@@ -6,9 +6,10 @@ import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
 import { IP_CONFIG } from '../../core/config/ip'
 import { TECH_CONFIG, TECH_LINES } from '../../core/config/tech'
 import { techLevelOf, techProgressInLevel } from '../../core/rules/tech'
+import { audienceFit } from '../../core/rules/audience'
 import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
-import type { Competitor, IpAsset } from '../../core/types'
+import type { AudienceGroup, Competitor, IpAsset } from '../../core/types'
 
 export function CompanyScreen() {
   const state = useGameStore((s) => s.state)
@@ -219,6 +220,23 @@ export function CompanyScreen() {
       </section>
 
       <section className="panel">
+        <h2>观众群体</h2>
+        <p className="dim">
+          票房按「群体规模 × 类型关注度」加权结算；容忍度低的市场更挑剔差片。偏好每季度缓慢漂移。
+        </p>
+        <DataTable<AudienceGroup>
+          columns={audienceColumns}
+          rows={world.audience}
+          rowKey={(g) => g.id}
+          emptyText="暂无观众群体数据。"
+        />
+        <div className="dim" style={{ marginTop: 10 }}>
+          当前主流：{world.trend ? TYPE_ZH[world.trend.type] : '—'}（观众契合 ×
+          {world.trend ? audienceFit(state, world.trend.type).toFixed(2) : '—'}）
+        </div>
+      </section>
+
+      <section className="panel">
         <h2>市场动态</h2>
         <DataTable<Competitor>
           columns={competitorColumns}
@@ -230,6 +248,33 @@ export function CompanyScreen() {
     </div>
   )
 }
+
+const audienceColumns: Column<AudienceGroup>[] = [
+  { key: 'name', label: '群体', render: (g) => <span className="table-name">{g.name}</span> },
+  { key: 'region', label: '地区', render: (g) => g.region },
+  { key: 'size', label: '规模', render: (g) => `${Math.round(g.size * 100)}%` },
+  {
+    key: 'tolerance',
+    label: '容忍度',
+    render: (g) => (g.tolerance >= 0.6 ? <span className="good">宽和</span> : g.tolerance >= 0.45 ? '一般' : <span className="bad">挑剔</span>),
+  },
+  {
+    key: 'focus',
+    label: '类型偏好',
+    render: (g) => {
+      const top = (Object.keys(g.focus) as (keyof typeof g.focus)[])
+        .map((t) => ({ t, v: g.focus[t] }))
+        .sort((a, b) => b.v - a.v)
+        .slice(0, 2)
+      return top.map((x, i) => (
+        <span key={x.t}>
+          {i > 0 ? ' · ' : ''}
+          {TYPE_ZH[x.t]} {x.v.toFixed(2)}
+        </span>
+      ))
+    },
+  },
+]
 
 const competitorColumns: Column<Competitor>[] = [
   { key: 'name', label: '影业', render: (c) => <span className="table-name">{c.name}</span> },

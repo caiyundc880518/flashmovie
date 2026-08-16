@@ -41,4 +41,34 @@ export const WORLD_CONFIG = {
   /** 类型偏好加分 / 不匹配减分 */
   tasteBonus: 10,
   tasteMismatchPenalty: 5,
+
+  /** 观众群体（GDD §6 Audience Group） */
+  audience: {
+    /** 群体定义：名称 / 地区 / 主导类型（覆盖 6 类型） */
+    groups: [
+      { name: '都市青年', region: '华东', mainType: 'comedy' },
+      { name: '家庭观众', region: '华北', mainType: 'drama' },
+      { name: '动作影迷', region: '华南', mainType: 'action' },
+      { name: '文艺影迷', region: '西南', mainType: 'love' },
+      { name: '硬核影迷', region: '东北', mainType: 'war' },
+      { name: '惊悚爱好者', region: '海外', mainType: 'horror' },
+    ],
+    /** focus：主导类型 / 次偏好 / 其他 */
+    mainFocusRange: [0.75, 0.95] as const,
+    subFocusRange: [0.5, 0.7] as const,
+    otherFocusRange: [0.2, 0.4] as const,
+    /** 次偏好类型数量 1–2 */
+    subFocusCount: [1, 2] as const,
+    /** 规模权重范围（归一化为占比） */
+    sizeWeightRange: [5, 15] as const,
+    /** 容忍度范围 0–1 */
+    toleranceRange: [0.3, 0.8] as const,
+    /** 每季度 focus 漂移幅度（±） */
+    drift: 0.08,
+    /** 票房观众契合：factor = fitMin + Σ(size×focus) × fitSpan */
+    fitMin: 0.8,
+    fitSpan: 0.5,
+    /** 低口碑（criticScore < 60）容忍度惩罚系数 */
+    tolerancePenaltyPer10: 0.5,
+  } as const,
 } as const
