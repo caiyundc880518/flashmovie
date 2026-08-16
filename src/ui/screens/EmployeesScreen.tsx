@@ -1,17 +1,9 @@
 import { useState } from 'react'
-import type { Worker } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
-import { ROLE_ZH } from '../format'
-import { DataTable, type Column } from '../components/DataTable'
+import { ROLE_ZH, moodColor } from '../format'
 import { WorkerDetail } from '../components/WorkerDetail'
 import { Modal } from '../components/Modal'
 import { MoneyText } from '../components/MoneyText'
-
-function moodColor(mood: number): string {
-  if (mood >= 70) return 'var(--ok)'
-  if (mood >= 45) return 'var(--gold)'
-  return 'var(--danger)'
-}
 
 export function EmployeesScreen() {
   const state = useGameStore((s) => s.state)
@@ -22,50 +14,70 @@ export function EmployeesScreen() {
   const employees = state.company.employeeIds.map((id) => state.workers[id]).filter(Boolean)
   const selected = selectedId ? state.workers[selectedId] : null
 
-  const columns: Column<Worker>[] = [
-    { key: 'name', label: '姓名', render: (w) => <span className="table-name">{w.name}</span> },
-    { key: 'role', label: '职位', render: (w) => ROLE_ZH[w.role] },
-    { key: 'gender', label: '性别', render: (w) => (w.gender === 'male' ? '男' : '女') },
-    { key: 'age', label: '年龄', render: (w) => w.age },
-    { key: 'pa', label: 'PA', render: (w) => w.basic.pa },
-    { key: 'ca', label: 'CA', render: (w) => <span className="ca-cell">{w.basic.ca}</span> },
-    { key: 'fame', label: 'Fame', render: (w) => Math.round(w.basic.fame) },
-    { key: 'mood', label: '心情', render: (w) => <span style={{ color: moodColor(w.active.mood) }}>{Math.round(w.active.mood)}</span> },
-    { key: 'salary', label: '周薪', render: (w) => <MoneyText value={w.salary} /> },
-    {
-      key: 'status',
-      label: '状态',
-      render: (w) => (w.currentProjectId ? <span className="good">项目中</span> : `空闲 ${w.idleWeeks}周`),
-    },
-    {
-      key: 'act',
-      label: '',
-      className: 'td-act',
-      render: (w) => (
-        <button
-          className="btn-danger"
-          onClick={(e) => {
-            e.stopPropagation()
-            dispatch({ type: 'fireWorker', workerId: w.id })
-          }}
-        >
-          解雇
-        </button>
-      ),
-    },
-  ]
-
   return (
     <div className="screen">
       <section className="panel">
         <h2>在职员工（{employees.length}）</h2>
-        <DataTable
-          columns={columns}
-          rows={employees}
-          rowKey={(w) => w.id}
-          onRowClick={(w) => setSelectedId(w.id)}
-          emptyText="还没有员工，去「招聘」页看看吧。"
-        />
+        <p className="dim">
+          点击卡片查看详情（属性 / 履历 / 奖项）；员工每周消耗薪水，项目内工作会消耗心情与精力。
+        </p>
+        {employees.length === 0 ? (
+          <p className="dim empty-hint">还没有员工，去「招聘」页看看吧。</p>
+        ) : (
+          <div className="worker-grid">
+            {employees.map((w) => (
+              <div
+                key={w.id}
+                className="worker-card clickable"
+                onClick={() => setSelectedId(w.id)}
+              >
+                <div className="worker-head">
+                  <div className="avatar">{w.name[0]}</div>
+                  <div>
+                    <div className="worker-name">{w.name}</div>
+                    <div className="worker-role">{ROLE_ZH[w.role]}</div>
+                  </div>
+                </div>
+                <div>
+                  {w.currentProjectId ? (
+                    <span className="tag tag-gold">🎬 项目中</span>
+                  ) : (
+                    <span className="tag tag-idle">空闲 {w.idleWeeks} 周</span>
+                  )}
+                </div>
+                <div className="worker-stats">
+                  <div className="worker-stat">
+                    <b>{w.basic.pa}</b>
+                    <span>PA 潜力</span>
+                  </div>
+                  <div className="worker-stat">
+                    <b className="gold">{w.basic.ca}</b>
+                    <span>CA 咖位</span>
+                  </div>
+                </div>
+                <div className="worker-sub">
+                  Fame {Math.round(w.basic.fame)} · 心情{' '}
+                  <span style={{ color: moodColor(w.active.mood) }}>{Math.round(w.active.mood)}</span>{' '}
+                  · {w.gender === 'male' ? '男' : '女'} {w.age}岁
+                </div>
+                <div className="worker-footer">
+                  <span className="dim">
+                    周薪 <MoneyText value={w.salary} />
+                  </span>
+                  <button
+                    className="btn-danger"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      dispatch({ type: 'fireWorker', workerId: w.id })
+                    }}
+                  >
+                    解雇
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
       {selected && (
         <Modal

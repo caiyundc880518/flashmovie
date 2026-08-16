@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import type { Worker } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
-import { ROLE_ZH } from '../format'
+import { ROLE_ZH, moodColor } from '../format'
 import { RECRUIT_POOLS, type RecruitPoolConfig } from '../../core/config/recruit'
-import { DataTable, type Column } from '../components/DataTable'
 import { WorkerDetail } from '../components/WorkerDetail'
 import { Modal } from '../components/Modal'
 import { MoneyText } from '../components/MoneyText'
@@ -44,49 +43,12 @@ export function RecruitScreen() {
     })
   }
 
-  const columns: Column<Worker>[] = [
-    { key: 'name', label: '姓名', render: (w) => <span className="table-name">{w.name}</span> },
-    { key: 'role', label: '职位', render: (w) => ROLE_ZH[w.role] },
-    {
-      key: 'tier',
-      label: '类型',
-      render: (w) =>
-        w.basic.ca < 50 ? (
-          <span className="tag tag-rookie">潜力新人</span>
-        ) : (
-          <span className="tag tag-pro">经验丰富</span>
-        ),
-    },
-    { key: 'gender', label: '性别', render: (w) => (w.gender === 'male' ? '男' : '女') },
-    { key: 'age', label: '年龄', render: (w) => w.age },
-    { key: 'pa', label: 'PA', render: (w) => w.basic.pa },
-    { key: 'ca', label: 'CA', render: (w) => <span className="ca-cell">{w.basic.ca}</span> },
-    { key: 'fame', label: 'Fame', render: (w) => Math.round(w.basic.fame) },
-    { key: 'salary', label: '周薪', render: (w) => <MoneyText value={w.salary} /> },
-    {
-      key: 'act',
-      label: '',
-      className: 'td-act',
-      render: (w) => (
-        <button
-          className="btn-primary"
-          onClick={(e) => {
-            e.stopPropagation()
-            dispatch({ type: 'hireWorker', candidateId: w.id })
-          }}
-        >
-          雇佣
-        </button>
-      ),
-    },
-  ]
-
   return (
     <div className="screen">
       <section className="panel">
         <h2>刷新招聘市场（抽卡）</h2>
         <p className="dim">
-          花现金立刻刷新候选人名单，新候选人直接进入下方表格。档位决定人数与人才质量——流水市场量大便宜但多生手，专业学院名额少但底子扎实。
+          花现金立刻刷新候选人名单，新候选人直接进入下方卡片。档位决定人数与人才质量——流水市场量大便宜但多生手，专业学院名额少但底子扎实。
         </p>
         <div className="gacha-options">
           {RECRUIT_POOLS.map((pool) => {
@@ -117,22 +79,72 @@ export function RecruitScreen() {
       <section className="panel">
         <h2>招聘市场（{candidates.length}）</h2>
         <p className="dim">
-          点击行查看详情；雇佣需支付签约费，之后按周支付薪水。潜力新人便宜但成长空间大。
+          点击卡片查看详情；雇佣需支付签约费，之后按周支付薪水。潜力新人便宜但成长空间大。
         </p>
-        <DataTable
-          columns={columns}
-          rows={candidates}
-          rowKey={(w) => w.id}
-          onRowClick={(w) => setSelectedId(w.id)}
-          emptyText="暂无候选人，花钱刷新或等待市场刷新。"
-        />
+        {candidates.length === 0 ? (
+          <p className="dim empty-hint">暂无候选人，花钱刷新或等待市场刷新。</p>
+        ) : (
+          <div className="worker-grid">
+            {candidates.map((w) => (
+              <div
+                key={w.id}
+                className="worker-card clickable"
+                onClick={() => setSelectedId(w.id)}
+              >
+                <div className="worker-head">
+                  <div className="avatar">{w.name[0]}</div>
+                  <div>
+                    <div className="worker-name">{w.name}</div>
+                    <div className="worker-role">{ROLE_ZH[w.role]}</div>
+                  </div>
+                </div>
+                <div>
+                  {w.basic.ca < 50 ? (
+                    <span className="tag tag-rookie">潜力新人</span>
+                  ) : (
+                    <span className="tag tag-pro">经验丰富</span>
+                  )}
+                </div>
+                <div className="worker-stats">
+                  <div className="worker-stat">
+                    <b>{w.basic.pa}</b>
+                    <span>PA 潜力</span>
+                  </div>
+                  <div className="worker-stat">
+                    <b className="gold">{w.basic.ca}</b>
+                    <span>CA 咖位</span>
+                  </div>
+                </div>
+                <div className="worker-sub">
+                  Fame {Math.round(w.basic.fame)} · 心情{' '}
+                  <span style={{ color: moodColor(w.active.mood) }}>{Math.round(w.active.mood)}</span>{' '}
+                  · {w.gender === 'male' ? '男' : '女'} {w.age}岁
+                </div>
+                <div className="worker-footer">
+                  <span className="dim">
+                    周薪 <MoneyText value={w.salary} />
+                  </span>
+                  <button
+                    className="btn-primary"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      dispatch({ type: 'hireWorker', candidateId: w.id })
+                    }}
+                  >
+                    雇佣
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* 抽卡弹窗：卡背 → 逐张翻开 */}
       {gacha && (
         <Modal title={`🎴 ${gacha.pool.label} · 刷新结果`} wide onClose={() => setGacha(null)}>
           <p className="dim">
-            {gacha.pool.desc}——点击卡片逐张翻开，翻完后可在下方表格雇佣。
+            {gacha.pool.desc}——点击卡片逐张翻开，翻完后可在下方卡片雇佣。
           </p>
           <div className="gacha-grid">
             {gacha.drawn.map((w, i) => {

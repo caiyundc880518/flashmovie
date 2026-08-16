@@ -318,6 +318,15 @@ select {
   margin-top: 8px;
 }
 
+/* 空状态提示 */
+.empty-hint {
+  padding: 28px;
+  text-align: center;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  margin: 0;
+}
+
 /* ===== 统计行 / 贷款 / 日历 ===== */
 .stat-row {
   display: flex;
@@ -404,7 +413,7 @@ select {
 /* ===== 员工卡片 ===== */
 .worker-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
   gap: 14px;
 }
 .worker-card {
@@ -421,6 +430,7 @@ select {
 }
 .worker-card.clickable:hover {
   background: var(--bg-hover);
+  border-color: var(--gold);
 }
 .worker-head {
   display: flex;
@@ -458,6 +468,42 @@ select {
   color: var(--text-dim);
   font-size: 11px;
   padding-top: 2px;
+}
+/* 员工卡片：PA / CA 两列大数字 */
+.worker-stats {
+  display: flex;
+  gap: 28px;
+  padding: 4px 0 2px;
+}
+.worker-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.worker-stat b {
+  font-size: 22px;
+  line-height: 1;
+  color: var(--text);
+}
+.worker-stat b.gold {
+  color: var(--gold);
+}
+.worker-stat span {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+/* 员工卡片：底部（周薪 + 操作） */
+.worker-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 2px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.worker-footer .dim {
+  font-size: 12px;
 }
 .worker-detail {
   margin-top: 4px;
@@ -1294,6 +1340,10 @@ input[type='range'] {
 .tag-pro {
   color: var(--accent);
   border: 1px solid rgba(76, 139, 245, 0.5);
+}
+.tag-idle {
+  color: var(--text-dim);
+  border: 1px solid rgba(148, 163, 184, 0.4);
 }
 
 /* ===== 弹窗 ===== */

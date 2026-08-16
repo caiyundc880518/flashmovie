@@ -47,6 +47,13 @@ export function signedDelta(v: number): string {
   return v > 0 ? `+${s}` : s
 }
 
+/** 心情颜色：≥70 绿 / ≥45 金 / 红 */
+export function moodColor(mood: number): string {
+  if (mood >= 70) return 'var(--ok)'
+  if (mood >= 45) return 'var(--gold)'
+  return 'var(--danger)'
+}
+
 /** 10 分制显示：旧档 0–100 自动换算，一位小数 */
 export function fmtScore10(score: number): string {
   const s = score > 10 ? score / 10 : score
