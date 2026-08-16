@@ -150,10 +150,10 @@ select {
   background: var(--bg-card);
 }
 .nav-caret {
-  font-size: 13px;
+  font-size: 20px;
   font-weight: 700;
   color: var(--gold);
-  width: 16px;
+  width: 20px;
   flex-shrink: 0;
   line-height: 1;
   transition: transform 0.15s;
