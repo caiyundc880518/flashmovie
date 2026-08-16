@@ -1,10 +1,18 @@
-import type { Competitor, CompetitorFilm, FilmProject, GameState, ProjectEvent, Script } from '../types'
+import type {
+  Competitor,
+  CompetitorFilm,
+  FilmProject,
+  GameState,
+  ProjectEvent,
+  Script,
+  WorldEvent,
+} from '../types'
 import { FILM_TYPES } from '../types'
 import { ECONOMY } from '../config/economy'
 import { SCHOOL_CONFIG } from '../config/company'
 import { IP_CONFIG } from '../config/ip'
 import { SCRIPT_POOL } from '../config/scripts'
-import { SHOOTING_EVENTS } from '../config/events'
+import { SHOOTING_EVENTS, INDUSTRY_EVENTS, FILM_TYPE_ZH } from '../config/events'
 import { WORLD_CONFIG } from '../config/world'
 import type { Rng } from '../rng'
 import { chance, clamp, pick, randInt, round1, weightedPick } from '../rng'
@@ -37,6 +45,70 @@ function generateProjectEvent(state: GameState, rng: Rng): ProjectEvent {
     desc: def.desc,
     options: def.options.map((o) => ({ ...o })),
   }
+}
+
+/** 行业/公司随机事件：触发并结算（GDD §6 Random Events） */
+function spawnIndustryEvent(state: GameState, rng: Rng): void {
+  const def = weightedPick(
+    rng,
+    INDUSTRY_EVENTS.map((e) => [e.weight, e] as const),
+  )
+  applyIndustryEvent(state, def, rng)
+}
+
+/** 应用一个行业事件定义（导出供测试） */
+export function applyIndustryEvent(
+  state: GameState,
+  def: (typeof INDUSTRY_EVENTS)[number],
+  rng: Rng,
+): void {
+  const week = state.calendar.week
+
+  // 持续型：写入 world.activeEvents
+  if (def.weeks) {
+    const base: WorldEvent = {
+      id: uid(state, 'wve'),
+      title: def.title,
+      desc: def.desc,
+      kind: def.kind as WorldEvent['kind'],
+      untilWeek: week + randInt(rng, def.weeks[0], def.weeks[1]),
+      boxOfficeMul: def.boxOfficeMul,
+      typeBoomMul: def.typeBoomMul,
+      vfxBonus: def.vfxBonus,
+    }
+    if (def.kind === 'typeBoom') {
+      const type = pick(rng, FILM_TYPES)
+      base.type = type
+      base.title = `${FILM_TYPE_ZH[type]}类型热潮`
+      base.desc = `一部现象级大片带动${FILM_TYPE_ZH[type]}片观影热潮，该类型票房走高。`
+    }
+    state.world.activeEvents.push(base)
+    pushNews(state, `【行业事件】${base.title}：${base.desc}（持续至第 ${base.untilWeek} 周）`)
+    return
+  }
+
+  // 即时型：作用于员工/公司
+  const employeeIds = state.company.employeeIds
+  const employees = employeeIds.map((id) => state.workers[id]).filter((w): w is NonNullable<typeof w> => !!w)
+  if (def.kind === 'grant') {
+    state.company.cash = round1(state.company.cash + (def.cash ?? 0))
+    pushNews(state, `【好消息】${def.title}：${def.desc} 获得 ${def.cash ?? 0} 万补贴。`)
+    return
+  }
+  // scandal：优先高 Fame 员工；praise：随机员工（无员工则跳过）
+  if (employees.length === 0) return
+  const target =
+    def.kind === 'scandal'
+      ? [...employees].sort((a, b) => b.basic.fame - a.basic.fame)[0]
+      : pick(rng, employees)
+  if (def.fame) target.basic.fame = clamp(target.basic.fame + def.fame, 0, 100)
+  if (def.mood) target.active.mood = clamp(target.active.mood + def.mood, 10, 95)
+  pushNews(
+    state,
+    `【${def.kind === 'scandal' ? '风波' : '喜讯'}】${target.name}：${def.desc}${
+      def.fame ? ` Fame ${def.fame > 0 ? '+' : ''}${def.fame}` : ''
+    }。`,
+  )
 }
 
 /**
@@ -188,6 +260,14 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
         WORLD_CONFIG.competitorReleaseWeeks[1],
       )
     }
+  }
+
+  // 7.6 行业/公司随机事件（GDD §6 Random Events）：清理过期 + 概率触发
+  draft.world.activeEvents = draft.world.activeEvents.filter(
+    (e) => e.untilWeek >= draft.calendar.week,
+  )
+  if (draft.world.activeEvents.length < 3 && chance(rng, WORLD_CONFIG.eventChance)) {
+    spawnIndustryEvent(draft, rng)
   }
 
   // 8. 年度切换：TMA 颁奖典礼（GDD §6 Award Ceremony）

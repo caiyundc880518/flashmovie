@@ -27,6 +27,7 @@ import { SAVE_VERSION } from './schema'
  * v5：公司新增 ips（IP 资产，GDD §3.8）。
  * v6：公司新增 tech（科技树研发进度）。
  * v7：世界新增 audience（观众群体，GDD §6）。
+ * v8：世界新增 activeEvents（市场事件，GDD §6 Random Events）。
  */
 export function migrateSave(raw: unknown): GameState {
   if (!raw || typeof raw !== 'object') {
@@ -44,6 +45,7 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 4) state = migrateV4toV5(state)
   if (state.version === 5) state = migrateV5toV6(state)
   if (state.version === 6) state = migrateV6toV7(state)
+  if (state.version === 7) state = migrateV7toV8(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
   return state
@@ -97,6 +99,13 @@ function migrateV6toV7(s: GameState): GameState {
   const world = s.world as World & { audience?: AudienceGroup[] }
   if (!Array.isArray(world.audience)) world.audience = []
   return { ...s, version: 7 }
+}
+
+/** v7 → v8：世界补市场事件列表 */
+function migrateV7toV8(s: GameState): GameState {
+  const world = s.world as World & { activeEvents?: unknown[] }
+  if (!Array.isArray(world.activeEvents)) world.activeEvents = []
+  return { ...s, version: 8 }
 }
 
 /** 世界实体为空时，用存档种子派生确定性生成 */

@@ -250,6 +250,28 @@ export function CompanyScreen() {
       </section>
 
       <section className="panel">
+        <h2>市场事件</h2>
+        {world.activeEvents.length === 0 ? (
+          <p className="dim">暂无进行中的市场事件。</p>
+        ) : (
+          <div className="event-list">
+            {world.activeEvents.map((e) => (
+              <div key={e.id} className="event-block">
+                <div className="event-title">⚡ {e.title}</div>
+                <div className="event-desc">{e.desc}</div>
+                <div className="dim">
+                  剩余 {Math.max(0, e.untilWeek - calendar.week)} 周
+                  {e.boxOfficeMul ? ` · 票房 ×${e.boxOfficeMul}` : ''}
+                  {e.typeBoomMul && e.type ? ` · ${TYPE_ZH[e.type]}片 ×${e.typeBoomMul}` : ''}
+                  {e.vfxBonus ? ` · VFX +${Math.round(e.vfxBonus * 100)}%` : ''}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </section>
+
+      <section className="panel">
         <h2>市场动态</h2>
         <DataTable<Competitor>
           columns={competitorColumns}

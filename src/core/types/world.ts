@@ -37,6 +37,24 @@ export interface AudienceGroup {
   focus: Record<FilmType, number>
 }
 
+/** 世界进行中的市场事件（随机事件扩展，GDD §6 Random Events：经济/行业/技术/类型热潮） */
+export interface WorldEvent {
+  id: string
+  title: string
+  desc: string
+  kind: 'boom' | 'slump' | 'typeBoom' | 'tech'
+  /** 持续到第几周（含） */
+  untilWeek: number
+  /** 全局票房乘数（boom 1.15 / slump 0.85） */
+  boxOfficeMul?: number
+  /** 类型热潮：该类型票房乘数（1.25） */
+  typeBoomMul?: number
+  /** typeBoom 对应的类型 */
+  type?: FilmType
+  /** 技术突破：VFX 分加成比例（0.15） */
+  vfxBonus?: number
+}
+
 /** 竞争对手的一部影片 */
 export interface CompetitorFilm {
   week: number
@@ -108,6 +126,8 @@ export interface World {
   critics: Critic[]
   /** 观众群体（GDD §6） */
   audience: AudienceGroup[]
+  /** 进行中的市场事件（随机事件扩展，GDD §6） */
+  activeEvents: WorldEvent[]
   /** 发行商 */
   publishers: Publisher[]
   /** 投资人（可签约其一） */

@@ -77,4 +77,7 @@ export const WORLD_CONFIG = {
     /** 主攻地区的集中发行加成：factor ×= 1 + 该地区规模占比 × targetBoost */
     targetBoost: 0.5,
   } as const,
+
+  /** 行业/公司随机事件（GDD §6 Random Events）：每周触发概率 */
+  eventChance: 0.12,
 } as const

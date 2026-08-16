@@ -9,6 +9,7 @@ import { VFX_CONFIG } from '../config/minigame'
 import { chemistryScoreFactor, goldenCombos } from './chemistry'
 import { techBonuses } from './tech'
 import { audienceFit, tolerancePenalty } from './audience'
+import { eventBoxOfficeFactor, eventVfxBonus } from './events'
 import type { Rng } from '../rng'
 import { clamp, round1 } from '../rng'
 
@@ -55,6 +56,8 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
 
   // 科技树加成：渲染引擎抬升上限、动作捕捉增强类型系数、特效合成整体加成（GDD §5）
   const tech = techBonuses(state)
+  // 市场事件加成：技术突破提升 VFX 分（GDD §6 Random Events）
+  const eventVfx = eventVfxBonus(state)
   const vfxSkill = state.workers[project.team.technicianId ?? '']?.skills.vfx ?? 40
   const tier = vfxTier(vfxSkill)
   const vfxCap = tier.max + tech.render
@@ -63,7 +66,7 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
       (vfxSkill / 100) *
       vfxCap *
       vfxTypeFactor(script.type, tech.mocap) *
-      (1 + tech.comp) *
+      (1 + tech.comp + eventVfx) *
       variance(),
     0,
     vfxCap,
@@ -232,10 +235,21 @@ export function computeBoxOfficeAndGain(
     if (ip) ipFactor = 1 + ip.level * IP_CONFIG.sequelBonusPerLevel
   }
   const compFactor = 1 - competitionPenalty(state, state.calendar.week)
+  // 市场事件：行业景气/寒潮/类型热潮（GDD §6 Random Events）
+  const eventFactor = eventBoxOfficeFactor(state, script.type)
   const random = 1 + (rng() - 0.5) * 2 * SCORE_WEIGHTS.variance
 
   const boxOffice =
-    base * mpFactor * hypeFactor * trendFactor * audienceFactor * repFactor * compFactor * ipFactor * random
+    base *
+    mpFactor *
+    hypeFactor *
+    trendFactor *
+    audienceFactor *
+    repFactor *
+    compFactor *
+    ipFactor *
+    eventFactor *
+    random
   const reputationGain = clamp(Math.round((ap - 45) / 10), -3, 5)
   return { boxOffice, reputationGain }
 }

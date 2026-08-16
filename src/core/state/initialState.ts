@@ -65,6 +65,7 @@ export function createInitialState(seed?: number): GameState {
       competitors,
       critics,
       audience,
+      activeEvents: [],
       publishers,
       investors,
       news: [

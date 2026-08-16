@@ -67,6 +67,7 @@ export type {
   Publisher,
   Investor,
   AudienceGroup,
+  WorldEvent,
 } from './world'
 export type {
   AwardCategory,
