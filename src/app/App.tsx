@@ -5,6 +5,7 @@ import { TechScreen } from '../ui/screens/TechScreen'
 import { AudienceScreen } from '../ui/screens/AudienceScreen'
 import { MarketScreen } from '../ui/screens/MarketScreen'
 import { IpoScreen } from '../ui/screens/IpoScreen'
+import { IpsScreen } from '../ui/screens/IpsScreen'
 import { ScriptMarketScreen } from '../ui/screens/ScriptMarketScreen'
 import { EmployeesScreen } from '../ui/screens/EmployeesScreen'
 import { RecruitScreen } from '../ui/screens/RecruitScreen'
@@ -30,7 +31,8 @@ type Nav =
   | { screen: 'marketScripts' }
   | { screen: 'employees' }
   | { screen: 'recruit' }
-  | { screen: 'team'; teamScriptId?: string }
+  | { screen: 'ips' }
+  | { screen: 'team'; teamScriptId?: string; teamIpId?: string }
   | { screen: 'projects' }
   | { screen: 'critics' }
   | { screen: 'news' }
@@ -46,6 +48,7 @@ const NAV_GROUPS: Array<{ group: string; items: Array<{ key: NavKey; label: stri
     group: '公司管理',
     items: [
       { key: 'company', label: '公司' },
+      { key: 'ips', label: 'IP 资产' },
       { key: 'tech', label: '科技研发' },
       { key: 'market', label: '地区市场' },
       { key: 'ipo', label: 'IPO 上市' },
@@ -224,6 +227,9 @@ export function App() {
           {nav.screen === 'audience' && <AudienceScreen />}
           {nav.screen === 'market' && <MarketScreen />}
           {nav.screen === 'ipo' && <IpoScreen />}
+          {nav.screen === 'ips' && (
+            <IpsScreen onSequel={(ipId) => setNav({ screen: 'team', teamIpId: ipId })} />
+          )}
           {nav.screen === 'marketScripts' && (
             <ScriptMarketScreen onBuildTeam={(id) => setNav({ screen: 'team', teamScriptId: id })} />
           )}
@@ -238,8 +244,9 @@ export function App() {
           )}
           {nav.screen === 'team' && (
             <TeamBuildScreen
-              key={nav.teamScriptId ?? 'team'}
+              key={`${nav.teamScriptId ?? 'team'}-${nav.teamIpId ?? ''}`}
               initialScriptId={nav.teamScriptId}
+              initialIpId={nav.teamIpId}
               onGoToProject={(id) => setNav({ screen: 'project', projectId: id })}
             />
           )}

@@ -3,10 +3,9 @@ import { useGameStore } from '../store/gameStore'
 import { SEASON_ZH, TYPE_ZH, fmtWan } from '../format'
 import { ECONOMY } from '../../core/config/economy'
 import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
-import { IP_CONFIG } from '../../core/config/ip'
 import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
-import type { Competitor, IpAsset } from '../../core/types'
+import type { Competitor } from '../../core/types'
 
 export function CompanyScreen() {
   const state = useGameStore((s) => s.state)
@@ -157,16 +156,6 @@ export function CompanyScreen() {
       </div>
 
       <section className="panel">
-        <h2>IP 资产 · 系列化经营</h2>
-        <DataTable<IpAsset>
-          columns={ipColumns}
-          rows={company.ips}
-          rowKey={(ip) => ip.id}
-          emptyText={`尚无 IP。票房 ≥ ${IP_CONFIG.originBoxOffice} 万且影评 ≥ ${IP_CONFIG.originCriticScore} 分的影片会自动沉淀为 IP，之后可在「组队立项」中立项续作。`}
-        />
-      </section>
-
-      <section className="panel">
         <h2>市场动态</h2>
         <DataTable<Competitor>
           columns={competitorColumns}
@@ -194,45 +183,5 @@ const competitorColumns: Column<Competitor>[] = [
       const last = c.history[c.history.length - 1]
       return last ? `${last.name} · ${fmtWan(last.boxOffice)}` : '—'
     },
-  },
-]
-
-const ipColumns: Column<IpAsset>[] = [
-  {
-    key: 'name',
-    label: '系列',
-    render: (ip) => (
-      <>
-        <span className="table-name">{ip.name}</span>{' '}
-        <span className="tag" style={{ color: 'var(--accent)' }}>
-          {TYPE_ZH[ip.type]}
-        </span>
-      </>
-    ),
-  },
-  { key: 'entry', label: '部数', render: (ip) => `第 ${ip.entry} 部` },
-  {
-    key: 'level',
-    label: '等级',
-    render: (ip) => <span className="tag tag-gold">Lv.{ip.level}</span>,
-  },
-  { key: 'total', label: '累计票房', render: (ip) => fmtWan(ip.totalBoxOffice) },
-  { key: 'best', label: '最高票房', render: (ip) => fmtWan(ip.bestBoxOffice) },
-  { key: 'critic', label: '最佳口碑', render: (ip) => `${ip.bestCriticScore} 分` },
-  {
-    key: 'royalty',
-    label: '季度授权',
-    render: (ip) => `${fmtWan(ip.royaltyPerQuarter)}/季`,
-  },
-  {
-    key: 'bonus',
-    label: '续作加成',
-    render: (ip) => `票房 +${Math.round((ip.sequelBonus - 1) * 100)}%`,
-  },
-  { key: 'earned', label: '授权累计', render: (ip) => fmtWan(ip.royaltyEarned) },
-  {
-    key: 'since',
-    label: '诞生',
-    render: (ip) => `${ip.originYear} 年第 ${ip.originWeek} 周`,
   },
 ]

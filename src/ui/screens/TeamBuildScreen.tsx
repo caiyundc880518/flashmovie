@@ -53,9 +53,11 @@ interface PickerState {
 
 export function TeamBuildScreen({
   initialScriptId,
+  initialIpId,
   onGoToProject,
 }: {
   initialScriptId?: string | null
+  initialIpId?: string | null
   onGoToProject: (id: string) => void
 }) {
   const state = useGameStore((s) => s.state)
@@ -72,7 +74,7 @@ export function TeamBuildScreen({
   })
   const [vfx, setVfx] = useState(20)
   const [hasAd, setHasAd] = useState(false)
-  const [ipId, setIpId] = useState('')
+  const [ipId, setIpId] = useState(initialIpId ?? '')
   const [msg, setMsg] = useState('')
   const [picker, setPicker] = useState<PickerState | null>(null)
   const [detailId, setDetailId] = useState<string | null>(null)

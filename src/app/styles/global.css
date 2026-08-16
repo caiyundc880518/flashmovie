@@ -370,6 +370,92 @@ select {
   margin: 0;
 }
 
+/* ===== IP 资产卡片 ===== */
+.ip-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.ip-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.ip-card:hover {
+  border-color: var(--gold);
+}
+.ip-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.ip-card-head .table-name {
+  font-size: 16px;
+}
+.ip-tags {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+.ip-card-sub {
+  color: var(--text-dim);
+  font-size: 12px;
+}
+.ip-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+}
+.ip-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+}
+.ip-stat b {
+  font-size: 17px;
+  line-height: 1.1;
+  color: var(--text);
+}
+.ip-stat span {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.ip-card-royalty {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ip-card-royalty > div {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.ip-card-royalty b {
+  font-size: 14px;
+  color: var(--gold);
+}
+.ip-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+.ip-bonus {
+  color: var(--ok);
+  font-size: 12px;
+}
+
 /* ===== 统计行 / 贷款 / 日历 ===== */
 .stat-row {
   display: flex;
