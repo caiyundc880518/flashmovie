@@ -7,6 +7,7 @@ import { CHEMISTRY } from '../config/company'
 import { IP_CONFIG } from '../config/ip'
 import { VFX_CONFIG } from '../config/minigame'
 import { chemistryScoreFactor, goldenCombos } from './chemistry'
+import { techBonuses } from './tech'
 import type { Rng } from '../rng'
 import { clamp, round1 } from '../rng'
 
@@ -51,16 +52,20 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
     directing: clamp(memberSkill(state, project.team.directorId, 'directing') * variance(), 0, 100),
   }
 
+  // 科技树加成：渲染引擎抬升上限、动作捕捉增强类型系数、特效合成整体加成（GDD §5）
+  const tech = techBonuses(state)
   const vfxSkill = state.workers[project.team.technicianId ?? '']?.skills.vfx ?? 40
   const tier = vfxTier(vfxSkill)
+  const vfxCap = tier.max + tech.render
   const vfx = clamp(
     (project.vfxPercent / 100) *
       (vfxSkill / 100) *
-      tier.max *
-      vfxTypeFactor(script.type) *
+      vfxCap *
+      vfxTypeFactor(script.type, tech.mocap) *
+      (1 + tech.comp) *
       variance(),
     0,
-    tier.max,
+    vfxCap,
   )
   const specific = clamp(
     5 +
@@ -147,9 +152,13 @@ export function vfxTier(vfxSkill: number): { minSkill: number; label: string; ma
   return valid[valid.length - 1]
 }
 
-/** 类型特效加成系数 */
-export function vfxTypeFactor(type: FilmType): number {
-  return VFX_CONFIG.typeFactor[type]
+/** 类型特效加成系数；mocap 为动作捕捉科技增量（动作/战争类在基础 ×1.2 上叠加） */
+export function vfxTypeFactor(type: FilmType, mocap = 0): number {
+  const base = VFX_CONFIG.typeFactor[type]
+  if ((type === 'action' || type === 'war') && mocap > 0) {
+    return base * (1 + mocap)
+  }
+  return base
 }
 
 /** 渠道分账收入：票房 × Σ(所选渠道 factor)；未选渠道时默认仅影院 */

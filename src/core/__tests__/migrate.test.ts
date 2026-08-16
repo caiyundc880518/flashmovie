@@ -11,14 +11,24 @@ describe('存档迁移', () => {
     expect(() => migrateSave({ version: -1 })).toThrow()
   })
 
-  it('接受 v5 存档（恒等迁移）', () => {
+  it('接受 v6 存档（恒等迁移）', () => {
     const s = createInitialState(1)
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(5)
+    expect(migrated.version).toBe(6)
     expect(migrated.company.name).toBe('星光影业')
     expect(migrated.company.ips).toEqual([])
+    expect(migrated.company.tech).toEqual({})
     expect(migrated.world.competitors.length).toBeGreaterThan(0)
     expect(migrated.world.publishers.length).toBeGreaterThan(0)
     expect(migrated.world.investors.length).toBeGreaterThan(0)
+  })
+
+  it('v5 存档迁移到 v6 并补 tech', () => {
+    const s = createInitialState(2)
+    s.version = 5
+    delete (s.company as { tech?: unknown }).tech
+    const migrated = migrateSave(s)
+    expect(migrated.version).toBe(6)
+    expect(migrated.company.tech).toEqual({})
   })
 })

@@ -659,6 +659,56 @@ select {
   line-height: 1.7;
 }
 
+/* ===== 科技研发 ===== */
+.tech-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 14px;
+}
+.tech-row {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+}
+.tech-row:hover {
+  border-color: var(--accent);
+}
+.tech-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tech-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.tech-progress {
+  width: 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.progress {
+  height: 8px;
+  border-radius: 999px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, var(--accent), var(--gold));
+  transition: width 0.3s;
+}
+
 /* ===== 招聘刷新（抽卡） ===== */
 .gacha-options {
   display: grid;

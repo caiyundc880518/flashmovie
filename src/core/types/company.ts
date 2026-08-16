@@ -42,6 +42,8 @@ export interface Company {
   history: FilmResult[]
   /** IP 资产（GDD §3.8，系列化经营） */
   ips: IpAsset[]
+  /** 科技研发进度：科技线 id → 累计进度（等级 = floor(进度/100)，上限见配置） */
+  tech: Record<string, number>
 }
 
 export interface FinancialReport {

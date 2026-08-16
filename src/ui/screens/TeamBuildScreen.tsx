@@ -4,6 +4,7 @@ import { useGameStore } from '../store/gameStore'
 import { ECONOMY } from '../../core/config/economy'
 import { IP_CONFIG } from '../../core/config/ip'
 import { vfxTier, vfxTypeFactor } from '../../core/rules/scoring'
+import { techBonuses } from '../../core/rules/tech'
 import { ROLE_ZH, TYPE_ZH, fmtWan } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { MoneyText } from '../components/MoneyText'
@@ -112,9 +113,13 @@ export function TeamBuildScreen({
 
   const script = state.scripts[scriptId]
   const techSkill = state.workers[slots.technicianId]?.skills.vfx ?? 40
+  // 科技树：虚拟制片降本、渲染引擎抬升 VFX 上限（GDD §5）
+  const tech = techBonuses(state)
+  const studioDiscount = 1 - tech.studio
   const budget = script
-    ? script.scale * ECONOMY.costPerStage * (1 + (vfx / 100) * ECONOMY.vfxCostFactor)
+    ? script.scale * ECONOMY.costPerStage * (1 + (vfx / 100) * ECONOMY.vfxCostFactor * studioDiscount)
     : 0
+  const vfxCap = vfxTier(techSkill).max + tech.render
 
   // 续作立项（GDD §3.8）：IP 须与剧本同类型
   const selectedIp = state.company.ips.find((x) => x.id === ipId)
@@ -359,8 +364,9 @@ export function TeamBuildScreen({
           </div>
           {script && (
             <p className="dim">
-              当前特效等级：<b>{vfxTier(techSkill).label}</b>（VFX 分上限 {vfxTier(techSkill).max}）
-              · {TYPE_ZH[script.type]}类型特效 ×{vfxTypeFactor(script.type)}
+              当前特效等级：<b>{vfxTier(techSkill).label}</b>（VFX 分上限 {vfxCap}
+              {tech.render > 0 ? `，含渲染引擎 +${tech.render}` : ''}）
+              · {TYPE_ZH[script.type]}类型特效 ×{vfxTypeFactor(script.type, tech.mocap)}
               {techSkill >= 50 ? '' : '（配置技术/特效可升级特效等级）'}
             </p>
           )}
@@ -373,6 +379,12 @@ export function TeamBuildScreen({
 
           <div className="budget-line">
             预算约 <MoneyText value={budget} />（{script.scale} 场 × 单价 {fmtWan(ECONOMY.costPerStage)}）
+            {tech.studio > 0 && (
+              <span className="dim">
+                {' '}
+                + VFX 成本 −{Math.round(tech.studio * 100)}%（虚拟制片）
+              </span>
+            )}
             {hasAd && <span className="dim"> + 广告收入 {fmtWan(ECONOMY.adDealIncome)}</span>}
           </div>
 

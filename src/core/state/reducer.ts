@@ -11,6 +11,8 @@ import { SCRIPT_POOL } from '../config/scripts'
 import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../config/company'
 import { IP_CONFIG } from '../config/ip'
 import { RECRUIT_POOLS } from '../config/recruit'
+import { TECH_CONFIG, TECH_LINES, techLevel } from '../config/tech'
+import { techBonuses } from '../rules/tech'
 import { ipLevel, refreshIpDerived, royaltyPerQuarter, sequelBonusFactor } from '../rules/ip'
 import { TIMING_CONFIG } from '../config/minigame'
 import type { Action } from './actions'
@@ -148,7 +150,10 @@ export function reduce(state: GameState, action: Action): GameState {
         return state
       }
       const vfx = clamp(action.vfxPercent, 0, 100)
-      const budget = script.scale * ECONOMY.costPerStage * (1 + (vfx / 100) * ECONOMY.vfxCostFactor)
+      // 虚拟制片科技：降低 VFX 预算成本（GDD §5 科技树）
+      const studioDiscount = 1 - techBonuses(draft).studio
+      const budget =
+        script.scale * ECONOMY.costPerStage * (1 + (vfx / 100) * ECONOMY.vfxCostFactor * studioDiscount)
       const stage: ProjectStage = 'preparing'
       // 续作立项（GDD §3.8）：须与 IP 同类型；自带初始热度
       let ipId: string | undefined
@@ -320,6 +325,31 @@ export function reduce(state: GameState, action: Action): GameState {
         draft,
         `投资人「${inv.name}」注资 ${investment} 万元，将按 ${Math.round(inv.share * 100)}% 分成片方收入直至回收 ${Math.round(investment * INVESTOR_CONFIG.repayMultiplier)} 万元。`,
       )
+      break
+    }
+
+    case 'investTech': {
+      // 科技树研发（GDD §5）：投入资金，技术员 VFX 技能越高效率越高
+      const line = TECH_LINES.find((l) => l.id === action.lineId)
+      if (!line) return state
+      const level = techLevel(draft.company.tech, line.id, line.maxLevel)
+      if (level >= line.maxLevel) return state
+      if (draft.company.cash < TECH_CONFIG.investCost) return state
+      draft.company.cash = round1(draft.company.cash - TECH_CONFIG.investCost)
+      // 效率：公司技术/特效岗位员工（或 vfx 技能者）的 VFX 技能均值
+      const vfxSkills = draft.company.employeeIds
+        .map((id) => draft.workers[id])
+        .filter((w): w is NonNullable<typeof w> => !!w && w.skills.vfx > 0)
+        .map((w) => w.skills.vfx)
+      const avgSkill = vfxSkills.length > 0 ? vfxSkills.reduce((a, b) => a + b, 0) / vfxSkills.length : 0
+      const efficiency = 1 + (avgSkill / 100) * TECH_CONFIG.techSkillEfficiency
+      const gain = TECH_CONFIG.progressPerInvest * efficiency
+      const before = level
+      draft.company.tech[line.id] = round1((draft.company.tech[line.id] ?? 0) + gain)
+      const after = techLevel(draft.company.tech, line.id, line.maxLevel)
+      if (after > before) {
+        pushNews(draft, `科技突破！「${line.name}」升至 ${after} 级：${line.effectText(after)}`)
+      }
       break
     }
 

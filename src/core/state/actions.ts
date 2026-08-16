@@ -24,4 +24,5 @@ export type Action =
   | { type: 'selectPublisher'; projectId: string; publisherId: string }
   | { type: 'upgradeSchool' }
   | { type: 'signInvestor'; investorId: string }
+  | { type: 'investTech'; lineId: string }
   | { type: 'release'; projectId: string }

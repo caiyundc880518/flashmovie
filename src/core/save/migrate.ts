@@ -23,6 +23,7 @@ import { SAVE_VERSION } from './schema'
  * v3：世界新增 publishers（发行商）；项目新增 channels（发行渠道）。
  * v4：世界新增 investors（投资人）；公司新增 schoolLevel。
  * v5：公司新增 ips（IP 资产，GDD §3.8）。
+ * v6：公司新增 tech（科技树研发进度）。
  */
 export function migrateSave(raw: unknown): GameState {
   if (!raw || typeof raw !== 'object') {
@@ -38,6 +39,7 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 2) state = migrateV2toV3(state)
   if (state.version === 3) state = migrateV3toV4(state)
   if (state.version === 4) state = migrateV4toV5(state)
+  if (state.version === 5) state = migrateV5toV6(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
   return state
@@ -77,6 +79,13 @@ function migrateV4toV5(s: GameState): GameState {
   const company = s.company as { ips?: IpAsset[] }
   if (!Array.isArray(company.ips)) company.ips = []
   return { ...s, version: 5 }
+}
+
+/** v5 → v6：公司补科技树研发进度 */
+function migrateV5toV6(s: GameState): GameState {
+  const company = s.company as { tech?: Record<string, number> }
+  if (!company.tech || typeof company.tech !== 'object') company.tech = {}
+  return { ...s, version: 6 }
 }
 
 /** 世界实体为空时，用存档种子派生确定性生成 */
