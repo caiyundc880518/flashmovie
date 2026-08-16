@@ -2,6 +2,9 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../state/initialState'
 import { reduce } from '../state/reducer'
 import { RECRUIT_POOLS } from '../config/recruit'
+import { generateCandidates } from '../generators/workerGen'
+import { createRng } from '../rng'
+import { ECONOMY } from '../config/economy'
 import type { RecruitPoolId } from '../config/recruit'
 
 /** 用指定种子抽一次档位（1 人），返回高 CA / 高 PA 占比 */
@@ -92,5 +95,33 @@ describe('招聘抽卡（单演员计价，1 抽 / 10 连）', () => {
     aca /= N
     expect(pro).toBeGreaterThan(flow)
     expect(pro).toBeLessThan(aca)
+  })
+
+  it('一键雇佣：批量签约抽到的全部候选人并合计扣签约费', () => {
+    let s = createInitialState(19)
+    s.company.cash = 10000
+    s = reduce(s, { type: 'refreshCandidates', pool: 'flow', count: 10 })
+    const ids = s.world.candidates.map((c) => c.id)
+    const empBefore = s.company.employeeIds.length
+    s = reduce(s, { type: 'hireCandidates', candidateIds: ids })
+    expect(s.world.candidates).toHaveLength(0)
+    expect(s.company.employeeIds).toHaveLength(empBefore + 10)
+    // 抽卡 54 万 + 签约费 20×10
+    expect(s.company.cash).toBe(10000 - 54 - ECONOMY.hireWorkerSignFee * 10)
+    expect(s.world.news.some((n) => n.text.includes('批量签约'))).toBe(true)
+  })
+
+  it('一键雇佣：现金不足时只雇佣能承担的人数', () => {
+    let s = createInitialState(23)
+    const cands = generateCandidates(createRng(5), 3, 'flow')
+    cands.forEach((c, i) => {
+      c.id = `cand${i}`
+    })
+    s.world.candidates = cands
+    s.company.cash = ECONOMY.hireWorkerSignFee * 2 + 10 // 只够雇 2 人
+    s = reduce(s, { type: 'hireCandidates', candidateIds: cands.map((c) => c.id) })
+    expect(s.company.employeeIds).toHaveLength(2)
+    expect(s.world.candidates).toHaveLength(1)
+    expect(s.company.cash).toBe(10)
   })
 })

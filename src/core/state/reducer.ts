@@ -89,6 +89,29 @@ export function reduce(state: GameState, action: Action): GameState {
       break
     }
 
+    case 'hireCandidates': {
+      // 批量雇佣：抽卡结果一键签约（逐人校验现金，一次新闻）
+      let hired = 0
+      for (const id of action.candidateIds) {
+        const idx = draft.world.candidates.findIndex((c) => c.id === id)
+        if (idx < 0) continue
+        const w = draft.world.candidates[idx]
+        if (draft.company.cash < ECONOMY.hireWorkerSignFee) continue
+        draft.company.cash = round1(draft.company.cash - ECONOMY.hireWorkerSignFee)
+        draft.workers[w.id] = w
+        draft.company.employeeIds.push(w.id)
+        draft.world.candidates.splice(idx, 1)
+        hired++
+      }
+      if (hired > 0) {
+        pushNews(
+          draft,
+          `批量签约 ${hired} 位新人加入公司（签约费共 ${Math.round(ECONOMY.hireWorkerSignFee * hired)} 万）。`,
+        )
+      }
+      break
+    }
+
     case 'fireWorker': {
       draft.company.employeeIds = draft.company.employeeIds.filter((id) => id !== action.workerId)
       const w = draft.workers[action.workerId]

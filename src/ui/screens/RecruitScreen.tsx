@@ -2,6 +2,7 @@ import { useState } from 'react'
 import type { Worker } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { ROLE_ZH, moodColor } from '../format'
+import { ECONOMY } from '../../core/config/economy'
 import { RECRUIT_POOLS, type RecruitPoolConfig } from '../../core/config/recruit'
 import { TEN_PULL_DISCOUNT } from '../../core/config/writers'
 import { WorkerDetail } from '../components/WorkerDetail'
@@ -86,8 +87,24 @@ export function RecruitScreen() {
       <section className="panel">
         <h2>招聘市场（{candidates.length}）</h2>
         <p className="dim">
-          点击卡片查看详情；雇佣需支付签约费，之后按周支付薪水。潜力新人便宜但成长空间大。
+          点击卡片查看详情；雇佣需支付签约费（{ECONOMY.hireWorkerSignFee} 万/人），之后按周支付薪水。
         </p>
+        {candidates.length > 0 && (
+          <div className="btn-row" style={{ marginBottom: 12 }}>
+            <button
+              className="btn-primary"
+              disabled={state.company.cash < ECONOMY.hireWorkerSignFee * candidates.length}
+              onClick={() =>
+                dispatch({
+                  type: 'hireCandidates',
+                  candidateIds: candidates.map((w) => w.id),
+                })
+              }
+            >
+              一键雇佣全部（{candidates.length} 人 · {ECONOMY.hireWorkerSignFee * candidates.length} 万）
+            </button>
+          </div>
+        )}
         {candidates.length === 0 ? (
           <p className="dim empty-hint">暂无候选人，花钱刷新或等待市场刷新。</p>
         ) : (
@@ -195,6 +212,20 @@ export function RecruitScreen() {
           <div className="btn-row" style={{ marginTop: 18 }}>
             <button className="btn-primary" onClick={flipAll} disabled={flipped.every(Boolean)}>
               全部翻开
+            </button>
+            <button
+              className="btn-primary"
+              disabled={state.company.cash < ECONOMY.hireWorkerSignFee * gacha.drawn.length}
+              onClick={() => {
+                dispatch({
+                  type: 'hireCandidates',
+                  candidateIds: gacha.drawn.map((w) => w.id),
+                })
+                setGacha(null)
+              }}
+            >
+              一键雇佣全部（{gacha.drawn.length} 人 ·{' '}
+              {ECONOMY.hireWorkerSignFee * gacha.drawn.length} 万）
             </button>
             <button onClick={() => setGacha(null)}>完成</button>
           </div>

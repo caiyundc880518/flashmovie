@@ -9,6 +9,7 @@ export type Action =
   | { type: 'sellScript'; scriptId: string }
   | { type: 'hireWriter' }
   | { type: 'hireWorker'; candidateId: string }
+  | { type: 'hireCandidates'; candidateIds: string[] }
   | { type: 'fireWorker'; workerId: string }
   | { type: 'refreshCandidates'; pool: RecruitPoolId; count: 1 | 10 }
   | { type: 'drawScripts'; pool: WriterPoolId; count: 1 | 10 }
