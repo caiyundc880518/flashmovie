@@ -1,4 +1,14 @@
 import type { FilmType, Gender } from './worker'
+import type { WriterPoolId } from '../config/writers'
+
+/** 编剧抽卡委托：创作中的剧本，到期进公司剧本库 */
+export interface ScriptDraft {
+  id: string
+  /** 委托档位（决定产出质量与等待周数） */
+  tier: WriterPoolId
+  /** 剩余周数 */
+  weeksLeft: number
+}
 
 /** 剧本对演员的要求 */
 export interface ScriptRequirement {

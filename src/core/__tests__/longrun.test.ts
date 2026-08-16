@@ -147,22 +147,29 @@ function simulateRun(seed: number, maxWeeks = 260, opts: SimOptions = {}): RunRe
     }
 
     // ===== 剧本供给 =====
-    const ownedNow = s.company.ownedScriptIds.length
+    const usedNow = new Set(s.projects.map((p) => p.scriptId))
+    const availCount = s.company.ownedScriptIds.filter((id) => !usedNow.has(id)).length
+    const draftedCount = s.scriptDrafts.length
     if (weak) {
-      // 新手：开局买 1 个剧本起步，之后只靠编剧产出
-      if (ownedNow === 0 && s.company.cash > 200) {
+      // 新手：开局买 1 个剧本起步，之后靠一般编剧委托补充（便宜、到货快）
+      if (availCount === 0 && draftedCount === 0 && s.company.cash > 200) {
         const best = [...s.world.marketScripts].sort((a, b) => scriptQuality(b) - scriptQuality(a))[0]
         if (best && best.price <= s.company.cash * 0.4) s = reduce(s, { type: 'buyScript', scriptId: best.id })
       }
-    } else if (s.company.cash > 350) {
-      const best = [...s.world.marketScripts].sort((a, b) => scriptQuality(b) - scriptQuality(a))[0]
-      if (best && best.price <= s.company.cash * 0.25 && scriptQuality(best) >= 50) {
-        s = reduce(s, { type: 'buyScript', scriptId: best.id })
+      if (availCount === 0 && draftedCount === 0 && s.company.cash > 60) {
+        s = reduce(s, { type: 'drawScripts', pool: 'common', count: 1 })
       }
-    }
-    const writerCount = employees.filter((e) => e.role === 'writer').length
-    if (s.company.cash > 400 && Object.keys(s.writerQueues).length === 0 && writerCount < (weak ? 1 : 1)) {
-      s = reduce(s, { type: 'hireWriter' })
+    } else {
+      if (s.company.cash > 350) {
+        const best = [...s.world.marketScripts].sort((a, b) => scriptQuality(b) - scriptQuality(a))[0]
+        if (best && best.price <= s.company.cash * 0.25 && scriptQuality(best) >= 50) {
+          s = reduce(s, { type: 'buyScript', scriptId: best.id })
+        }
+      }
+      // strong：金牌编剧稳定高质供给
+      if (availCount < 3 && draftedCount < 6 && s.company.cash > 500) {
+        s = reduce(s, { type: 'drawScripts', pool: 'gold', count: 1 })
+      }
     }
 
     // ===== 立项 =====

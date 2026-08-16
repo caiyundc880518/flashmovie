@@ -1,5 +1,6 @@
 import type { Channel, TeamAssignments } from '../types'
 import type { RecruitPoolId } from '../config/recruit'
+import type { WriterPoolId } from '../config/writers'
 
 /** 玩家动作（判别联合） */
 export type Action =
@@ -9,7 +10,8 @@ export type Action =
   | { type: 'hireWriter' }
   | { type: 'hireWorker'; candidateId: string }
   | { type: 'fireWorker'; workerId: string }
-  | { type: 'refreshCandidates'; pool: RecruitPoolId }
+  | { type: 'refreshCandidates'; pool: RecruitPoolId; count: 1 | 10 }
+  | { type: 'drawScripts'; pool: WriterPoolId; count: 1 | 10 }
   | { type: 'takeLoan'; amount: number }
   | { type: 'repayLoan'; loanId: string }
   | { type: 'startProject'; scriptId: string; team: TeamAssignments; vfxPercent: number; hasAd: boolean; ipId?: string }

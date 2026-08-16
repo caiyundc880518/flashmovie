@@ -3,6 +3,7 @@ import type { Worker } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { ROLE_ZH, moodColor } from '../format'
 import { RECRUIT_POOLS, type RecruitPoolConfig } from '../../core/config/recruit'
+import { TEN_PULL_DISCOUNT } from '../../core/config/writers'
 import { WorkerDetail } from '../components/WorkerDetail'
 import { Modal } from '../components/Modal'
 import { MoneyText } from '../components/MoneyText'
@@ -23,10 +24,11 @@ export function RecruitScreen() {
   const candidates = state.world.candidates
   const selected = selectedId ? candidates.find((c) => c.id === selectedId) : null
 
-  /** 花钱刷新：dispatch 后立即读取最新候选人，进入抽卡弹窗 */
-  const refresh = (pool: RecruitPoolConfig) => {
-    if (state.company.cash < pool.cost) return
-    dispatch({ type: 'refreshCandidates', pool: pool.id })
+  /** 花钱抽人：1 抽或 10 连（9 折），抽到的候选人进入弹窗与下方卡片 */
+  const refresh = (pool: RecruitPoolConfig, count: 1 | 10) => {
+    const total = Math.round(pool.cost * count * (count === 10 ? TEN_PULL_DISCOUNT : 1))
+    if (state.company.cash < total) return
+    dispatch({ type: 'refreshCandidates', pool: pool.id, count })
     const latest = useGameStore.getState().state
     const drawn = latest?.world.candidates ?? []
     setGacha({ pool, drawn })
@@ -46,30 +48,35 @@ export function RecruitScreen() {
   return (
     <div className="screen">
       <section className="panel">
-        <h2>刷新招聘市场（抽卡）</h2>
+        <h2>招聘抽卡</h2>
         <p className="dim">
-          花现金立刻刷新候选人名单，新候选人直接进入下方卡片。档位决定人数与人才质量——流水市场量大便宜但多生手，专业学院名额少但底子扎实。
+          按单个演员价格抽人：1 抽 / 10 连（9 折）。档位决定人才质量——流水市场量大便宜但多生手，专业学院贵但底子扎实。
         </p>
         <div className="gacha-options">
           {RECRUIT_POOLS.map((pool) => {
-            const affordable = state.company.cash >= pool.cost
+            const p1 = pool.cost
+            const p10 = Math.round(pool.cost * 10 * TEN_PULL_DISCOUNT)
+            const can1 = state.company.cash >= p1
+            const can10 = state.company.cash >= p10
             return (
               <div key={pool.id} className={`gacha-option gacha-theme-${pool.id}`}>
                 <div className="gacha-option-head">
                   <span className="slot-title">{pool.label}</span>
-                  <span className="tag tag-required">{pool.cost} 万/次</span>
+                  <span className="tag tag-required">{pool.cost} 万/人</span>
                 </div>
                 <p className="dim">{pool.desc}</p>
-                <div className="attr-line">
-                  人数 {pool.count[0]}–{pool.count[1]} 人
-                </div>
                 <div className="attr-line">
                   高 CA 概率 {Math.round(pool.highCaChance * 100)}% · 高 PA 概率{' '}
                   {Math.round(pool.highPaChance * 100)}%
                 </div>
-                <button className="btn-primary" disabled={!affordable} onClick={() => refresh(pool)}>
-                  {affordable ? `🎴 刷新（${pool.cost} 万）` : '现金不足'}
-                </button>
+                <div className="btn-row">
+                  <button className="btn-primary" disabled={!can1} onClick={() => refresh(pool, 1)}>
+                    抽 1 人（{p1} 万）
+                  </button>
+                  <button disabled={!can10} onClick={() => refresh(pool, 10)}>
+                    10 连抽（{p10} 万 · 9 折）
+                  </button>
+                </div>
               </div>
             )
           })}
@@ -142,7 +149,7 @@ export function RecruitScreen() {
 
       {/* 抽卡弹窗：卡背 → 逐张翻开 */}
       {gacha && (
-        <Modal title={`🎴 ${gacha.pool.label} · 刷新结果`} wide onClose={() => setGacha(null)}>
+        <Modal title={`🎴 ${gacha.pool.label} · 抽卡结果`} wide onClose={() => setGacha(null)}>
           <p className="dim">
             {gacha.pool.desc}——点击卡片逐张翻开，翻完后可在下方卡片雇佣。
           </p>

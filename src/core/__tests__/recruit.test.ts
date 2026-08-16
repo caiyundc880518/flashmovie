@@ -4,44 +4,52 @@ import { reduce } from '../state/reducer'
 import { RECRUIT_POOLS } from '../config/recruit'
 import type { RecruitPoolId } from '../config/recruit'
 
-/** 用指定种子刷一次档位，返回高 CA / 高 PA 占比 */
+/** 用指定种子抽一次档位（1 人），返回高 CA / 高 PA 占比 */
 function ratioOf(seed: number, pool: RecruitPoolId) {
   let s = createInitialState(seed)
   s.company.cash = 100000
-  s = reduce(s, { type: 'refreshCandidates', pool })
+  s = reduce(s, { type: 'refreshCandidates', pool, count: 1 })
   const list = s.world.candidates
   const highCa = list.filter((w) => w.basic.ca >= 60).length / list.length
   const highPa = list.filter((w) => w.basic.pa >= 85).length / list.length
   return { count: list.length, highCa, highPa }
 }
 
-describe('招聘市场刷新（抽卡三档）', () => {
-  it('流水市场：扣费 30 万，人数 6–9，且刷新新闻入列', () => {
+describe('招聘抽卡（单演员计价，1 抽 / 10 连）', () => {
+  it('流水市场：单抽扣单价 6 万，1 人入市，刷新新闻入列', () => {
     let s = createInitialState(7)
     s.company.cash = 1000
     const before = s.world.candidates
-    s = reduce(s, { type: 'refreshCandidates', pool: 'flow' })
-    expect(s.company.cash).toBe(970)
-    expect(s.world.candidates.length).toBeGreaterThanOrEqual(6)
-    expect(s.world.candidates.length).toBeLessThanOrEqual(9)
+    s = reduce(s, { type: 'refreshCandidates', pool: 'flow', count: 1 })
+    expect(s.company.cash).toBe(994)
+    expect(s.world.candidates).toHaveLength(1)
     expect(s.world.candidates).not.toEqual(before)
     expect(s.world.news.some((n) => n.text.includes('流水市场'))).toBe(true)
   })
 
-  it('现金不足：拒绝刷新，状态引用不变', () => {
+  it('10 连抽：扣 9 折总价（单价×10×0.9），10 人入市', () => {
+    let s = createInitialState(13)
+    s.company.cash = 10000
+    s = reduce(s, { type: 'refreshCandidates', pool: 'pro', count: 10 })
+    expect(s.world.candidates).toHaveLength(10)
+    // 职业市场单价 30：30×10×0.9 = 270
+    expect(s.company.cash).toBe(10000 - 270)
+  })
+
+  it('现金不足：拒绝抽取，状态引用不变', () => {
     let s = createInitialState(11)
     s.company.cash = 10
     const before = s.world.candidates
-    const rejected = reduce(s, { type: 'refreshCandidates', pool: 'academy' })
+    const rejected = reduce(s, { type: 'refreshCandidates', pool: 'academy', count: 1 })
     expect(rejected).toBe(s)
     expect(rejected.world.candidates).toBe(before)
   })
 
-  it('人数区间符合档位配置（多档位冒烟）', () => {
+  it('各档位单价为正且可单抽', () => {
     for (const pool of RECRUIT_POOLS) {
+      expect(pool.cost).toBeGreaterThan(0)
       const r = ratioOf(500 + pool.cost, pool.id)
-      expect(r.count).toBeGreaterThanOrEqual(pool.count[0])
-      expect(r.count).toBeLessThanOrEqual(pool.count[1])
+      expect(r.count).toBe(1)
     }
   })
 

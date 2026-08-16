@@ -29,6 +29,7 @@ export {
 export type { FilmType } from './worker'
 export type {
   Script,
+  ScriptDraft,
   ScriptRequirement,
   ScriptSource,
 } from './script'

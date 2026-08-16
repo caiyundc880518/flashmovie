@@ -11,16 +11,17 @@ describe('存档迁移', () => {
     expect(() => migrateSave({ version: -1 })).toThrow()
   })
 
-  it('接受 v9 存档（恒等迁移）', () => {
+  it('接受最新 v10 存档（恒等迁移）', () => {
     const s = createInitialState(1)
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(9)
+    expect(migrated.version).toBe(10)
     expect(migrated.company.name).toBe('星光影业')
     expect(migrated.company.ips).toEqual([])
     expect(migrated.company.tech).toEqual({})
     expect(migrated.world.competitors.length).toBeGreaterThan(0)
     expect(migrated.world.audience.length).toBeGreaterThan(0)
     expect(migrated.world.activeEvents).toEqual([])
+    expect(migrated.scriptDrafts).toEqual([])
     expect(migrated.world.publishers.length).toBeGreaterThan(0)
     expect(migrated.world.investors.length).toBeGreaterThan(0)
   })
@@ -32,7 +33,7 @@ describe('存档迁移', () => {
     delete (s.world as { audience?: unknown }).audience
     delete (s.world as { activeEvents?: unknown }).activeEvents
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(9)
+    expect(migrated.version).toBe(10)
     expect(migrated.company.tech).toEqual({})
     expect(migrated.world.audience.length).toBeGreaterThan(0)
     expect(migrated.world.activeEvents).toEqual([])

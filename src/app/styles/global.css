@@ -1094,6 +1094,15 @@ select {
 .gacha-theme-academy .gacha-back {
   background: linear-gradient(160deg, #2a2040, #0d1321);
 }
+.gacha-theme-common .gacha-back {
+  background: linear-gradient(160deg, #2c3a4a, #0d1321);
+}
+.gacha-theme-gold .gacha-back {
+  background: linear-gradient(160deg, #4a3a14, #0d1321);
+}
+.gacha-option.gacha-theme-gold {
+  border-color: rgba(232, 182, 76, 0.45);
+}
 .gacha-star {
   font-size: 40px;
   line-height: 1;

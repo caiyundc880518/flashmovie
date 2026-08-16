@@ -14,13 +14,14 @@ import { IP_CONFIG } from '../config/ip'
 import { SCRIPT_POOL } from '../config/scripts'
 import { SHOOTING_EVENTS, INDUSTRY_EVENTS, FILM_TYPE_ZH } from '../config/events'
 import { WORLD_CONFIG } from '../config/world'
+import { WRITER_POOL_MAP } from '../config/writers'
 import type { Rng } from '../rng'
 import { chance, clamp, pick, randInt, round1, weightedPick } from '../rng'
 import { applyWeeklyWorkerState } from '../rules/growth'
 import { chemistrySpeedFactor } from '../rules/chemistry'
 import { applyAwardEffects, computeYearAwards } from '../rules/awards'
 import { annualCriticRotation } from '../rules/critics'
-import { generateScript } from '../generators/scriptGen'
+import { generateScript, generateTierScript } from '../generators/scriptGen'
 import { generateMarketScripts } from '../generators/scriptGen'
 import { generateCandidates } from '../generators/workerGen'
 import { pushNews, teamIds, uid } from '../state/utils'
@@ -32,6 +33,22 @@ function teamAvgMood(state: GameState, project: FilmProject): number {
   if (ids.length === 0) return 60
   const sum = ids.reduce((s, id) => s + (state.workers[id]?.active.mood ?? 60), 0)
   return sum / ids.length
+}
+
+/** 写作学校：编剧产出质量加成 + 精品概率（GDD §3.1 自建写作学校） */
+function applySchoolBuff(draft: GameState, script: Script, rng: Rng): void {
+  const level = draft.company.schoolLevel
+  if (level <= 0) return
+  const q = 1 + level * SCHOOL_CONFIG.writerQualityPerLevel
+  script.storyPoint = clamp(Math.round(script.storyPoint * q), 0, 100)
+  script.artPot = clamp(Math.round(script.artPot * q), 0, 100)
+  script.marketPot = clamp(Math.round(script.marketPot * q), 0, 100)
+  if (chance(rng, level * SCHOOL_CONFIG.boutiqueChancePerLevel)) {
+    script.storyPoint = clamp(script.storyPoint + SCHOOL_CONFIG.boutiqueBonus, 0, 100)
+    script.artPot = clamp(script.artPot + SCHOOL_CONFIG.boutiqueBonus, 0, 100)
+    script.marketPot = clamp(script.marketPot + SCHOOL_CONFIG.boutiqueBonus, 0, 100)
+    pushNews(draft, `写作学校产出精品剧本《${script.title}》！`)
+  }
 }
 
 function generateProjectEvent(state: GameState, rng: Rng): ProjectEvent {
@@ -180,7 +197,7 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     if (w) applyWeeklyWorkerState(w, busy.has(id), rng)
   }
 
-  // 4. 编剧产出剧本
+  // 4. 编剧产出剧本（旧签约编剧机制，writerQueues 排队）
   for (const [writerId, left] of Object.entries(draft.writerQueues)) {
     const next = left - 1
     if (next <= 0) {
@@ -188,20 +205,7 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
       const script: Script = generateScript(rng, 'company', writerId)
       script.id = uid(draft, 'scr')
       if (writer) script.title = `《${writer.name}新作·${script.title}》`
-      // 写作学校：质量加成 + 精品概率（GDD §3.1 自建写作学校）
-      const level = draft.company.schoolLevel
-      if (level > 0) {
-        const q = 1 + level * SCHOOL_CONFIG.writerQualityPerLevel
-        script.storyPoint = clamp(Math.round(script.storyPoint * q), 0, 100)
-        script.artPot = clamp(Math.round(script.artPot * q), 0, 100)
-        script.marketPot = clamp(Math.round(script.marketPot * q), 0, 100)
-        if (chance(rng, level * SCHOOL_CONFIG.boutiqueChancePerLevel)) {
-          script.storyPoint = clamp(script.storyPoint + SCHOOL_CONFIG.boutiqueBonus, 0, 100)
-          script.artPot = clamp(script.artPot + SCHOOL_CONFIG.boutiqueBonus, 0, 100)
-          script.marketPot = clamp(script.marketPot + SCHOOL_CONFIG.boutiqueBonus, 0, 100)
-          pushNews(draft, `写作学校产出精品剧本《${script.title}》！`)
-        }
-      }
+      applySchoolBuff(draft, script, rng)
       draft.scripts[script.id] = script
       draft.company.ownedScriptIds.push(script.id)
       if (writer) writer.experience += 20 // 写作实践（Post-Scripting Buff 基础）
@@ -215,6 +219,21 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
       draft.writerQueues[writerId] = next
     }
   }
+
+  // 4.5 编剧抽卡委托到货：倒计时归零 → 生成对应档位剧本进公司剧本库
+  for (const d of draft.scriptDrafts) {
+    d.weeksLeft -= 1
+    if (d.weeksLeft <= 0) {
+      const cfg = WRITER_POOL_MAP[d.tier]
+      const script = generateTierScript(rng, cfg)
+      script.id = uid(draft, 'scr')
+      applySchoolBuff(draft, script, rng)
+      draft.scripts[script.id] = script
+      draft.company.ownedScriptIds.push(script.id)
+      pushNews(draft, `${cfg.label}创作完成：《${script.title}》已入库公司剧本库。`)
+    }
+  }
+  draft.scriptDrafts = draft.scriptDrafts.filter((d) => d.weeksLeft > 0)
 
   // 5. 项目推进
   for (const p of draft.projects) {

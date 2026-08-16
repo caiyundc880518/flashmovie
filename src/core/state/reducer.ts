@@ -11,6 +11,7 @@ import { SCRIPT_POOL } from '../config/scripts'
 import { INVESTOR_CONFIG, IPO_CONFIG, SCHOOL_CONFIG } from '../config/company'
 import { IP_CONFIG } from '../config/ip'
 import { RECRUIT_POOLS } from '../config/recruit'
+import { TEN_PULL_DISCOUNT, WRITER_POOLS } from '../config/writers'
 import { TECH_CONFIG, TECH_LINES, techLevel } from '../config/tech'
 import { techBonuses } from '../rules/tech'
 import { ipLevel, refreshIpDerived, royaltyPerQuarter, sequelBonusFactor } from '../rules/ip'
@@ -99,16 +100,40 @@ export function reduce(state: GameState, action: Action): GameState {
     }
 
     case 'refreshCandidates': {
-      // 花钱刷新招聘市场（三档抽卡式，GDD §4.4）
+      // 花钱抽招聘市场（三档卡池，单演员计价，1 抽 / 10 连，GDD §4.4）
       const cfg = RECRUIT_POOLS.find((p) => p.id === action.pool)
       if (!cfg) return state
-      if (draft.company.cash < cfg.cost) return state
-      draft.company.cash = round1(draft.company.cash - cfg.cost)
-      const count = randInt(rng, cfg.count[0], cfg.count[1])
-      const candidates = generateCandidates(rng, count, cfg.id)
+      const total = round1(cfg.cost * action.count * (action.count === 10 ? TEN_PULL_DISCOUNT : 1))
+      if (draft.company.cash < total) return state
+      draft.company.cash = round1(draft.company.cash - total)
+      const candidates = generateCandidates(rng, action.count, cfg.id)
       for (const c of candidates) c.id = uid(draft, 'wrk')
       draft.world.candidates = candidates
-      pushNews(draft, `花费 ${cfg.cost} 万刷新「${cfg.label}」，${count} 位新人进入招聘市场。`)
+      pushNews(
+        draft,
+        `花费 ${total} 万在「${cfg.label}」${action.count === 10 ? '10 连' : '抽取'}，${action.count} 位新人进入招聘市场。`,
+      )
+      break
+    }
+
+    case 'drawScripts': {
+      // 签约编剧抽卡：三档委托创作，10 连 9 折（GDD §3.1）
+      const cfg = WRITER_POOLS.find((p) => p.id === action.pool)
+      if (!cfg) return state
+      const total = round1(cfg.price * action.count * (action.count === 10 ? TEN_PULL_DISCOUNT : 1))
+      if (draft.company.cash < total) return state
+      draft.company.cash = round1(draft.company.cash - total)
+      for (let i = 0; i < action.count; i++) {
+        draft.scriptDrafts.push({
+          id: uid(draft, 'dft'),
+          tier: cfg.id,
+          weeksLeft: randInt(rng, cfg.produceWeeks[0], cfg.produceWeeks[1]),
+        })
+      }
+      pushNews(
+        draft,
+        `委托「${cfg.label}」${action.count === 10 ? '10 连' : ''}创作剧本，花费 ${total} 万，${action.count} 部约 ${cfg.produceWeeks[0]}–${cfg.produceWeeks[1]} 周后陆续到货。`,
+      )
       break
     }
 

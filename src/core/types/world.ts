@@ -1,5 +1,5 @@
 import type { FilmType, Worker } from './worker'
-import type { Script } from './script'
+import type { Script, ScriptDraft } from './script'
 import type { Company } from './company'
 import type { FilmProject } from './film'
 import type { Calendar } from './calendar'
@@ -150,8 +150,10 @@ export interface GameState {
   scripts: Record<string, Script>
   /** 项目列表 */
   projects: FilmProject[]
-  /** 编剧排队中的剧本产出（writerId → 剩余周数） */
+  /** 编剧排队中的剧本产出（writerId → 剩余周数，旧签约编剧机制） */
   writerQueues: Record<string, number>
+  /** 编剧抽卡委托中的剧本（三档卡池，到期进公司剧本库） */
+  scriptDrafts: ScriptDraft[]
   /** 最近一届 TMA 颁奖结果（跨年时生成） */
   lastCeremony?: YearAwards
   /** 新手引导：0 = 未看过欢迎（新档），≥1 = 已看过；undefined = 旧档视为已完成 */
