@@ -14,7 +14,7 @@ import { goldenCombos, teamChemistry } from '../../core/rules/chemistry'
 import { audienceFit, regionMarkets } from '../../core/rules/audience'
 import { ECONOMY } from '../../core/config/economy'
 import { CHANNEL_INFO, CHANNEL_ORDER } from '../../core/config/channels'
-import { ROLE_ZH, SKILL_ZH, STAGE_ZH, TYPE_ZH, fmtWan, signedDelta } from '../format'
+import { ROLE_ZH, SKILL_ZH, STAGE_ZH, TYPE_ZH, fmtScore10, fmtWan, scoreColor10, signedDelta } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { Bar } from '../components/Bar'
 import { MoneyText } from '../components/MoneyText'
@@ -343,9 +343,9 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
               </div>
               <div className="stat-row">
                 <span className="stat-label">影评口碑</span>
-                <b>{fmtScore(p.result.criticScore)} / 10</b>
+                <b>{fmtScore10(p.result.criticScore)} / 10</b>
                 <span className="stat-label">观众口碑</span>
-                <b>{fmtScore(p.result.audienceScore ?? 0)} / 10</b>
+                <b>{fmtScore10(p.result.audienceScore ?? 0)} / 10</b>
                 <span className="stat-label">声誉变化</span>
                 <span className={p.result.reputationGain >= 0 ? 'good' : 'bad'}>
                   {p.result.reputationGain >= 0 ? '+' : ''}
@@ -515,20 +515,7 @@ function TeamLine({
   )
 }
 
-function scoreColor(score: number): string {
-  const s = score > 10 ? score / 10 : score // 兼容旧档 0–100
-  if (s >= 8) return 'var(--ok)'
-  if (s >= 6) return 'var(--gold)'
-  return 'var(--danger)'
-}
-
-/** 10 分制显示（旧档 0–100 自动换算），一位小数 */
-function fmtScore(score: number): string {
-  const s = score > 10 ? score / 10 : score
-  return s.toFixed(1)
-}
-
-/** 影评人评分列表（含预测）：10 分制 + 文字评语；旧档无评语显示 — */
+/** 影评人评分卡片（10 分制 + 文字评语）；旧档 0–100 自动换算 */
 function CriticReviews({
   reviews,
   title,
@@ -542,37 +529,40 @@ function CriticReviews({
 }) {
   if (!reviews || reviews.length === 0) return null
   return (
-    <div className="critic-list">
+    <div className="critic-cards">
       <h3>{title}</h3>
-      {reviews.map((r) => (
-        <div key={r.criticId} className="critic-row">
-          <span className="critic-name">{r.criticName}</span>
-          <Bar value={r.score > 10 ? r.score / 10 : r.score} max={10} color={scoreColor(r.score)} showValue={false} />
-          <span className="critic-score" style={{ color: scoreColor(r.score) }}>
-            {fmtScore(r.score)}
+      <div className="critic-grid">
+        {reviews.map((r) => (
+          <div key={r.criticId} className="critic-card">
+            <div className="critic-card-head">
+              <span className="table-name">{r.criticName}</span>
+              <span className="critic-score" style={{ color: scoreColor10(r.score) }}>
+                {fmtScore10(r.score)}
+              </span>
+            </div>
+            <Bar
+              value={r.score > 10 ? r.score / 10 : r.score}
+              max={10}
+              color={scoreColor10(r.score)}
+              showValue={false}
+            />
+            <p className="critic-quote">「{r.text ?? '—'}」</p>
+          </div>
+        ))}
+      </div>
+      <div className="critic-summary">
+        {average !== undefined && (
+          <span>
+            影评人平均 <b style={{ color: scoreColor10(average) }}>{fmtScore10(average)}</b> / 10
           </span>
-          <span className="critic-quote">「{r.text ?? '—'}」</span>
-        </div>
-      ))}
-      {average !== undefined && (
-        <div className="critic-row critic-avg">
-          <span className="critic-name">平均</span>
-          <Bar value={average > 10 ? average / 10 : average} max={10} color={scoreColor(average)} showValue={false} />
-          <span className="critic-score" style={{ color: scoreColor(average) }}>
-            {fmtScore(average)}
+        )}
+        {audience && (
+          <span>
+            观众口碑 <b style={{ color: scoreColor10(audience.score) }}>{fmtScore10(audience.score)}</b> / 10
+            <span className="critic-quote">「{audience.text ?? '—'}」</span>
           </span>
-        </div>
-      )}
-      {audience && (
-        <div className="critic-row critic-avg">
-          <span className="critic-name">观众口碑</span>
-          <Bar value={audience.score} max={10} color={scoreColor(audience.score)} showValue={false} />
-          <span className="critic-score" style={{ color: scoreColor(audience.score) }}>
-            {fmtScore(audience.score)}
-          </span>
-          <span className="critic-quote">「{audience.text ?? '—'}」</span>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

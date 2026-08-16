@@ -47,6 +47,20 @@ export function signedDelta(v: number): string {
   return v > 0 ? `+${s}` : s
 }
 
+/** 10 分制显示：旧档 0–100 自动换算，一位小数 */
+export function fmtScore10(score: number): string {
+  const s = score > 10 ? score / 10 : score
+  return s.toFixed(1)
+}
+
+/** 10 分制评分颜色：≥8 绿 / ≥6 金 / 红（兼容旧档 0–100） */
+export function scoreColor10(score: number): string {
+  const s = score > 10 ? score / 10 : score
+  if (s >= 8) return 'var(--ok)'
+  if (s >= 6) return 'var(--gold)'
+  return 'var(--danger)'
+}
+
 export const STAGE_ZH: Record<ProjectStage, string> = {
   preparing: '筹备中',
   shooting: '拍摄中',
