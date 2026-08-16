@@ -5,10 +5,12 @@ import { advanceWeek as tickAdvance } from '../tick/advance'
 import { channelRevenue, computeFilmResult } from '../rules/scoring'
 import { applyProjectGrowth } from '../rules/growth'
 import { generateWorker } from '../generators/workerGen'
+import { generateCandidates } from '../generators/workerGen'
 import { ECONOMY } from '../config/economy'
 import { SCRIPT_POOL } from '../config/scripts'
 import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../config/company'
 import { IP_CONFIG } from '../config/ip'
+import { RECRUIT_POOLS } from '../config/recruit'
 import { ipLevel, refreshIpDerived, royaltyPerQuarter, sequelBonusFactor } from '../rules/ip'
 import { TIMING_CONFIG } from '../config/minigame'
 import type { Action } from './actions'
@@ -91,6 +93,20 @@ export function reduce(state: GameState, action: Action): GameState {
         w.currentProjectId = null
         w.idleWeeks = 0
       }
+      break
+    }
+
+    case 'refreshCandidates': {
+      // 花钱刷新招聘市场（三档抽卡式，GDD §4.4）
+      const cfg = RECRUIT_POOLS.find((p) => p.id === action.pool)
+      if (!cfg) return state
+      if (draft.company.cash < cfg.cost) return state
+      draft.company.cash = round1(draft.company.cash - cfg.cost)
+      const count = randInt(rng, cfg.count[0], cfg.count[1])
+      const candidates = generateCandidates(rng, count, cfg.id)
+      for (const c of candidates) c.id = uid(draft, 'wrk')
+      draft.world.candidates = candidates
+      pushNews(draft, `花费 ${cfg.cost} 万刷新「${cfg.label}」，${count} 位新人进入招聘市场。`)
       break
     }
 

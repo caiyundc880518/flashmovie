@@ -2,17 +2,30 @@ import type { Gender, RoleId, SkillMap, Worker } from '../types'
 import { FILM_TYPES, ROLE_IDS, SKILL_KEYS } from '../types'
 import { BASE_SALARY_BY_ROLE, ROLES } from '../config/roles'
 import { ECONOMY } from '../config/economy'
+import { RECRUIT_POOL_MAP, type RecruitPoolId } from '../config/recruit'
 import { generateName } from '../config/names'
 import type { Rng } from '../rng'
 import { clamp, pick, randInt, round1 } from '../rng'
 
 export type WorkerTier = 'rookie' | 'pro'
 
+/** PA/CA 生成区间覆盖（招聘档位用） */
+export interface PoolOverrides {
+  pa: [number, number]
+  ca: [number, number]
+}
+
 /**
  * 生成员工（V1 基础属性与技能，来源 GDD §4.2/§4.3）
  * @param tier rookie=高潜力新人（PA 高 CA 低），pro=熟手（CA 高）
+ * @param overrides 可选：用指定区间生成 PA/CA（招聘市场档位）
  */
-export function generateWorker(rng: Rng, role?: RoleId, tier: WorkerTier = 'rookie'): Worker {
+export function generateWorker(
+  rng: Rng,
+  role?: RoleId,
+  tier: WorkerTier = 'rookie',
+  overrides?: PoolOverrides,
+): Worker {
   const gender: Gender = rng() < 0.5 ? 'male' : 'female'
   const roleId = role ?? pick(rng, ROLE_IDS)
   const age = randInt(rng, 20, 45)
@@ -20,9 +33,10 @@ export function generateWorker(rng: Rng, role?: RoleId, tier: WorkerTier = 'rook
   const weight = gender === 'male' ? randInt(rng, 58, 85) : randInt(rng, 45, 65)
 
   // 潜力与当前能力
-  const pa = randInt(rng, 40, 95)
-  const ca =
-    tier === 'rookie'
+  const pa = overrides ? randInt(rng, overrides.pa[0], overrides.pa[1]) : randInt(rng, 40, 95)
+  const ca = overrides
+    ? Math.min(pa, randInt(rng, overrides.ca[0], overrides.ca[1]))
+    : tier === 'rookie'
       ? Math.min(pa, randInt(rng, 15, 45))
       : Math.min(pa, randInt(rng, 55, 85))
 
@@ -85,11 +99,24 @@ export function generateWorker(rng: Rng, role?: RoleId, tier: WorkerTier = 'rook
 }
 
 /** 生成一批候选人（招聘市场） */
-export function generateCandidates(rng: Rng, count: number): Worker[] {
+export function generateCandidates(rng: Rng, count: number, pool?: RecruitPoolId): Worker[] {
   const out: Worker[] = []
   for (let i = 0; i < count; i++) {
-    const tier: WorkerTier = rng() < 0.7 ? 'rookie' : 'pro'
-    out.push(generateWorker(rng, undefined, tier))
+    if (!pool) {
+      // 常规市场刷新：默认 7:3 新人/熟手
+      out.push(generateWorker(rng, undefined, rng() < 0.7 ? 'rookie' : 'pro'))
+      continue
+    }
+    // 三档抽卡式刷新：按档位概率决定 CA/PA 区间
+    const cfg = RECRUIT_POOL_MAP[pool]
+    const highPa = rng() < cfg.highPaChance
+    const highCa = rng() < cfg.highCaChance
+    out.push(
+      generateWorker(rng, undefined, highCa ? 'pro' : 'rookie', {
+        pa: highPa ? cfg.paHigh : cfg.paLow,
+        ca: highCa ? cfg.caHigh : cfg.caLow,
+      }),
+    )
   }
   return out
 }

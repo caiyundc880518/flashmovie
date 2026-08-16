@@ -651,6 +651,105 @@ select {
 .ok {
   color: var(--ok);
 }
+
+/* ===== 招聘刷新（抽卡） ===== */
+.gacha-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+  margin-top: 14px;
+}
+.gacha-option {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.gacha-option-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.gacha-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.gacha-card {
+  perspective: 900px;
+  height: 236px;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.gacha-card-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transition: transform 0.65s cubic-bezier(0.2, 0.8, 0.3, 1.1);
+  transform-style: preserve-3d;
+}
+.gacha-flipped .gacha-card-inner {
+  transform: rotateY(180deg);
+}
+.gacha-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 14px;
+  text-align: center;
+}
+.gacha-back {
+  background: linear-gradient(160deg, #1b2440, #0d1321);
+  color: var(--gold);
+}
+.gacha-theme-flow .gacha-back {
+  background: linear-gradient(160deg, #22303f, #0d1321);
+}
+.gacha-theme-pro .gacha-back {
+  background: linear-gradient(160deg, #1d3a3a, #0d1321);
+}
+.gacha-theme-academy .gacha-back {
+  background: linear-gradient(160deg, #2a2040, #0d1321);
+}
+.gacha-star {
+  font-size: 40px;
+  line-height: 1;
+}
+.gacha-front {
+  background: var(--bg-card);
+  transform: rotateY(180deg);
+}
+.gacha-front .ca-big {
+  font-size: 30px;
+  font-weight: 700;
+  color: var(--gold);
+  line-height: 1.1;
+}
+.gacha-rare {
+  border-color: rgba(232, 182, 76, 0.7);
+  box-shadow: 0 0 18px rgba(232, 182, 76, 0.22);
+}
+.gacha-epic {
+  border-color: rgba(160, 120, 255, 0.85);
+  box-shadow: 0 0 22px rgba(160, 120, 255, 0.35);
+}
+.gacha-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
 .slot-list {
   display: flex;
   flex-direction: column;
