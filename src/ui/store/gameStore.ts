@@ -9,9 +9,9 @@ interface GameStore {
   state: GameState | null
   booted: boolean
   dispatch: (action: Action) => void
-  newGame: () => void
+  newGame: (companyName?: string) => void
   boot: () => Promise<void>
-  resetSave: () => Promise<void>
+  resetSave: (companyName?: string) => Promise<void>
 }
 
 /** zustand 桥接：core 纯状态 → React 响应式 */
@@ -27,20 +27,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
     scheduleSave(next)
   },
 
-  newGame: () => {
-    const s = createInitialState()
+  newGame: (companyName) => {
+    const s = createInitialState(undefined, companyName)
     set({ state: s })
     void saveNow(s)
   },
 
   boot: async () => {
     const saved = await loadSave()
-    set({ state: saved ?? createInitialState(), booted: true })
+    // 不自动建档：有存档则进入主菜单「继续游戏」，无存档则只提供「开始新游戏」
+    set({ state: saved, booted: true })
   },
 
-  resetSave: async () => {
+  resetSave: async (companyName?: string) => {
     await clearSave()
-    const s = createInitialState()
+    const s = createInitialState(undefined, companyName)
     set({ state: s })
     void saveNow(s)
   },

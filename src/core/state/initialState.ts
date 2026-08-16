@@ -15,8 +15,8 @@ import {
   generatePublishers,
 } from '../generators/worldGen'
 
-/** 创建新档（种子可复现） */
-export function createInitialState(seed?: number): GameState {
+/** 创建新档（种子可复现；公司名自定义，默认星光影业） */
+export function createInitialState(seed?: number, companyName = '星光影业'): GameState {
   const s = seed ?? ((Date.now() ^ (Math.random() * 0xffffffff)) >>> 0)
   const rng: Rng = createRng(s)
   let counter = 1
@@ -42,7 +42,7 @@ export function createInitialState(seed?: number): GameState {
     idCounter: counter,
     calendar: { year: 1, week: 1 },
     company: {
-      name: '星光影业',
+      name: companyName,
       cash: ECONOMY.startingCash,
       reputation: ECONOMY.startingReputation,
       schoolLevel: 0,

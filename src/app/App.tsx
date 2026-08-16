@@ -17,8 +17,10 @@ import { CriticsScreen } from '../ui/screens/CriticsScreen'
 import { NewsScreen } from '../ui/screens/NewsScreen'
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen'
 import { AwardsScreen } from '../ui/screens/AwardsScreen'
+import { MainMenuScreen } from '../ui/screens/MainMenuScreen'
 import { AwardsCeremonyModal } from '../ui/components/AwardsCeremonyModal'
 import { Modal } from '../ui/components/Modal'
+import { NewGameModal } from '../ui/components/NewGameModal'
 import { MoneyText } from '../ui/components/MoneyText'
 import { SEASON_ZH } from '../ui/format'
 import { TUTORIAL_STEPS, tutorialStep } from '../core/rules/tutorial'
@@ -103,6 +105,11 @@ export function App() {
   const [tutorialOpen, setTutorialOpen] = useState(false)
   // 侧栏折叠的分组（默认全展开）
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+  // 是否已进入游戏（false = 主菜单）
+  const [inGame, setInGame] = useState(false)
+  // 新游戏 / 重置存档：输入公司名弹窗
+  const [newGameOpen, setNewGameOpen] = useState(false)
+  const [resetOpen, setResetOpen] = useState(false)
 
   /** 跳转页面：同时展开目标所在分组 */
   const goTo = (key: NavKey) => {
@@ -132,6 +139,24 @@ export function App() {
   }, [boot])
 
   if (!booted) return <div className="boot-screen">载入存档…</div>
+
+  // 主菜单：有存档显示「继续游戏」，无存档只提供「开始新游戏」（输入公司名）
+  if (!inGame) {
+    return (
+      <MainMenuScreen
+        hasSave={!!state}
+        saveInfo={
+          state ? { name: state.company.name, year: state.calendar.year } : null
+        }
+        onContinue={() => setInGame(true)}
+        onNewGame={(name) => {
+          newGame(name)
+          setInGame(true)
+        }}
+      />
+    )
+  }
+
   if (!state) return null
 
   // 新手引导：派生进度 + 显示开关（旧档 tutorial 为 undefined = 已完成）
@@ -180,20 +205,10 @@ export function App() {
           })}
         </nav>
         <div className="sidebar-bottom">
-          <button
-            className="nav-item"
-            onClick={() => {
-              if (window.confirm('开始新游戏？当前进度将保留在存档中。')) newGame()
-            }}
-          >
+          <button className="nav-item" onClick={() => setNewGameOpen(true)}>
             新游戏
           </button>
-          <button
-            className="nav-item"
-            onClick={() => {
-              if (window.confirm('清除存档并重新开始？')) void resetSave()
-            }}
-          >
+          <button className="nav-item" onClick={() => setResetOpen(true)}>
             重置存档
           </button>
         </div>
@@ -262,6 +277,22 @@ export function App() {
           )}
         </div>
       </div>
+
+      {/* 新游戏 / 重置存档：输入公司名 */}
+      {newGameOpen && (
+        <NewGameModal
+          defaultName={state?.company.name}
+          onStart={(name) => newGame(name)}
+          onClose={() => setNewGameOpen(false)}
+        />
+      )}
+      {resetOpen && (
+        <NewGameModal
+          defaultName="星光影业"
+          onStart={(name) => void resetSave(name)}
+          onClose={() => setResetOpen(false)}
+        />
+      )}
 
       {state.lastCeremony && state.lastCeremony.year !== seenCeremonyYear && (
         <AwardsCeremonyModal
