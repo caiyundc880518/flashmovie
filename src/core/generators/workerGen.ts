@@ -115,13 +115,18 @@ export function generateWorker(
   }
 }
 
-/** 生成一批候选人（招聘市场） */
-export function generateCandidates(rng: Rng, count: number, pool?: RecruitPoolId): Worker[] {
+/** 生成一批候选人（招聘市场；role 指定时定向抽取该职位） */
+export function generateCandidates(
+  rng: Rng,
+  count: number,
+  pool?: RecruitPoolId,
+  role?: RoleId,
+): Worker[] {
   const out: Worker[] = []
   for (let i = 0; i < count; i++) {
     if (!pool) {
       // 常规市场刷新：默认 7:3 新人/熟手
-      out.push(generateWorker(rng, undefined, rng() < 0.7 ? 'rookie' : 'pro'))
+      out.push(generateWorker(rng, role, rng() < 0.7 ? 'rookie' : 'pro'))
       continue
     }
     // 三档抽卡式刷新：按档位概率决定 CA/PA 区间
@@ -129,7 +134,7 @@ export function generateCandidates(rng: Rng, count: number, pool?: RecruitPoolId
     const highPa = rng() < cfg.highPaChance
     const highCa = rng() < cfg.highCaChance
     out.push(
-      generateWorker(rng, undefined, highCa ? 'pro' : 'rookie', {
+      generateWorker(rng, role, highCa ? 'pro' : 'rookie', {
         pa: highPa ? cfg.paHigh : cfg.paLow,
         ca: highCa ? cfg.caHigh : cfg.caLow,
       }),

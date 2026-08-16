@@ -1,4 +1,4 @@
-import type { Channel, TeamAssignments } from '../types'
+import type { Channel, RoleId, TeamAssignments } from '../types'
 import type { RecruitPoolId } from '../config/recruit'
 import type { WriterPoolId } from '../config/writers'
 
@@ -11,7 +11,7 @@ export type Action =
   | { type: 'hireWorker'; candidateId: string }
   | { type: 'hireCandidates'; candidateIds: string[] }
   | { type: 'fireWorker'; workerId: string }
-  | { type: 'refreshCandidates'; pool: RecruitPoolId; count: 1 | 10 }
+  | { type: 'refreshCandidates'; pool: RecruitPoolId; count: 1 | 10; role?: RoleId }
   | { type: 'drawScripts'; pool: WriterPoolId; count: 1 | 10 }
   | { type: 'takeLoan'; amount: number }
   | { type: 'repayLoan'; loanId: string }

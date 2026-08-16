@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Worker } from '../../core/types'
+import { ROLE_IDS } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { ROLE_ZH, moodColor } from '../format'
 import { ECONOMY } from '../../core/config/economy'
@@ -20,16 +21,23 @@ export function RecruitScreen() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [gacha, setGacha] = useState<GachaState | null>(null)
   const [flipped, setFlipped] = useState<boolean[]>([])
+  // 抽取范围：'all' = 随机职位；指定职位 = 定向抽取
+  const [roleFilter, setRoleFilter] = useState<string>('all')
 
   if (!state) return null
   const candidates = state.world.candidates
   const selected = selectedId ? candidates.find((c) => c.id === selectedId) : null
 
-  /** 花钱抽人：1 抽或 10 连（9 折），抽到的候选人进入弹窗与下方卡片 */
+  /** 花钱抽人：1 抽或 10 连（9 折）；可定向抽取职位，抽到的候选人进入弹窗与下方卡片 */
   const refresh = (pool: RecruitPoolConfig, count: 1 | 10) => {
     const total = Math.round(pool.cost * count * (count === 10 ? TEN_PULL_DISCOUNT : 1))
     if (state.company.cash < total) return
-    dispatch({ type: 'refreshCandidates', pool: pool.id, count })
+    dispatch({
+      type: 'refreshCandidates',
+      pool: pool.id,
+      count,
+      role: roleFilter === 'all' ? undefined : (roleFilter as Worker['role']),
+    })
     const latest = useGameStore.getState().state
     const drawn = latest?.world.candidates ?? []
     setGacha({ pool, drawn })
@@ -51,8 +59,25 @@ export function RecruitScreen() {
       <section className="panel">
         <h2>招聘抽卡</h2>
         <p className="dim">
-          按单个演员价格抽人：1 抽 / 10 连（9 折）。档位决定人才质量——流水市场量大便宜但多生手，专业学院贵但底子扎实。
+          按单个演员价格抽人：1 抽 / 10 连（9 折）。档位决定人才质量；可先选抽取范围，定向抽取某个职位。
         </p>
+        <div className="candidate-filter">
+          <button
+            className={`chip${roleFilter === 'all' ? ' chip-active' : ''}`}
+            onClick={() => setRoleFilter('all')}
+          >
+            全部抽取
+          </button>
+          {ROLE_IDS.map((r) => (
+            <button
+              key={r}
+              className={`chip${roleFilter === r ? ' chip-active' : ''}`}
+              onClick={() => setRoleFilter(r)}
+            >
+              {ROLE_ZH[r]}
+            </button>
+          ))}
+        </div>
         <div className="gacha-options">
           {RECRUIT_POOLS.map((pool) => {
             const p1 = pool.cost

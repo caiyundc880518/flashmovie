@@ -146,4 +146,31 @@ describe('招聘抽卡（单演员计价，1 抽 / 10 连）', () => {
       expect(hasActor).toBe(true)
     }
   })
+
+  it('定向抽取：指定职位时刷出的全部是该职位', () => {
+    for (const pool of RECRUIT_POOLS) {
+      let s = createInitialState(300 + pool.cost)
+      s.company.cash = 100000
+      s = reduce(s, { type: 'refreshCandidates', pool: pool.id, count: 10, role: 'director' })
+      expect(s.world.candidates).toHaveLength(10)
+      for (const c of s.world.candidates) {
+        expect(c.role).toBe('director')
+      }
+      expect(s.world.news.some((n) => n.text.includes('定向「导演」'))).toBe(true)
+    }
+  })
+
+  it('定向抽取演员：10 连全为演员，且无 role 时保持随机', () => {
+    let s = createInitialState(400)
+    s.company.cash = 100000
+    s = reduce(s, { type: 'refreshCandidates', pool: 'flow', count: 10, role: 'actor' })
+    expect(s.world.candidates).toHaveLength(10)
+    for (const c of s.world.candidates) {
+      expect(c.role).toBe('actor')
+    }
+    // 不传 role：职位仍按权重混合
+    s = reduce(s, { type: 'refreshCandidates', pool: 'flow', count: 20 })
+    const roles = new Set(s.world.candidates.map((c) => c.role))
+    expect(roles.size).toBeGreaterThan(1)
+  })
 })

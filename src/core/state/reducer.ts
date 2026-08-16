@@ -11,6 +11,7 @@ import { SCRIPT_POOL } from '../config/scripts'
 import { INVESTOR_CONFIG, IPO_CONFIG, SCHOOL_CONFIG } from '../config/company'
 import { IP_CONFIG } from '../config/ip'
 import { RECRUIT_POOLS } from '../config/recruit'
+import { ROLES } from '../config/roles'
 import { TEN_PULL_DISCOUNT, WRITER_POOLS } from '../config/writers'
 import { TECH_CONFIG, TECH_LINES, techLevel } from '../config/tech'
 import { techBonuses } from '../rules/tech'
@@ -123,18 +124,19 @@ export function reduce(state: GameState, action: Action): GameState {
     }
 
     case 'refreshCandidates': {
-      // 花钱抽招聘市场（三档卡池，单演员计价，1 抽 / 10 连，GDD §4.4）
+      // 花钱抽招聘市场（三档卡池，单演员计价，1 抽 / 10 连；可定向抽取职位，GDD §4.4）
       const cfg = RECRUIT_POOLS.find((p) => p.id === action.pool)
       if (!cfg) return state
       const total = round1(cfg.cost * action.count * (action.count === 10 ? TEN_PULL_DISCOUNT : 1))
       if (draft.company.cash < total) return state
       draft.company.cash = round1(draft.company.cash - total)
-      const candidates = generateCandidates(rng, action.count, cfg.id)
+      const candidates = generateCandidates(rng, action.count, cfg.id, action.role)
       for (const c of candidates) c.id = uid(draft, 'wrk')
       draft.world.candidates = candidates
+      const focus = action.role ? `定向「${ROLES[action.role].nameZh}」` : '随机职位'
       pushNews(
         draft,
-        `花费 ${total} 万在「${cfg.label}」${action.count === 10 ? '10 连' : '抽取'}，${action.count} 位新人进入招聘市场。`,
+        `花费 ${total} 万在「${cfg.label}」${action.count === 10 ? '10 连' : '抽取'}（${focus}），${action.count} 位新人进入招聘市场。`,
       )
       break
     }
