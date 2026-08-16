@@ -109,9 +109,9 @@ describe('观众群体（GDD §6）', () => {
     // 全部群体低容忍
     const picky = structuredClone(s)
     for (const g of picky.world.audience) g.tolerance = 0.2
-    expect(tolerancePenalty(picky, 40)).toBeGreaterThan(tolerancePenalty(lenient, 40))
-    expect(tolerancePenalty(picky, 40)).toBeGreaterThan(0)
-    expect(tolerancePenalty(picky, 70)).toBe(0)
+    expect(tolerancePenalty(picky, 4)).toBeGreaterThan(tolerancePenalty(lenient, 4))
+    expect(tolerancePenalty(picky, 4)).toBeGreaterThan(0)
+    expect(tolerancePenalty(picky, 7)).toBe(0)
   })
 
   it('平均容忍度按规模加权', () => {

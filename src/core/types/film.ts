@@ -126,11 +126,13 @@ export interface WorkerSettlement {
   moodGain: number
 }
 
-/** 单条影评 */
+/** 单条影评（score 为 10 分制，一位小数；text 为对应文字评语） */
 export interface CriticReview {
   criticId: string
   criticName: string
   score: number
+  /** 评分对应的文字评语（旧档可能缺省） */
+  text?: string
 }
 
 /** 电影结算结果 */
@@ -142,10 +144,14 @@ export interface FilmResult {
   specific: number
   ap: number
   mp: number
-  /** 影评人平均分 0–100 */
+  /** 影评人平均分（10 分制一位小数；旧档可能为 0–100） */
   criticScore: number
-  /** 逐影评人评分 */
+  /** 逐影评人评分（10 分制 + 文字评语） */
   reviews: CriticReview[]
+  /** 观众评分（10 分制一位小数，旧档可能缺省） */
+  audienceScore?: number
+  /** 观众总评（旧档可能缺省） */
+  audienceText?: string
   boxOffice: number
   reputationGain: number
   groupPerformance: GroupPerformance[]

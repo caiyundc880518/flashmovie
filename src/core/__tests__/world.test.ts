@@ -63,7 +63,7 @@ describe('世界模拟', () => {
     s.scripts[script.id] = script
     const project = { id: 'p1', scriptId: script.id } as unknown as FilmProject
     const score = computeCriticScore(s, project, 60, createRng(1))
-    expect(score).toBeGreaterThan(60) // 偏好 +10
+    expect(score).toBeGreaterThan(6) // 10 分制：ap/10=6，偏好 +1.0
   })
 
   it('v1 存档迁移到最新并自动补生成世界实体', () => {

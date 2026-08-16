@@ -38,9 +38,9 @@ export const WORLD_CONFIG = {
   criticNames: ['陆离', '闻人语', '白墨', '顾影', '程述', '苏晚', '秋山', '裴砚'],
   /** 影评人影响力范围 */
   criticInfluenceRange: [40, 90] as const,
-  /** 类型偏好加分 / 不匹配减分 */
-  tasteBonus: 10,
-  tasteMismatchPenalty: 5,
+  /** 类型偏好加分 / 不匹配减分（10 分制） */
+  tasteBonus: 1.0,
+  tasteMismatchPenalty: 0.5,
 
   /** 观众群体（GDD §6 Audience Group） */
   audience: {
@@ -68,7 +68,7 @@ export const WORLD_CONFIG = {
     /** 票房观众契合：factor = fitMin + Σ(size×focus) × fitSpan */
     fitMin: 0.8,
     fitSpan: 0.5,
-    /** 低口碑（criticScore < 60）容忍度惩罚系数 */
+    /** 低口碑（影评 < 6.0，10 分制）容忍度惩罚系数 */
     tolerancePenaltyPer10: 0.5,
   } as const,
 

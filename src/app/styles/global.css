@@ -998,10 +998,20 @@ input[type='range'] {
   font-size: 13px;
 }
 .critic-score {
-  min-width: 30px;
+  min-width: 44px;
   text-align: right;
-  font-weight: 600;
-  font-size: 13px;
+  font-weight: 700;
+  font-size: 15px;
+}
+.critic-quote {
+  flex: 1;
+  color: var(--text-dim);
+  font-size: 12px;
+  font-style: italic;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .critic-avg {
   border-top: 1px dashed var(--border);

@@ -503,7 +503,7 @@ export function reduce(state: GameState, action: Action): GameState {
         draft.company.ips.push(newIp)
         pushNews(
           draft,
-          `《${p.name}》票房 ${Math.round(result.boxOffice)} 万、影评 ${result.criticScore} 分，沉淀为公司 IP（Lv.${lv}），可立项续作！`,
+          `《${p.name}》票房 ${Math.round(result.boxOffice)} 万、影评 ${result.criticScore.toFixed(1)} 分，沉淀为公司 IP（Lv.${lv}），可立项续作！`,
         )
         ipName = newIp.name
         ipEntry = 1
@@ -530,7 +530,10 @@ export function reduce(state: GameState, action: Action): GameState {
         draft,
         `《${p.name}》上映！票房 ${Math.round(result.boxOffice)} 万元，AP ${result.ap} / MP ${result.mp}。`,
       )
-      pushNews(draft, `《${p.name}》口碑出炉：影评人平均 ${result.criticScore} 分。`)
+      pushNews(
+        draft,
+        `《${p.name}》口碑出炉：影评人平均 ${result.criticScore.toFixed(1)} 分，观众评分 ${(result.audienceScore ?? 0).toFixed(1)} 分。`,
+      )
       break
     }
   }

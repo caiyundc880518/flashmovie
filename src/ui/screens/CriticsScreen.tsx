@@ -41,7 +41,7 @@ export function CriticsScreen() {
         const list = (reviewsByCritic.get(c.id) ?? []).slice(-3).reverse()
         if (list.length === 0) return <span className="dim">暂无</span>
         return list
-          .map((r) => `${r.film} ${r.score}分`)
+          .map((r) => `${r.film} ${r.score > 10 ? (r.score / 10).toFixed(1) : r.score.toFixed(1)}分`)
           .join(' / ')
       },
     },
@@ -52,7 +52,8 @@ export function CriticsScreen() {
       <section className="panel">
         <h2>影评人（{critics.length}）</h2>
         <p className="dim">
-          每位影评人有类型偏好与影响力：偏好类型加分（+10），不匹配减分（−5）；平均口碑影响公司声誉。
+          每位影评人有类型偏好与影响力：偏好类型加分（+1.0），不匹配减分（−0.5），评分 10 分制（一位小数）；
+          平均口碑与观众评分共同影响公司声誉。
         </p>
         <DataTable
           columns={columns}

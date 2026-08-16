@@ -5,8 +5,8 @@
 export const IP_CONFIG = {
   /** 沉淀为 IP 的票房门槛（万，片方口径 = 结算 boxOffice） */
   originBoxOffice: 1500,
-  /** 沉淀为 IP 的口碑门槛（影评人平均分 0–100） */
-  originCriticScore: 70,
+  /** 沉淀为 IP 的口碑门槛（影评人平均分，10 分制） */
+  originCriticScore: 7,
   /** IP 等级档位：按系列累计票房（万）取最大满足档 → 等级 = 下标 + 1 */
   levelThresholds: [0, 4000, 8000, 14000, 22000],
   /** 等级上限 */

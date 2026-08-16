@@ -10,6 +10,7 @@ import { chemistryScoreFactor, goldenCombos } from './chemistry'
 import { techBonuses } from './tech'
 import { audienceFit, tolerancePenalty } from './audience'
 import { eventBoxOfficeFactor, eventVfxBonus } from './events'
+import { generateReviewText } from '../config/reviews'
 import type { Rng } from '../rng'
 import { clamp, round1 } from '../rng'
 
@@ -109,11 +110,17 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
   const reviews = computeCriticReviews(state, project, ap, rng)
   const criticScore =
     reviews.length > 0
-      ? Math.round(reviews.reduce((a, r) => a + r.score, 0) / reviews.length)
-      : Math.round(ap)
-  // 影评口碑影响声誉（±6 封顶）；观众容忍度惩罚低口碑片（GDD §6）
+      ? round1(reviews.reduce((a, r) => a + r.score, 0) / reviews.length)
+      : round1(ap / 10)
+  // 观众评分（10 分制一位小数，附观众总评）
+  const audience = computeAudienceScore(state, project, ap, mp, rng)
+  // 影评口碑影响声誉（10 分制 (score-5)×0.7，约 ±3.5）；观众容忍度惩罚低口碑片（GDD §6）
+  // 观众口碑小幅影响声誉（±1）
   const finalRepGain = clamp(
-    reputationGain + Math.round((criticScore - 50) / 15) - tolerancePenalty(state, criticScore),
+    reputationGain +
+      Math.round((criticScore - 5) * 0.7) -
+      tolerancePenalty(state, criticScore) +
+      (audience.score >= 7 ? 1 : audience.score <= 3.5 ? -1 : 0),
     -3,
     6,
   )
@@ -129,6 +136,8 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
     mp: round1(mp),
     criticScore,
     reviews,
+    audienceScore: audience.score,
+    audienceText: audience.text,
     boxOffice: round1(boxOffice),
     reputationGain: finalRepGain,
     groupPerformance,
@@ -175,7 +184,7 @@ export function channelRevenue(project: FilmProject, boxOffice: number): number 
   return channels.reduce((s, ch) => s + boxOffice * CHANNEL_INFO[ch].factor, 0)
 }
 
-/** 逐影评人评分：以 AP 为基础，按类型偏好加减分 + 小幅波动 */
+/** 逐影评人评分（10 分制一位小数 + 文字评语）：以 AP/10 为基础，按类型偏好加减分 + 小幅波动 */
 export function computeCriticReviews(
   state: GameState,
   project: FilmProject,
@@ -184,7 +193,7 @@ export function computeCriticReviews(
 ): CriticReview[] {
   const script = state.scripts[project.scriptId]
   return state.world.critics.map((c) => {
-    let s = ap
+    let s = ap / 10
     if (c.taste === 'none') {
       // 无偏好
     } else if (c.taste === script.type) {
@@ -192,12 +201,18 @@ export function computeCriticReviews(
     } else {
       s -= WORLD_CONFIG.tasteMismatchPenalty
     }
-    s += (rng() - 0.5) * 10
-    return { criticId: c.id, criticName: c.name, score: Math.round(clamp(s, 0, 100)) }
+    s += (rng() - 0.5) * 1.0
+    const score = clamp(Math.round(s * 10) / 10, 0, 10)
+    return {
+      criticId: c.id,
+      criticName: c.name,
+      score,
+      text: generateReviewText(rng, score, script.type),
+    }
   })
 }
 
-/** 影评人平均分（兼容旧调用） */
+/** 影评人平均分（10 分制，兼容旧调用） */
 export function computeCriticScore(
   state: GameState,
   project: FilmProject,
@@ -205,8 +220,28 @@ export function computeCriticScore(
   rng: Rng,
 ): number {
   const reviews = computeCriticReviews(state, project, ap, rng)
-  if (reviews.length === 0) return Math.round(ap)
-  return Math.round(reviews.reduce((a, r) => a + r.score, 0) / reviews.length)
+  if (reviews.length === 0) return round1(ap / 10)
+  return round1(reviews.reduce((a, r) => a + r.score, 0) / reviews.length)
+}
+
+/**
+ * 观众评分（10 分制一位小数，附观众总评）：
+ * 观众更看重市场分（MP）与类型契合，宣发热度小幅加成。
+ */
+export function computeAudienceScore(
+  state: GameState,
+  project: FilmProject,
+  ap: number,
+  mp: number,
+  rng: Rng,
+): { score: number; text: string } {
+  const script = state.scripts[project.scriptId]
+  const base = (mp * 0.7 + ap * 0.3) / 10
+  const fit = audienceFit(state, script.type, project.targetRegion)
+  const fitAdjust = (fit - 1) * 5 // 契合 ×0.8–1.3 → ±1.5
+  const hypeAdjust = ((project.hype - 50) / 50) * 0.5 // 宣发 ±0.5
+  const score = clamp(Math.round((base + fitAdjust + hypeAdjust + (rng() - 0.5) * 0.6) * 10) / 10, 0, 10)
+  return { score, text: generateReviewText(rng, score, script.type, true) }
 }
 
 /** 票房与声誉（GDD §7.3） */

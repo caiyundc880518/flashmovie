@@ -343,7 +343,9 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
               </div>
               <div className="stat-row">
                 <span className="stat-label">影评口碑</span>
-                <b>{p.result.criticScore}</b>
+                <b>{fmtScore(p.result.criticScore)} / 10</b>
+                <span className="stat-label">观众口碑</span>
+                <b>{fmtScore(p.result.audienceScore ?? 0)} / 10</b>
                 <span className="stat-label">声誉变化</span>
                 <span className={p.result.reputationGain >= 0 ? 'good' : 'bad'}>
                   {p.result.reputationGain >= 0 ? '+' : ''}
@@ -406,7 +408,12 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
         <section className="panel">
           <h2>影评人</h2>
           {p.stage === 'released' && p.result ? (
-            <CriticReviews reviews={p.result.reviews} average={p.result.criticScore} title="上映后评分" />
+            <CriticReviews
+              reviews={p.result.reviews}
+              average={p.result.criticScore}
+              title="上映后评分"
+              audience={{ score: p.result.audienceScore ?? 0, text: p.result.audienceText }}
+            />
           ) : preview ? (
             <CriticReviews reviews={preview.reviews} title="影评预测" />
           ) : null}
@@ -509,20 +516,29 @@ function TeamLine({
 }
 
 function scoreColor(score: number): string {
-  if (score >= 80) return 'var(--ok)'
-  if (score >= 60) return 'var(--gold)'
+  const s = score > 10 ? score / 10 : score // 兼容旧档 0–100
+  if (s >= 8) return 'var(--ok)'
+  if (s >= 6) return 'var(--gold)'
   return 'var(--danger)'
 }
 
-/** 影评人评分列表（含预测） */
+/** 10 分制显示（旧档 0–100 自动换算），一位小数 */
+function fmtScore(score: number): string {
+  const s = score > 10 ? score / 10 : score
+  return s.toFixed(1)
+}
+
+/** 影评人评分列表（含预测）：10 分制 + 文字评语；旧档无评语显示 — */
 function CriticReviews({
   reviews,
   title,
   average,
+  audience,
 }: {
   reviews: CriticReview[] | undefined
   title: string
   average?: number
+  audience?: { score: number; text?: string }
 }) {
   if (!reviews || reviews.length === 0) return null
   return (
@@ -531,19 +547,30 @@ function CriticReviews({
       {reviews.map((r) => (
         <div key={r.criticId} className="critic-row">
           <span className="critic-name">{r.criticName}</span>
-          <Bar value={r.score} max={100} color={scoreColor(r.score)} showValue={false} />
+          <Bar value={r.score > 10 ? r.score / 10 : r.score} max={10} color={scoreColor(r.score)} showValue={false} />
           <span className="critic-score" style={{ color: scoreColor(r.score) }}>
-            {r.score}
+            {fmtScore(r.score)}
           </span>
+          <span className="critic-quote">「{r.text ?? '—'}」</span>
         </div>
       ))}
       {average !== undefined && (
         <div className="critic-row critic-avg">
           <span className="critic-name">平均</span>
-          <Bar value={average} max={100} color={scoreColor(average)} showValue={false} />
+          <Bar value={average > 10 ? average / 10 : average} max={10} color={scoreColor(average)} showValue={false} />
           <span className="critic-score" style={{ color: scoreColor(average) }}>
-            {average}
+            {fmtScore(average)}
           </span>
+        </div>
+      )}
+      {audience && (
+        <div className="critic-row critic-avg">
+          <span className="critic-name">观众口碑</span>
+          <Bar value={audience.score} max={10} color={scoreColor(audience.score)} showValue={false} />
+          <span className="critic-score" style={{ color: scoreColor(audience.score) }}>
+            {fmtScore(audience.score)}
+          </span>
+          <span className="critic-quote">「{audience.text ?? '—'}」</span>
         </div>
       )}
     </div>

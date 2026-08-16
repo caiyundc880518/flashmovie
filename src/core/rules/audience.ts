@@ -64,10 +64,10 @@ export function avgTolerance(state: GameState): number {
   return list.reduce((s, g) => s + g.size * g.tolerance, 0) / total
 }
 
-/** 低口碑片的观众容忍度惩罚：criticScore < 60 时按(60-score)/10 × 系数 × (1-容忍度) 扣声誉 */
+/** 低口碑片的观众容忍度惩罚：影评 < 6.0（10 分制）时按(6-score) × 系数 × (1-容忍度) 扣声誉 */
 export function tolerancePenalty(state: GameState, criticScore: number): number {
-  if (criticScore >= 60) return 0
+  if (criticScore >= 6) return 0
   const cfg = WORLD_CONFIG.audience
   const tolerance = avgTolerance(state)
-  return Math.round(((60 - criticScore) / 10) * cfg.tolerancePenaltyPer10 * (1 - tolerance))
+  return Math.round((6 - criticScore) * cfg.tolerancePenaltyPer10 * (1 - tolerance))
 }
