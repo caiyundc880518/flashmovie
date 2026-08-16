@@ -25,7 +25,7 @@ function makeRichState(seed = 3): GameState {
       groupPerformance: [],
       week: 10,
       year: 1,
-      revenue: 9000,
+      revenue: 17000,
     },
   ]
   return s
@@ -50,7 +50,7 @@ describe('IPO 上市（GDD §3.1）', () => {
   it('条件达标：融资入账、上市状态与新闻', () => {
     let s = makeRichState(9)
     const cashBefore = s.company.cash
-    const valuation = Math.round(70 * IPO_CONFIG.valuationPerRep + 9000 * IPO_CONFIG.valuationRevenueRatio)
+    const valuation = Math.round(70 * IPO_CONFIG.valuationPerRep + 17000 * IPO_CONFIG.valuationRevenueRatio)
     const raised = Math.round(valuation * IPO_CONFIG.raiseRatio)
     s = reduce(s, { type: 'ipo' })
     expect(s.company.public).toBeDefined()
@@ -104,7 +104,7 @@ describe('IPO 上市（GDD §3.1）', () => {
     s.calendar = { year: 1, week: 12 }
     s = reduce(s, { type: 'advanceWeek' })
     // 2000×0.03=60 > 50 保底；再扣周办公成本 5
-    expect(s.company.cash).toBe(2000 - 5 - 60)
+    expect(s.company.cash).toBe(2000 - 5 - 100)
     expect(s.world.news.some((n) => n.text.includes('股东分红'))).toBe(true)
   })
 
@@ -118,8 +118,8 @@ describe('IPO 上市（GDD §3.1）', () => {
     ]
     s.calendar = { year: 1, week: 12 }
     s = reduce(s, { type: 'advanceWeek' })
-    // 1000 - 5 办公 = 995；+18 IP 授权 = 1013；分红 = max(50, 1013×3%≈30) = 50 → 963
-    expect(s.company.cash).toBe(963)
+    // 1000 - 5 办公 = 995；+18 IP 授权 = 1013；分红 = max(50, 1013×5%≈51) = 51 → 962
+    expect(s.company.cash).toBe(962)
     expect(s.company.ips[0].royaltyEarned).toBe(18)
   })
 

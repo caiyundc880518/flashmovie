@@ -28,7 +28,7 @@ export const ECONOMY = {
   weeksPerYear: 52,
 
   /** 制作成本：每场次基础成本（万） */
-  costPerStage: 10,
+  costPerStage: 12,
   /** VFX：预算加成 = vfxPercent/100 × vfxCostFactor */
   vfxCostFactor: 0.5,
   /** 植入广告：一次性收入（万），代价 AP-10 */
@@ -47,17 +47,18 @@ export const ECONOMY = {
   cinemaShare: 0.45,
   /**
    * 票房基准 = 场次数 × boxOfficeBasePerStage（万）。
-   * 目标平衡：中型电影总成本约 500–800 万（预算+薪酬+宣发），
-   * 平均票房分账后应让"决策达标"的片盈利 30%–100%。
+   * 目标平衡（V3 长线校准）：中型片（scale 8）总成本约 600–900 万，
+   * 良好决策的片 gross 1500–2500 万、渠道分账后净赚 30%–80%；
+   * 明星团队 + 全加成叠满上限约 5000–7000 万，避免现金滚雪球失控。
    */
-  boxOfficeBasePerStage: 150,
+  boxOfficeBasePerStage: 110,
   /** 票房修正系数范围 */
   boxOfficeFactor: {
     /** mp 0–100 → 0.4–2.0 */
     mpMin: 0.4,
     mpSpan: 1.6,
-    /** hype 0–100 → 1–2 */
-    hypeSpan: 1.0,
+    /** hype 0–100 → 1–1.7 */
+    hypeSpan: 0.7,
     /** trend 契合 0–1 → 1–1.3 */
     trendSpan: 0.3,
     /** 声誉 0–100 → 1–1.5 */

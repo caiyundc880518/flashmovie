@@ -204,7 +204,12 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
       draft.scripts[script.id] = script
       draft.company.ownedScriptIds.push(script.id)
       if (writer) writer.experience += 20 // 写作实践（Post-Scripting Buff 基础）
-      delete draft.writerQueues[writerId]
+      // 签约编剧持续创作：产出后自动接下个剧本（修复：产出即闲置的断供 bug）
+      draft.writerQueues[writerId] = randInt(
+        rng,
+        SCRIPT_POOL.writerProduceWeeks[0],
+        SCRIPT_POOL.writerProduceWeeks[1],
+      )
     } else {
       draft.writerQueues[writerId] = next
     }

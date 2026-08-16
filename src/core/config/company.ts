@@ -21,16 +21,16 @@ export const SCHOOL_CONFIG = {
 export const IPO_CONFIG = {
   /** 上市条件：最低声誉 0–100 */
   minReputation: 60,
-  /** 上市条件：累计片方收入（万） */
-  minTotalRevenue: 8000,
+  /** 上市条件：累计片方收入（万，V3 长线校准后定为中期目标） */
+  minTotalRevenue: 16000,
   /** 估值 = 声誉 × perRep + 累计收入 × revenueRatio（万） */
   valuationPerRep: 60,
   valuationRevenueRatio: 0.6,
   /** 融资额 = 估值 × raiseRatio */
   raiseRatio: 0.35,
-  /** 季度股东分红 = max(分红基数, 现金 × 比例)（万） */
+  /** 季度股东分红 = max(分红基数, 现金 × 比例)（万；上市后压制现金滚雪球） */
   dividendBase: 50,
-  dividendRatio: 0.03,
+  dividendRatio: 0.05,
   /** 上市后贷款额度倍数（原 ECONOMY.loanCapFactor ×3） */
   loanCapFactorAfter: 5,
   /** 上市后 IP 季度授权收入倍率 */
