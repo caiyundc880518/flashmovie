@@ -536,6 +536,121 @@ select {
 }
 
 /* ===== 组队 / 配置 ===== */
+.team-slot-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.team-slot-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.team-slot-card:hover {
+  border-color: var(--gold);
+}
+.team-slot-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.slot-title {
+  font-weight: 600;
+  letter-spacing: 1px;
+  flex: 1;
+}
+.tag-required {
+  color: var(--gold);
+  border: 1px solid rgba(232, 182, 76, 0.5);
+}
+.team-slot-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 104px;
+}
+.team-slot-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.team-slot-foot {
+  border-top: 1px dashed var(--border);
+  padding-top: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.slot-link {
+  color: var(--gold);
+  font-size: 12px;
+}
+.slot-remove {
+  color: var(--danger);
+  background: transparent;
+  border-color: transparent;
+  padding: 0 6px;
+  font-size: 13px;
+}
+.slot-add-card {
+  border-style: dashed;
+  justify-content: center;
+  align-items: center;
+  color: var(--text-dim);
+}
+.slot-add-card:hover {
+  border-color: var(--gold);
+}
+.slot-add-card .team-slot-empty {
+  flex-direction: row;
+  gap: 8px;
+  font-size: 14px;
+}
+/* 选人弹窗：候选人卡片 */
+.candidate-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 14px;
+  margin-top: 14px;
+}
+.candidate-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  transition: border-color 0.15s;
+}
+.candidate-card:hover {
+  border-color: var(--accent);
+}
+.candidate-disabled {
+  opacity: 0.45;
+}
+.candidate-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.ok {
+  color: var(--ok);
+}
 .slot-list {
   display: flex;
   flex-direction: column;

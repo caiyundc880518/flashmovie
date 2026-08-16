@@ -1,12 +1,15 @@
 import { useState } from 'react'
+import type { Worker } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { ECONOMY } from '../../core/config/economy'
 import { IP_CONFIG } from '../../core/config/ip'
 import { vfxTier, vfxTypeFactor } from '../../core/rules/scoring'
-import { TYPE_ZH, fmtWan } from '../format'
+import { ROLE_ZH, TYPE_ZH, fmtWan } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { MoneyText } from '../components/MoneyText'
 import { Modal } from '../components/Modal'
+import { Bar } from '../components/Bar'
+import { WorkerDetail } from '../components/WorkerDetail'
 
 interface Slots {
   directorId: string
@@ -18,42 +21,32 @@ interface Slots {
   technicianId: string
 }
 
-const SLOT_LABEL: Record<keyof Slots, string> = {
-  directorId: '导演',
-  actorIds: '演员',
-  shooterId: '摄影',
-  editorId: '剪辑',
-  marketId: '市场',
-  producerId: '制片人（可选）',
-  technicianId: '技术/特效（可选）',
+type SlotKey = Exclude<keyof Slots, 'actorIds'>
+
+/** 槽位定义：必配/可选 + 核心技能 + 一句话职责 */
+const SLOT_DEFS: Record<SlotKey, { label: string; required: boolean; coreSkill?: string; hint: string }> = {
+  directorId: { label: '导演', required: true, coreSkill: 'direct', hint: '定拍摄导向，贡献 Directing 分并决定拍摄速度。' },
+  shooterId: { label: '摄影', required: true, coreSkill: 'shoot', hint: '贡献 Shooting 分，是拍摄小游戏的增益载体。' },
+  editorId: { label: '剪辑', required: true, coreSkill: 'edit', hint: '贡献 Edit 分，剪辑取向决定市场向/艺术向 Buff。' },
+  marketId: { label: '市场', required: true, coreSkill: 'market', hint: '提升 Hype、谈发行渠道与最终 MP。' },
+  producerId: { label: '制片人', required: false, hint: '降低制作成本、提升剧本供给质量。' },
+  technicianId: { label: '技术/特效', required: false, coreSkill: 'vfx', hint: 'VFX 技能决定可用的特效等级上限。' },
 }
 
-function RoleSelect({
-  label,
-  value,
-  employees,
-  onChange,
-  placeholder,
-}: {
-  label: string
-  value: string
-  employees: Array<{ id: string; name: string }>
-  onChange: (v: string) => void
-  placeholder?: string
-}) {
-  return (
-    <div className="slot-row">
-      <span className="slot-label">{label}</span>
-      <select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">{placeholder ?? '— 选择 —'}</option>
-        {employees.map((w) => (
-          <option key={w.id} value={w.id}>
-            {w.name}
-          </option>
-        ))}
-      </select>
-    </div>
-  )
+const SKILL_ZH: Record<string, string> = {
+  act: '演技',
+  direct: '导演',
+  shoot: '摄影',
+  edit: '剪辑',
+  market: '市场',
+  advertise: '广告',
+  vfx: '特效',
+  technical: '技术',
+}
+
+interface PickerState {
+  key: SlotKey | 'actor'
+  index?: number
 }
 
 export function TeamBuildScreen({
@@ -79,6 +72,8 @@ export function TeamBuildScreen({
   const [hasAd, setHasAd] = useState(false)
   const [ipId, setIpId] = useState('')
   const [msg, setMsg] = useState('')
+  const [picker, setPicker] = useState<PickerState | null>(null)
+  const [detailId, setDetailId] = useState<string | null>(null)
   const [created, setCreated] = useState<{
     id: string
     name: string
@@ -93,10 +88,27 @@ export function TeamBuildScreen({
   const owned = state.company.ownedScriptIds
     .map((id) => state.scripts[id])
     .filter((sc) => sc && !usedScriptIds.has(sc.id))
-  const busyIds = new Set(state.projects.filter((p) => p.stage !== 'released').flatMap((p) => Object.values(p.team).flat()))
-  const available = state.company.employeeIds
+  // 忙碌：正在非 released 项目中的员工
+  const busySet = new Set(
+    state.projects
+      .filter((p) => p.stage !== 'released')
+      .flatMap((p) => Object.values(p.team).flat()),
+  )
+  const allEmployees = state.company.employeeIds
     .map((id) => state.workers[id])
-    .filter((w) => w && !busyIds.has(w.id))
+    .filter((w): w is Worker => !!w)
+  // 已占用的人（选人弹窗里禁用，避免一人身兼数职）
+  const pickedIds = new Set(
+    [
+      slots.directorId,
+      slots.shooterId,
+      slots.editorId,
+      slots.marketId,
+      slots.producerId,
+      slots.technicianId,
+      ...slots.actorIds,
+    ].filter(Boolean),
+  )
 
   const script = state.scripts[scriptId]
   const techSkill = state.workers[slots.technicianId]?.skills.vfx ?? 40
@@ -111,13 +123,33 @@ export function TeamBuildScreen({
     ? Math.min(100, Math.round(IP_CONFIG.sequelHypeBase + selectedIp.level * IP_CONFIG.sequelHypePerLevel))
     : 0
 
-  const setSlot = (key: keyof Slots, value: string) => setSlots((s) => ({ ...s, [key]: value }))
+  const setSlot = (key: SlotKey, value: string) => setSlots((s) => ({ ...s, [key]: value }))
   const setActor = (idx: number, value: string) =>
     setSlots((s) => {
       const actorIds = [...s.actorIds]
       actorIds[idx] = value
       return { ...s, actorIds }
     })
+  const addActor = () => setSlots((s) => ({ ...s, actorIds: [...s.actorIds, ''] }))
+  const removeActor = (idx: number) =>
+    setSlots((s) => {
+      const actorIds = s.actorIds.filter((_, i) => i !== idx)
+      return { ...s, actorIds: actorIds.length > 0 ? actorIds : [''] }
+    })
+
+  const openPicker = (key: SlotKey | 'actor', index?: number) => setPicker({ key, index })
+  const pickWorker = (w: Worker) => () => {
+    if (!picker) return
+    if (picker.key === 'actor') setActor(picker.index ?? 0, w.id)
+    else setSlot(picker.key, w.id)
+    setPicker(null)
+  }
+
+  const busyProjectName = (w: Worker) => {
+    if (!w.currentProjectId) return ''
+    const p = state.projects.find((x) => x.id === w.currentProjectId && x.stage !== 'released')
+    return p ? `《${p.name}》` : ''
+  }
 
   const start = () => {
     if (!script) return setMsg('请先选择剧本')
@@ -161,6 +193,97 @@ export function TeamBuildScreen({
     setSlots({ directorId: '', actorIds: [''], shooterId: '', editorId: '', marketId: '', producerId: '', technicianId: '' })
   }
 
+  /** 槽位卡片主体：已选员工摘要 or 空占位 */
+  const slotBody = (w: Worker | undefined, def: { label: string; coreSkill?: string }) => {
+    if (!w) {
+      return (
+        <div className="team-slot-empty">
+          <span>未选择</span>
+          <span className="dim">点击选择{def.label}</span>
+        </div>
+      )
+    }
+    return (
+      <>
+        <div className="table-name">{w.name}</div>
+        <div className="dim">
+          {ROLE_ZH[w.role]} · {w.gender === 'male' ? '男' : '女'} · {w.age}岁
+        </div>
+        <div className="attr-line">
+          PA {w.basic.pa} · CA <b className="ca-cell">{w.basic.ca}</b> · Fame {Math.round(w.basic.fame)}
+        </div>
+        <div className="attr-line">
+          心情 {Math.round(w.active.mood)} · 周薪 <MoneyText value={w.salary} />
+        </div>
+        {def.coreSkill && (
+          <Bar label={`${SKILL_ZH[def.coreSkill]}技能`} value={w.skills[def.coreSkill as keyof typeof w.skills]} />
+        )}
+      </>
+    )
+  }
+
+  /** 单个槽位卡片 */
+  const slotCard = (key: SlotKey, value: string) => {
+    const def = SLOT_DEFS[key]
+    const w = value ? state.workers[value] : undefined
+    return (
+      <div key={key} className="team-slot-card" onClick={() => openPicker(key)}>
+        <div className="team-slot-head">
+          <span className="slot-title">{def.label}</span>
+          <span className="tag tag-required">{def.required ? '必配' : '可选'}</span>
+        </div>
+        <div className="team-slot-body">{slotBody(w, def)}</div>
+        <div className="team-slot-foot">
+          <span className="slot-link">{w ? '更换人选 ⇄' : '选择人选 ⇄'}</span>
+          <span className="dim">{def.required ? '' : '可空缺'}</span>
+        </div>
+      </div>
+    )
+  }
+
+  /** 演员槽位卡片（1–3 名，可移除） */
+  const actorSlotCard = (idx: number, value: string) => {
+    const w = value ? state.workers[value] : undefined
+    return (
+      <div key={`actor-${idx}`} className="team-slot-card" onClick={() => openPicker('actor', idx)}>
+        <div className="team-slot-head">
+          <span className="slot-title">演员 {idx + 1}</span>
+          <span className="tag tag-required">必配</span>
+          <button
+            className="slot-remove"
+            title="移除该演员槽位"
+            onClick={(e) => {
+              e.stopPropagation()
+              removeActor(idx)
+            }}
+          >
+            ✕
+          </button>
+        </div>
+        <div className="team-slot-body">{slotBody(w, { label: '演员', coreSkill: 'act' })}</div>
+        <div className="team-slot-foot">
+          <span className="slot-link">{w ? '更换人选 ⇄' : '选择人选 ⇄'}</span>
+          <span className="dim">票房人气来源</span>
+        </div>
+      </div>
+    )
+  }
+
+  const pickerDef = picker && picker.key !== 'actor' ? SLOT_DEFS[picker.key] : null
+  const pickerTitle = picker
+    ? picker.key === 'actor'
+      ? `选择演员 ${(picker.index ?? 0) + 1}`
+      : `选择${SLOT_DEFS[picker.key].label}`
+    : ''
+  const pickerCoreSkill = pickerDef?.coreSkill
+  const currentValue =
+    picker && picker.key !== 'actor'
+      ? slots[picker.key]
+      : picker
+        ? slots.actorIds[picker.index ?? 0]
+        : ''
+  const detailWorker = detailId ? state.workers[detailId] : undefined
+
   return (
     <div className="screen">
       <section className="panel">
@@ -187,31 +310,23 @@ export function TeamBuildScreen({
       {script && (
         <section className="panel">
           <h2>组建剧组 — 《{script.title}》</h2>
-          <div className="slot-list">
-            <RoleSelect label={SLOT_LABEL.directorId} value={slots.directorId} employees={available} onChange={(v) => setSlot('directorId', v)} />
-            {slots.actorIds.map((aid, idx) => (
-              <div key={idx} className="slot-row">
-                <span className="slot-label">演员 {idx + 1}</span>
-                <select value={aid} onChange={(e) => setActor(idx, e.target.value)}>
-                  <option value="">— 选择 —</option>
-                  {available.map((w) => (
-                    <option key={w.id} value={w.id}>
-                      {w.name}
-                    </option>
-                  ))}
-                </select>
-                {idx === slots.actorIds.length - 1 && slots.actorIds.length < 3 && (
-                  <button onClick={() => setSlots((s) => ({ ...s, actorIds: [...s.actorIds, ''] }))}>
-                    ＋
-                  </button>
-                )}
+          <p className="dim">点击槽位卡片选择成员，弹窗里可查看每位员工的完整信息。</p>
+          <div className="team-slot-grid">
+            {slotCard('directorId', slots.directorId)}
+            {slots.actorIds.map((aid, idx) => actorSlotCard(idx, aid))}
+            {slots.actorIds.length < 3 && (
+              <div className="team-slot-card slot-add-card" onClick={addActor}>
+                <div className="team-slot-empty">
+                  <span>＋</span>
+                  <span>添加演员（最多 3 名）</span>
+                </div>
               </div>
-            ))}
-            <RoleSelect label={SLOT_LABEL.shooterId} value={slots.shooterId} employees={available} onChange={(v) => setSlot('shooterId', v)} />
-            <RoleSelect label={SLOT_LABEL.editorId} value={slots.editorId} employees={available} onChange={(v) => setSlot('editorId', v)} />
-            <RoleSelect label={SLOT_LABEL.marketId} value={slots.marketId} employees={available} onChange={(v) => setSlot('marketId', v)} />
-            <RoleSelect label={SLOT_LABEL.producerId} value={slots.producerId} employees={available} onChange={(v) => setSlot('producerId', v)} />
-            <RoleSelect label={SLOT_LABEL.technicianId} value={slots.technicianId} employees={available} onChange={(v) => setSlot('technicianId', v)} />
+            )}
+            {slotCard('shooterId', slots.shooterId)}
+            {slotCard('editorId', slots.editorId)}
+            {slotCard('marketId', slots.marketId)}
+            {slotCard('producerId', slots.producerId)}
+            {slotCard('technicianId', slots.technicianId)}
           </div>
 
           {state.company.ips.length > 0 && (
@@ -266,6 +381,78 @@ export function TeamBuildScreen({
             立项
           </button>
         </section>
+      )}
+
+      {/* 选人弹窗：候选人完整信息 */}
+      {picker && (
+        <Modal title={pickerTitle} wide onClose={() => setPicker(null)}>
+          {pickerDef && <p className="dim">{pickerDef.hint}</p>}
+          {allEmployees.length === 0 ? (
+            <p className="dim">公司还没有员工，先去「招聘」页雇人吧。</p>
+          ) : (
+            <div className="candidate-grid">
+              {allEmployees.map((w) => {
+                const busy = busySet.has(w.id)
+                const alreadyUsed = pickedIds.has(w.id) && w.id !== currentValue
+                const disabled = busy || alreadyUsed
+                return (
+                  <div key={w.id} className={`candidate-card${disabled ? ' candidate-disabled' : ''}`}>
+                    <div className="candidate-head">
+                      <span className="table-name">{w.name}</span>
+                      <span className="tag">{ROLE_ZH[w.role]}</span>
+                    </div>
+                    <div className="attr-line">
+                      {w.gender === 'male' ? '男' : '女'} · {w.age}岁 · 周薪 <MoneyText value={w.salary} />
+                    </div>
+                    <div className="attr-line">
+                      PA {w.basic.pa} · CA <b className="ca-cell">{w.basic.ca}</b> · Fame {Math.round(w.basic.fame)}
+                    </div>
+                    <div className="attr-line">
+                      心情 {Math.round(w.active.mood)} · 状态{' '}
+                      {busy ? (
+                        <span className="warn">拍摄中 {busyProjectName(w)}</span>
+                      ) : (
+                        <span className="ok">空闲{w.idleWeeks > 0 ? `（${w.idleWeeks} 周）` : ''}</span>
+                      )}
+                    </div>
+                    {pickerCoreSkill && (
+                      <Bar
+                        label={`${SKILL_ZH[pickerCoreSkill]}技能`}
+                        value={w.skills[pickerCoreSkill as keyof typeof w.skills]}
+                      />
+                    )}
+                    <div className="btn-row">
+                      <button
+                        className="btn-primary"
+                        disabled={disabled}
+                        onClick={pickWorker(w)}
+                        title={disabled ? (busy ? '该员工正在拍摄其他项目' : '该员工已安排其他职位') : '选用'}
+                      >
+                        选用
+                      </button>
+                      <button onClick={() => setDetailId(w.id)}>详情</button>
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Modal>
+      )}
+
+      {/* 嵌套员工详情（叠加在选人弹窗之上） */}
+      {detailWorker && (
+        <Modal
+          title={
+            <>
+              {detailWorker.name} <span className="dim">{ROLE_ZH[detailWorker.role]}</span>
+            </>
+          }
+          wide
+          onClose={() => setDetailId(null)}
+        >
+          <WorkerDetail worker={detailWorker} />
+        </Modal>
       )}
 
       {created && (
