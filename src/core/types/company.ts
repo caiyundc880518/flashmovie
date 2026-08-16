@@ -1,4 +1,5 @@
 import type { FilmResult } from './film'
+import type { IpAsset } from './ip'
 
 /** 贷款 */
 export interface Loan {
@@ -39,6 +40,8 @@ export interface Company {
   employeeIds: string[]
   /** 历史成片 */
   history: FilmResult[]
+  /** IP 资产（GDD §3.8，系列化经营） */
+  ips: IpAsset[]
 }
 
 export interface FinancialReport {

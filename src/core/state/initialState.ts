@@ -48,6 +48,7 @@ export function createInitialState(seed?: number): GameState {
       ownedScriptIds: [],
       employeeIds: [],
       history: [],
+      ips: [],
     },
     world: {
       marketScripts,

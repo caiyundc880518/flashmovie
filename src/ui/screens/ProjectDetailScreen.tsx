@@ -74,6 +74,15 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
                 预算 <MoneyText value={p.budget} /> · 已花 <MoneyText value={p.spent} />
               </div>
               <div className="attr-line">VFX {p.vfxPercent}%{p.hasAd ? ' · 含植入广告' : ''}</div>
+              {p.ipId && (() => {
+                const ip = state.company.ips.find((x) => x.id === p.ipId)
+                return ip ? (
+                  <div className="attr-line">
+                    系列续作：<span className="tag tag-gold">Lv.{ip.level}</span> 第 {p.ipEntry ?? '?'} 部 · 票房加成
+                    +{Math.round((ip.sequelBonus - 1) * 100)}%
+                  </div>
+                ) : null
+              })()}
               <div className="attr-line">
                 特效等级：
                 <b>{vfxTier(state.workers[p.team.technicianId ?? '']?.skills.vfx ?? 40).label}</b>

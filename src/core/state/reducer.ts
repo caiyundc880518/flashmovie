@@ -8,8 +8,11 @@ import { generateWorker } from '../generators/workerGen'
 import { ECONOMY } from '../config/economy'
 import { SCRIPT_POOL } from '../config/scripts'
 import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../config/company'
+import { IP_CONFIG } from '../config/ip'
+import { ipLevel, refreshIpDerived, royaltyPerQuarter, sequelBonusFactor } from '../rules/ip'
 import { TIMING_CONFIG } from '../config/minigame'
 import type { Action } from './actions'
+import type { IpAsset } from '../types'
 
 /**
  * 状态容器：纯函数 reduce(action, state) → state
@@ -131,6 +134,17 @@ export function reduce(state: GameState, action: Action): GameState {
       const vfx = clamp(action.vfxPercent, 0, 100)
       const budget = script.scale * ECONOMY.costPerStage * (1 + (vfx / 100) * ECONOMY.vfxCostFactor)
       const stage: ProjectStage = 'preparing'
+      // 续作立项（GDD §3.8）：须与 IP 同类型；自带初始热度
+      let ipId: string | undefined
+      let ipEntry: number | undefined
+      let hype = 0
+      if (action.ipId) {
+        const ip = draft.company.ips.find((x) => x.id === action.ipId)
+        if (!ip || script.type !== ip.type) return state
+        ipId = ip.id
+        ipEntry = ip.entry + 1
+        hype = clamp(IP_CONFIG.sequelHypeBase + ip.level * IP_CONFIG.sequelHypePerLevel, 0, 100)
+      }
       draft.projects.push({
         id: uid(draft, 'prj'),
         name: script.title,
@@ -141,7 +155,7 @@ export function reduce(state: GameState, action: Action): GameState {
         shotStages: 0,
         vfxPercent: vfx,
         hasAd: action.hasAd,
-        hype: 0,
+        hype,
         marketingBudget: 0,
         budget: round1(budget),
         spent: 0,
@@ -150,6 +164,8 @@ export function reduce(state: GameState, action: Action): GameState {
         apAdjust: 0,
         pendingEvents: [],
         channels: [] as Channel[],
+        ipId,
+        ipEntry,
       })
       const projectId = draft.projects[draft.projects.length - 1].id
       for (const id of teamIds(action.team)) {
@@ -159,6 +175,13 @@ export function reduce(state: GameState, action: Action): GameState {
       if (action.hasAd) {
         draft.company.cash += ECONOMY.adDealIncome
         pushNews(draft, `《${script.title}》接受植入广告，获得 ${ECONOMY.adDealIncome} 万元赞助。`)
+      }
+      if (ipId) {
+        const ip = draft.company.ips.find((x) => x.id === ipId)
+        pushNews(
+          draft,
+          `《${ip?.name}》第 ${ipEntry} 部立项！${ip ? `IP Lv.${ip.level}` : ''} 自带热度 ${hype}。`,
+        )
       }
       break
     }
@@ -240,7 +263,12 @@ export function reduce(state: GameState, action: Action): GameState {
       if (!p || p.stage !== 'marketing' || p.publisherId) return state
       const pub = draft.world.publishers.find((x) => x.id === action.publisherId)
       if (!pub) return state
-      const prepay = Math.round(pub.prepayBase + pub.reputation * pub.prepayPerRep)
+      let prepay = Math.round(pub.prepayBase + pub.reputation * pub.prepayPerRep)
+      // 续作投资溢价：发行商更愿意为成熟 IP 系列预付（GDD §3.8）
+      if (p.ipId) {
+        const ip = draft.company.ips.find((x) => x.id === p.ipId)
+        if (ip) prepay = Math.round(prepay * (1 + ip.level * IP_CONFIG.publisherPrepayPerLevel))
+      }
       draft.company.cash += prepay
       p.publisherId = pub.id
       pushNews(draft, `与发行商「${pub.name}」签约，获得预付款 ${prepay} 万元。`)
@@ -331,12 +359,64 @@ export function reduce(state: GameState, action: Action): GameState {
       let repGain = result.reputationGain
       if (channels.includes('free')) repGain = clamp(repGain + 2, -3, 6)
       draft.company.reputation = clamp(draft.company.reputation + repGain, 0, 100)
+      // IP 售后与续作（GDD §3.8）：续作成长已有 IP；首作达标则沉淀新 IP
+      let ipName: string | undefined
+      let ipEntry: number | undefined
+      const sequelIp = p.ipId ? draft.company.ips.find((x) => x.id === p.ipId) : undefined
+      if (sequelIp) {
+        sequelIp.entry = Math.max(sequelIp.entry, p.ipEntry ?? sequelIp.entry + 1)
+        sequelIp.totalBoxOffice = round1(sequelIp.totalBoxOffice + result.boxOffice)
+        sequelIp.bestBoxOffice = Math.max(sequelIp.bestBoxOffice, result.boxOffice)
+        sequelIp.bestCriticScore = Math.max(sequelIp.bestCriticScore, result.criticScore)
+        sequelIp.films.push(p.id)
+        const prevLevel = sequelIp.level
+        refreshIpDerived(sequelIp)
+        if (sequelIp.level > prevLevel) {
+          pushNews(
+            draft,
+            `《${sequelIp.name}》系列累计票房突破 ${Math.round(sequelIp.totalBoxOffice)} 万，IP 升级至 Lv.${sequelIp.level}！`,
+          )
+        }
+        ipName = sequelIp.name
+        ipEntry = sequelIp.entry
+      } else if (
+        result.boxOffice >= IP_CONFIG.originBoxOffice &&
+        result.criticScore >= IP_CONFIG.originCriticScore
+      ) {
+        const type = draft.scripts[p.scriptId]?.type ?? 'drama'
+        const lv = ipLevel(result.boxOffice)
+        const newIp: IpAsset = {
+          id: uid(draft, 'ip'),
+          name: p.name,
+          type,
+          entry: 1,
+          originWeek: draft.calendar.week,
+          originYear: draft.calendar.year,
+          totalBoxOffice: round1(result.boxOffice),
+          bestBoxOffice: round1(result.boxOffice),
+          bestCriticScore: result.criticScore,
+          level: lv,
+          royaltyPerQuarter: royaltyPerQuarter(lv),
+          sequelBonus: sequelBonusFactor(lv),
+          royaltyEarned: 0,
+          films: [p.id],
+        }
+        draft.company.ips.push(newIp)
+        pushNews(
+          draft,
+          `《${p.name}》票房 ${Math.round(result.boxOffice)} 万、影评 ${result.criticScore} 分，沉淀为公司 IP（Lv.${lv}），可立项续作！`,
+        )
+        ipName = newIp.name
+        ipEntry = 1
+      }
       applyProjectGrowth(draft, p, result)
       p.result = {
         ...result,
         revenue: round1(revenue),
         channels,
         publisherName: publisher?.name,
+        ipName,
+        ipEntry,
       }
       p.stage = 'released'
       p.releasedWeek = draft.calendar.week

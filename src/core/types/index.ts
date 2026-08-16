@@ -51,6 +51,9 @@ export type {
   Loan,
 } from './company'
 export type {
+  IpAsset,
+} from './ip'
+export type {
   GameState,
   NewsItem,
   Trend,

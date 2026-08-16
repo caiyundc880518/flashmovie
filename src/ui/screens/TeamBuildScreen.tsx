@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { ECONOMY } from '../../core/config/economy'
+import { IP_CONFIG } from '../../core/config/ip'
 import { vfxTier, vfxTypeFactor } from '../../core/rules/scoring'
 import { TYPE_ZH, fmtWan } from '../format'
 import { PosterCard } from '../components/PosterCard'
@@ -76,8 +77,14 @@ export function TeamBuildScreen({
   })
   const [vfx, setVfx] = useState(20)
   const [hasAd, setHasAd] = useState(false)
+  const [ipId, setIpId] = useState('')
   const [msg, setMsg] = useState('')
-  const [created, setCreated] = useState<{ id: string; name: string } | null>(null)
+  const [created, setCreated] = useState<{
+    id: string
+    name: string
+    ipName?: string
+    ipEntry?: number
+  } | null>(null)
 
   if (!state) return null
 
@@ -97,6 +104,13 @@ export function TeamBuildScreen({
     ? script.scale * ECONOMY.costPerStage * (1 + (vfx / 100) * ECONOMY.vfxCostFactor)
     : 0
 
+  // 续作立项（GDD §3.8）：IP 须与剧本同类型
+  const selectedIp = state.company.ips.find((x) => x.id === ipId)
+  const ipTypeMismatch = selectedIp ? selectedIp.type !== script?.type : false
+  const sequelHype = selectedIp
+    ? Math.min(100, Math.round(IP_CONFIG.sequelHypeBase + selectedIp.level * IP_CONFIG.sequelHypePerLevel))
+    : 0
+
   const setSlot = (key: keyof Slots, value: string) => setSlots((s) => ({ ...s, [key]: value }))
   const setActor = (idx: number, value: string) =>
     setSlots((s) => {
@@ -111,6 +125,7 @@ export function TeamBuildScreen({
     if (!slots.directorId || actors.length === 0 || !slots.shooterId || !slots.editorId || !slots.marketId) {
       return setMsg('导演 / 至少一名演员 / 摄影 / 剪辑 / 市场 为必配职位')
     }
+    if (ipTypeMismatch) return setMsg(`续作须与 IP「${selectedIp?.name}」同类型（${TYPE_ZH[selectedIp?.type ?? 'drama']}）`)
     dispatch({
       type: 'startProject',
       scriptId,
@@ -125,15 +140,24 @@ export function TeamBuildScreen({
       },
       vfxPercent: vfx,
       hasAd,
+      ipId: selectedIp?.id,
     })
     // 从最新状态找到刚创建的项目，弹窗引导前往项目页
     const latest = useGameStore.getState().state
     const createdProject = latest?.projects.find((x) => x.scriptId === scriptId)
     if (createdProject) {
-      setCreated({ id: createdProject.id, name: createdProject.name })
+      setCreated({
+        id: createdProject.id,
+        name: createdProject.name,
+        ipName: createdProject.ipId
+          ? latest?.company.ips.find((x) => x.id === createdProject.ipId)?.name
+          : undefined,
+        ipEntry: createdProject.ipEntry,
+      })
     }
     setMsg('')
     setScriptId('')
+    setIpId('')
     setSlots({ directorId: '', actorIds: [''], shooterId: '', editorId: '', marketId: '', producerId: '', technicianId: '' })
   }
 
@@ -190,6 +214,29 @@ export function TeamBuildScreen({
             <RoleSelect label={SLOT_LABEL.technicianId} value={slots.technicianId} employees={available} onChange={(v) => setSlot('technicianId', v)} />
           </div>
 
+          {state.company.ips.length > 0 && (
+            <div className="config-row">
+              <label className="config-label">续作立项（IP 系列化）</label>
+              <select value={ipId} onChange={(e) => setIpId(e.target.value)}>
+                <option value="">— 新 IP（原创作品）—</option>
+                {state.company.ips.map((ip) => (
+                  <option key={ip.id} value={ip.id}>
+                    {ip.name} · 第 {ip.entry} 部 · Lv.{ip.level}（票房 +{Math.round((ip.sequelBonus - 1) * 100)}%）
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+          {selectedIp && (
+            <p className="dim">
+              续作《{selectedIp.name}》第 {selectedIp.entry + 1} 部
+              <b style={{ color: 'var(--gold)' }}> · 初始热度 {sequelHype}</b> · 票房加成 +{Math.round((selectedIp.sequelBonus - 1) * 100)}% · 发行商预付款加成 +{Math.round(selectedIp.level * IP_CONFIG.publisherPrepayPerLevel * 100)}%
+              {ipTypeMismatch && (
+                <span className="warn">（本片为 {TYPE_ZH[script?.type ?? 'drama']}，续作须为 {TYPE_ZH[selectedIp.type]}）</span>
+              )}
+            </p>
+          )}
+
           <div className="config-row">
             <label className="config-label">VFX 预算占比</label>
             <input type="range" min={0} max={100} step={5} value={vfx} onChange={(e) => setVfx(Number(e.target.value))} />
@@ -215,7 +262,7 @@ export function TeamBuildScreen({
           </div>
 
           {msg && <p className="msg">{msg}</p>}
-          <button className="btn-primary" onClick={start}>
+          <button className="btn-primary" onClick={start} disabled={ipTypeMismatch}>
             立项
           </button>
         </section>
@@ -226,6 +273,11 @@ export function TeamBuildScreen({
           <p>
             《{created.name}》剧组已组建完成，等待开拍。
           </p>
+          {created.ipName && created.ipEntry && (
+            <p className="dim">
+              已作为「{created.ipName}」系列第 {created.ipEntry} 部续作立项，自带初始热度与系列观众加成。
+            </p>
+          )}
           <p className="dim">
             前往「项目」页开拍吧——拍摄途中会遇到随机事件，别忘了参与拍摄小游戏赚取 Buff。
           </p>

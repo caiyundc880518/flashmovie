@@ -2,6 +2,7 @@ import type { Competitor, CompetitorFilm, FilmProject, GameState, ProjectEvent, 
 import { FILM_TYPES } from '../types'
 import { ECONOMY } from '../config/economy'
 import { SCHOOL_CONFIG } from '../config/company'
+import { IP_CONFIG } from '../config/ip'
 import { SCRIPT_POOL } from '../config/scripts'
 import { SHOOTING_EVENTS } from '../config/events'
 import { WORLD_CONFIG } from '../config/world'
@@ -50,6 +51,18 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
   for (const id of draft.company.employeeIds) {
     const w = draft.workers[id]
     if (w) draft.company.cash -= w.salary
+  }
+
+  // 1.5 IP 衍生授权收入：每季度（13 周）结算周边/授权/画廊收入（GDD §3.8）
+  if (draft.company.ips.length > 0 && draft.calendar.week % IP_CONFIG.quarterWeeks === 0) {
+    const royalty = round1(draft.company.ips.reduce((s, ip) => s + ip.royaltyPerQuarter, 0))
+    if (royalty > 0) {
+      draft.company.cash += royalty
+      for (const ip of draft.company.ips) {
+        ip.royaltyEarned = round1(ip.royaltyEarned + ip.royaltyPerQuarter)
+      }
+      pushNews(draft, `IP 衍生授权季度结算：周边/授权/画廊共收入 ${royalty} 万元。`)
+    }
   }
 
   // 2. 贷款每周还款

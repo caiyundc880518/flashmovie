@@ -584,6 +584,11 @@ input[type='range'] {
   color: var(--gold);
   font-size: 13px;
 }
+.warn {
+  color: var(--danger, #ff6b6b);
+  font-size: 12px;
+  margin-left: 6px;
+}
 
 /* ===== 项目详情 ===== */
 .team-line {

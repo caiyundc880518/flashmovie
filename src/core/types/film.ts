@@ -54,6 +54,10 @@ export interface FilmProject {
   channels: Channel[]
   /** 已签约发行商 id */
   publisherId?: string
+  /** 所属 IP 资产 id（续作立项时写入，GDD §3.8） */
+  ipId?: string
+  /** 本片在系列中的部数（首作 1，续作 2+） */
+  ipEntry?: number
   /** 结算结果（released 后写入） */
   result?: FilmResult
   /** 进入 released 的周（用于结果记录） */
@@ -133,4 +137,8 @@ export interface FilmResult {
   channels?: Channel[]
   /** 发行商名（旧档可能缺省） */
   publisherName?: string
+  /** 所属 IP 系列名（续作或新沉淀 IP，旧档可能缺省） */
+  ipName?: string
+  /** 本片在系列中的部数（旧档可能缺省） */
+  ipEntry?: number
 }

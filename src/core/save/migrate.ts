@@ -4,6 +4,7 @@ import type {
   FilmProject,
   GameState,
   Investor,
+  IpAsset,
   Publisher,
   World,
 } from '../types'
@@ -21,6 +22,7 @@ import { SAVE_VERSION } from './schema'
  * v2：世界新增 competitors / critics（AI 对手 + 影评人）。
  * v3：世界新增 publishers（发行商）；项目新增 channels（发行渠道）。
  * v4：世界新增 investors（投资人）；公司新增 schoolLevel。
+ * v5：公司新增 ips（IP 资产，GDD §3.8）。
  */
 export function migrateSave(raw: unknown): GameState {
   if (!raw || typeof raw !== 'object') {
@@ -35,6 +37,7 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 1) state = migrateV1toV2(state)
   if (state.version === 2) state = migrateV2toV3(state)
   if (state.version === 3) state = migrateV3toV4(state)
+  if (state.version === 4) state = migrateV4toV5(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
   return state
@@ -67,6 +70,13 @@ function migrateV3toV4(s: GameState): GameState {
     ;(s.company as { schoolLevel?: number }).schoolLevel = 0
   }
   return { ...s, version: 4 }
+}
+
+/** v4 → v5：公司补 IP 资产列表 */
+function migrateV4toV5(s: GameState): GameState {
+  const company = s.company as { ips?: IpAsset[] }
+  if (!Array.isArray(company.ips)) company.ips = []
+  return { ...s, version: 5 }
 }
 
 /** 世界实体为空时，用存档种子派生确定性生成 */

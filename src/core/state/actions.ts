@@ -10,7 +10,7 @@ export type Action =
   | { type: 'fireWorker'; workerId: string }
   | { type: 'takeLoan'; amount: number }
   | { type: 'repayLoan'; loanId: string }
-  | { type: 'startProject'; scriptId: string; team: TeamAssignments; vfxPercent: number; hasAd: boolean }
+  | { type: 'startProject'; scriptId: string; team: TeamAssignments; vfxPercent: number; hasAd: boolean; ipId?: string }
   | { type: 'startShooting'; projectId: string }
   | { type: 'chooseEditStyle'; projectId: string; style: 'market' | 'art' }
   | { type: 'setMarketingBudget'; projectId: string; budget: number }

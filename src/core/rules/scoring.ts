@@ -4,6 +4,7 @@ import { ECONOMY } from '../config/economy'
 import { CHANNEL_INFO } from '../config/channels'
 import { WORLD_CONFIG } from '../config/world'
 import { CHEMISTRY } from '../config/company'
+import { IP_CONFIG } from '../config/ip'
 import { VFX_CONFIG } from '../config/minigame'
 import { chemistryScoreFactor, goldenCombos } from './chemistry'
 import type { Rng } from '../rng'
@@ -208,10 +209,16 @@ export function computeBoxOfficeAndGain(
   const trendActive = state.world.trend !== null && script.type === state.world.trend.type
   const trendFactor = trendActive ? 1 + f.trendSpan : 1
   const repFactor = 1 + (state.company.reputation / 100) * f.reputationSpan
+  // 续作基础观众加成（GDD §3.8）：IP 等级越高，系列观众基础越厚
+  let ipFactor = 1
+  if (project.ipId) {
+    const ip = state.company.ips.find((x) => x.id === project.ipId)
+    if (ip) ipFactor = 1 + ip.level * IP_CONFIG.sequelBonusPerLevel
+  }
   const compFactor = 1 - competitionPenalty(state, state.calendar.week)
   const random = 1 + (rng() - 0.5) * 2 * SCORE_WEIGHTS.variance
 
-  const boxOffice = base * mpFactor * hypeFactor * trendFactor * repFactor * compFactor * random
+  const boxOffice = base * mpFactor * hypeFactor * trendFactor * repFactor * compFactor * ipFactor * random
   const reputationGain = clamp(Math.round((ap - 45) / 10), -3, 5)
   return { boxOffice, reputationGain }
 }

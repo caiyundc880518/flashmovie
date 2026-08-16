@@ -33,6 +33,11 @@ export function ProjectsScreen({ onOpenProject }: { onOpenProject: (id: string) 
                   {p.stage === 'released' && p.result && (
                     <div>
                       票房 {fmtWan(p.result.boxOffice)} · AP {p.result.ap} / MP {p.result.mp}
+                      {p.result.ipName && p.result.ipEntry && (
+                        <div className="dim">
+                          系列「{p.result.ipName}」第 {p.result.ipEntry} 部
+                        </div>
+                      )}
                     </div>
                   )}
                   {p.stage !== 'released' && (
