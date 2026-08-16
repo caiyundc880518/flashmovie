@@ -71,4 +71,10 @@ export const WORLD_CONFIG = {
     /** 低口碑（criticScore < 60）容忍度惩罚系数 */
     tolerancePenaltyPer10: 0.5,
   } as const,
+
+  /** 地区市场（GDD §6 Area：由观众群体按地区聚合） */
+  region: {
+    /** 主攻地区的集中发行加成：factor ×= 1 + 该地区规模占比 × targetBoost */
+    targetBoost: 0.5,
+  } as const,
 } as const

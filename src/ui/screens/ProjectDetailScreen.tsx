@@ -11,6 +11,7 @@ import { useGameStore } from '../store/gameStore'
 import { createRng } from '../../core/rng'
 import { computeFilmResult, vfxTier, vfxTypeFactor } from '../../core/rules/scoring'
 import { goldenCombos, teamChemistry } from '../../core/rules/chemistry'
+import { audienceFit, regionMarkets } from '../../core/rules/audience'
 import { ECONOMY } from '../../core/config/economy'
 import { CHANNEL_INFO, CHANNEL_ORDER } from '../../core/config/channels'
 import { ROLE_ZH, SKILL_ZH, STAGE_ZH, TYPE_ZH, fmtWan, signedDelta } from '../format'
@@ -214,6 +215,43 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
           </div>
           {p.marketingBudget > 0 && <p className="dim">待投放预算 {fmtWan(p.marketingBudget)}</p>}
 
+          <h3>主攻地区（集中宣发）</h3>
+          <div className="slot-row">
+            <span className="slot-label">重点市场</span>
+            <select
+              value={p.targetRegion ?? ''}
+              onChange={(e) =>
+                dispatch({ type: 'setTargetRegion', projectId, region: e.target.value || undefined })
+              }
+            >
+              <option value="">全国通发（按全部观众契合）</option>
+              {regionMarkets(state).map((r) => {
+                const top = (Object.keys(r.focus) as (keyof typeof r.focus)[])
+                  .map((t) => ({ t, v: r.focus[t] }))
+                  .sort((a, b) => b.v - a.v)[0]
+                return (
+                  <option key={r.region} value={r.region}>
+                    {r.region}（占 {Math.round(r.size * 100)}% · 偏好{TYPE_ZH[top.t]}）
+                  </option>
+                )
+              })}
+            </select>
+          </div>
+          {script && (
+            <p className="dim">
+              观众契合：全国 ×{audienceFit(state, script.type).toFixed(2)}
+              {p.targetRegion && (
+                <>
+                  {' '}
+                  → 主攻「{p.targetRegion}」×{audienceFit(state, script.type, p.targetRegion).toFixed(2)}
+                </>
+              )}
+              {p.targetRegion && audienceFit(state, script.type, p.targetRegion) < audienceFit(state, script.type) && (
+                <span className="warn">（当地不偏好此类型，收益下降）</span>
+              )}
+            </p>
+          )}
+
           <h3>发行渠道（片方所得 = 票房 × 渠道比例）</h3>
           <div className="channel-row">
             {CHANNEL_ORDER.map((ch) => {
@@ -326,6 +364,12 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
                 <div className="stat-row">
                   <span className="stat-label">发行商</span>
                   <span>{p.result.publisherName}</span>
+                </div>
+              )}
+              {p.result.targetRegion && (
+                <div className="stat-row">
+                  <span className="stat-label">主攻地区</span>
+                  <span>{p.result.targetRegion}</span>
                 </div>
               )}
               <div className="stat-row">

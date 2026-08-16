@@ -58,6 +58,8 @@ export interface FilmProject {
   ipId?: string
   /** 本片在系列中的部数（首作 1，续作 2+） */
   ipEntry?: number
+  /** 主攻地区（宣发阶段选择，空 = 全国通发；GDD §6 Area） */
+  targetRegion?: string
   /** 结算结果（released 后写入） */
   result?: FilmResult
   /** 进入 released 的周（用于结果记录） */
@@ -160,6 +162,8 @@ export interface FilmResult {
   ipName?: string
   /** 本片在系列中的部数（旧档可能缺省） */
   ipEntry?: number
+  /** 主攻地区（旧档可能缺省） */
+  targetRegion?: string
   /** 成员成长结算明细（旧档可能缺省） */
   settlement?: WorkerSettlement[]
 }

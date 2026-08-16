@@ -6,10 +6,10 @@ import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
 import { IP_CONFIG } from '../../core/config/ip'
 import { TECH_CONFIG, TECH_LINES } from '../../core/config/tech'
 import { techLevelOf, techProgressInLevel } from '../../core/rules/tech'
-import { audienceFit } from '../../core/rules/audience'
+import { audienceFit, regionMarkets, type RegionMarket } from '../../core/rules/audience'
 import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
-import type { AudienceGroup, Competitor, IpAsset } from '../../core/types'
+import type { AudienceGroup, Competitor, GameState, IpAsset } from '../../core/types'
 
 export function CompanyScreen() {
   const state = useGameStore((s) => s.state)
@@ -237,6 +237,19 @@ export function CompanyScreen() {
       </section>
 
       <section className="panel">
+        <h2>地区市场</h2>
+        <p className="dim">
+          按地区聚合观众群体。宣发时可选择「主攻地区」集中发行——当地偏好匹配则票房放大，错配则收益下降。
+        </p>
+        <DataTable<RegionMarket>
+          columns={regionColumns(state)}
+          rows={regionMarkets(state)}
+          rowKey={(r) => r.region}
+          emptyText="暂无地区数据。"
+        />
+      </section>
+
+      <section className="panel">
         <h2>市场动态</h2>
         <DataTable<Competitor>
           columns={competitorColumns}
@@ -272,6 +285,39 @@ const audienceColumns: Column<AudienceGroup>[] = [
           {TYPE_ZH[x.t]} {x.v.toFixed(2)}
         </span>
       ))
+    },
+  },
+]
+
+const regionColumns = (state: GameState): Column<RegionMarket>[] => [
+  { key: 'region', label: '地区', render: (r) => <span className="table-name">{r.region}</span> },
+  { key: 'size', label: '市场份额', render: (r) => `${Math.round(r.size * 100)}%` },
+  {
+    key: 'pref',
+    label: '类型偏好',
+    render: (r) => {
+      const top = (Object.keys(r.focus) as (keyof typeof r.focus)[])
+        .map((t) => ({ t, v: r.focus[t] }))
+        .sort((a, b) => b.v - a.v)
+      return (
+        <>
+          {top.slice(0, 2).map((x, i) => (
+            <span key={x.t}>
+              {i > 0 ? ' · ' : ''}
+              <b>{TYPE_ZH[x.t]}</b> {x.v.toFixed(2)}
+            </span>
+          ))}
+          <span className="dim"> 其余 {top.slice(2).map((x) => TYPE_ZH[x.t]).join('/')}</span>
+        </>
+      )
+    },
+  },
+  {
+    key: 'fit',
+    label: '主流契合',
+    render: (r) => {
+      const fit = audienceFit(state, state.world.trend?.type ?? 'drama', r.region)
+      return <span style={{ color: fit >= 1 ? 'var(--ok)' : 'var(--danger)' }}>×{fit.toFixed(2)}</span>
     },
   },
 ]

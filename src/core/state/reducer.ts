@@ -279,6 +279,18 @@ export function reduce(state: GameState, action: Action): GameState {
       break
     }
 
+    case 'setTargetRegion': {
+      // 主攻地区（GDD §6 Area）：宣发阶段选择集中发行的地区
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'marketing') return state
+      if (action.region) {
+        p.targetRegion = action.region
+      } else {
+        delete p.targetRegion
+      }
+      break
+    }
+
     case 'selectPublisher': {
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p || p.stage !== 'marketing' || p.publisherId) return state
@@ -463,6 +475,7 @@ export function reduce(state: GameState, action: Action): GameState {
         publisherName: publisher?.name,
         ipName,
         ipEntry,
+        targetRegion: p.targetRegion,
         settlement: settlements,
       }
       p.stage = 'released'

@@ -222,8 +222,8 @@ export function computeBoxOfficeAndGain(
   const hypeFactor = 1 + (project.hype / 100) * f.hypeSpan
   const trendActive = state.world.trend !== null && script.type === state.world.trend.type
   const trendFactor = trendActive ? 1 + f.trendSpan : 1
-  // 观众群体契合：类型偏好结构加成（GDD §6）
-  const audienceFactor = audienceFit(state, script.type)
+  // 观众群体契合：类型偏好结构加成；主攻地区按当地偏好 + 集中发行加成（GDD §6）
+  const audienceFactor = audienceFit(state, script.type, project.targetRegion)
   const repFactor = 1 + (state.company.reputation / 100) * f.reputationSpan
   // 续作基础观众加成（GDD §3.8）：IP 等级越高，系列观众基础越厚
   let ipFactor = 1

@@ -21,6 +21,7 @@ export type Action =
   | { type: 'applyEditBuff'; projectId: string; quality: 'perfect' | 'good' | 'miss' }
   | { type: 'resolveEvent'; projectId: string; eventId: string; optionIndex: number }
   | { type: 'setChannels'; projectId: string; channels: Channel[] }
+  | { type: 'setTargetRegion'; projectId: string; region?: string }
   | { type: 'selectPublisher'; projectId: string; publisherId: string }
   | { type: 'upgradeSchool' }
   | { type: 'signInvestor'; investorId: string }
