@@ -370,7 +370,7 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
       )}
 
       {settlement && (
-        <Modal title="📊 上映结算 · 成员成长明细" wide onClose={() => setSettlement(null)}>
+        <Modal title="📊 上映结算 · 成员成长明细" xwide onClose={() => setSettlement(null)}>
           <p className="dim">
             结算已入账：经验、技能、CA、Fame 与心情的变化会在上映时立即生效，并写入个人履历。
           </p>

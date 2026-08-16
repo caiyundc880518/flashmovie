@@ -653,7 +653,8 @@ select {
 }
 .settle-skills {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   gap: 0 8px;
   line-height: 1.7;
 }
@@ -1154,6 +1155,17 @@ input[type='range'] {
 }
 .modal-wide {
   max-width: 1040px;
+}
+.modal-xwide {
+  max-width: 1380px;
+}
+.modal-xwide .modal-body {
+  padding: 34px 42px;
+}
+.modal-xwide .data-table th,
+.modal-xwide .data-table td {
+  white-space: nowrap;
+  padding: 13px 16px;
 }
 .modal-head {
   display: flex;
