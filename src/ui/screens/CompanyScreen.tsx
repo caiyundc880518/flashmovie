@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { SEASON_ZH, TYPE_ZH, fmtWan } from '../format'
 import { ECONOMY } from '../../core/config/economy'
-import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
+import { SCHOOL_CONFIG } from '../../core/config/company'
 import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
 import type { Competitor } from '../../core/types'
@@ -108,49 +108,6 @@ export function CompanyScreen() {
             </button>
           ) : (
             <p className="dim">学校已满级{company.public ? '。' : '（上市后可扩建至 5 级）。'}</p>
-          )}
-        </section>
-
-        <section className="panel">
-          <h2>融资 · 投资人</h2>
-          {company.investor ? (
-            <>
-              <div className="stat-row">
-                <span className="stat-label">投资人</span>
-                <span>{company.investor.name}</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">分成</span>
-                <span>{Math.round(company.investor.share * 100)}% 片方收入</span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">待回收</span>
-                <MoneyText value={company.investor.remainingToCollect} />
-              </div>
-              <p className="dim">上映结算时自动扣除分成，回收完毕投资人退出。</p>
-            </>
-          ) : (
-            <div className="investor-list">
-              {world.investors.map((inv) => {
-                const investment = Math.round(
-                  inv.investmentBase + company.reputation * inv.investmentPerRep,
-                )
-                return (
-                  <div key={inv.id} className="investor-row">
-                    <div>
-                      <div className="table-name">{inv.name}</div>
-                      <div className="dim">
-                        出资 {fmtWan(investment)} · 分成 {Math.round(inv.share * 100)}% · 需回收{' '}
-                        {fmtWan(Math.round(investment * INVESTOR_CONFIG.repayMultiplier))}
-                      </div>
-                    </div>
-                    <button onClick={() => dispatch({ type: 'signInvestor', investorId: inv.id })}>
-                      签约
-                    </button>
-                  </div>
-                )
-              })}
-            </div>
           )}
         </section>
       </div>

@@ -4,6 +4,7 @@ import { CompanyScreen } from '../ui/screens/CompanyScreen'
 import { TechScreen } from '../ui/screens/TechScreen'
 import { AudienceScreen } from '../ui/screens/AudienceScreen'
 import { MarketScreen } from '../ui/screens/MarketScreen'
+import { FinancingScreen } from '../ui/screens/FinancingScreen'
 import { IpoScreen } from '../ui/screens/IpoScreen'
 import { IpsScreen } from '../ui/screens/IpsScreen'
 import { ScriptMarketScreen } from '../ui/screens/ScriptMarketScreen'
@@ -27,6 +28,7 @@ type Nav =
   | { screen: 'tech' }
   | { screen: 'audience' }
   | { screen: 'market' }
+  | { screen: 'financing' }
   | { screen: 'ipo' }
   | { screen: 'marketScripts' }
   | { screen: 'employees' }
@@ -51,6 +53,7 @@ const NAV_GROUPS: Array<{ group: string; items: Array<{ key: NavKey; label: stri
       { key: 'ips', label: 'IP 资产' },
       { key: 'tech', label: '科技研发' },
       { key: 'market', label: '地区市场' },
+      { key: 'financing', label: '融资' },
       { key: 'ipo', label: 'IPO 上市' },
     ],
   },
@@ -226,6 +229,7 @@ export function App() {
           {nav.screen === 'tech' && <TechScreen />}
           {nav.screen === 'audience' && <AudienceScreen />}
           {nav.screen === 'market' && <MarketScreen />}
+          {nav.screen === 'financing' && <FinancingScreen />}
           {nav.screen === 'ipo' && <IpoScreen />}
           {nav.screen === 'ips' && (
             <IpsScreen onSequel={(ipId) => setNav({ screen: 'team', teamIpId: ipId })} />

@@ -456,6 +456,75 @@ select {
   font-size: 12px;
 }
 
+/* ===== 融资 · 投资人卡片 ===== */
+.invest-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 14px;
+  margin-top: 6px;
+}
+.invest-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.invest-card:hover {
+  border-color: var(--gold);
+}
+.invest-card-active {
+  border-color: rgba(232, 182, 76, 0.55);
+}
+.invest-card-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+.invest-card-head .table-name {
+  font-size: 15px;
+}
+.invest-stats {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  padding: 10px 0;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+}
+.invest-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  align-items: center;
+}
+.invest-stat b {
+  font-size: 18px;
+  line-height: 1.1;
+  color: var(--gold);
+}
+.invest-stat span {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.invest-card-sub {
+  color: var(--text-dim);
+  font-size: 11.5px;
+}
+.invest-note {
+  font-size: 12px;
+}
+.invest-footer {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: 10px;
+  border-top: 1px dashed var(--border);
+}
+
 /* ===== 统计行 / 贷款 / 日历 ===== */
 .stat-row {
   display: flex;
