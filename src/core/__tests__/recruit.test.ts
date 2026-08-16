@@ -124,4 +124,26 @@ describe('招聘抽卡（单演员计价，1 抽 / 10 连）', () => {
     expect(s.world.candidates).toHaveLength(1)
     expect(s.company.cash).toBe(10)
   })
+
+  it('演员供给充足：候选人中演员占比明显高于均等职位（千次抽样 ≥ 20%）', () => {
+    const rng = createRng(77)
+    const N = 1000
+    let actors = 0
+    for (let i = 0; i < N; i++) {
+      const [c] = generateCandidates(rng, 1, 'flow')
+      if (c.role === 'actor') actors++
+    }
+    // 加权后 actor 期望 ~27%（3 / 10.6），均等分布只有 11%
+    expect(actors / N).toBeGreaterThanOrEqual(0.2)
+  })
+
+  it('三档抽卡均能刷出演员（10 连 × 3 档各一局）', () => {
+    for (const pool of RECRUIT_POOLS) {
+      let s = createInitialState(200 + pool.cost)
+      s.company.cash = 100000
+      s = reduce(s, { type: 'refreshCandidates', pool: pool.id, count: 10 })
+      const hasActor = s.world.candidates.some((c) => c.role === 'actor')
+      expect(hasActor).toBe(true)
+    }
+  })
 })

@@ -1,11 +1,11 @@
 import type { Gender, RoleId, SkillMap, Worker } from '../types'
-import { FILM_TYPES, ROLE_IDS, SKILL_KEYS } from '../types'
+import { FILM_TYPES, SKILL_KEYS } from '../types'
 import { BASE_SALARY_BY_ROLE, ROLES } from '../config/roles'
 import { ECONOMY } from '../config/economy'
 import { RECRUIT_POOL_MAP, type RecruitPoolId } from '../config/recruit'
 import { generateName } from '../config/names'
 import type { Rng } from '../rng'
-import { clamp, pick, randInt, round1 } from '../rng'
+import { clamp, pick, randInt, round1, weightedPick } from '../rng'
 
 export type WorkerTier = 'rookie' | 'pro'
 
@@ -14,6 +14,23 @@ export interface PoolOverrides {
   pa: [number, number]
   ca: [number, number]
 }
+
+/**
+ * 职位生成权重（招聘市场人才结构，GDD §4.4）
+ * 每部电影需 1–3 名演员（其他职位各 1 名），因此演员权重最高；
+ * 制片人/助理为可选辅助职位，权重较低。
+ */
+const ROLE_WEIGHTS: ReadonlyArray<readonly [number, RoleId]> = [
+  [3.0, 'actor'],
+  [1.2, 'director'],
+  [1.2, 'shooter'],
+  [1.2, 'editor'],
+  [1.2, 'market'],
+  [0.8, 'technician'],
+  [0.8, 'writer'],
+  [0.6, 'producer'],
+  [0.6, 'assistant'],
+]
 
 /**
  * 生成员工（V1 基础属性与技能，来源 GDD §4.2/§4.3）
@@ -27,7 +44,7 @@ export function generateWorker(
   overrides?: PoolOverrides,
 ): Worker {
   const gender: Gender = rng() < 0.5 ? 'male' : 'female'
-  const roleId = role ?? pick(rng, ROLE_IDS)
+  const roleId = role ?? weightedPick(rng, ROLE_WEIGHTS)
   const age = randInt(rng, 20, 45)
   const height = gender === 'male' ? randInt(rng, 168, 188) : randInt(rng, 158, 176)
   const weight = gender === 'male' ? randInt(rng, 58, 85) : randInt(rng, 45, 65)
