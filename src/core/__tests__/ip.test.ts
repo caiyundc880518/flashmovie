@@ -184,6 +184,8 @@ describe('IP 售后与续作', () => {
     expect(proj.ipId).toBe(ip.id)
     expect(proj.ipEntry).toBe(3)
     expect(proj.hype).toBeGreaterThan(0)
+    // 续作项目名自动改为「系列名 + 部数」（如《测试系列》 3）
+    expect(proj.name).toBe(`${ip.name} ${ip.entry + 1}`)
 
     // 类型不匹配 → 拒绝（状态引用不变）
     script.type = 'comedy'

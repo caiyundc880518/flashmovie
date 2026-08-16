@@ -209,20 +209,22 @@ export function reduce(state: GameState, action: Action): GameState {
       const budget =
         script.scale * ECONOMY.costPerStage * (1 + (vfx / 100) * ECONOMY.vfxCostFactor * studioDiscount)
       const stage: ProjectStage = 'preparing'
-      // 续作立项（GDD §3.8）：须与 IP 同类型；自带初始热度
+      // 续作立项（GDD §3.8）：须与 IP 同类型；自带初始热度；项目名 = 系列名 + 部数
       let ipId: string | undefined
       let ipEntry: number | undefined
       let hype = 0
+      let projectName = script.title
       if (action.ipId) {
         const ip = draft.company.ips.find((x) => x.id === action.ipId)
         if (!ip || script.type !== ip.type) return state
         ipId = ip.id
         ipEntry = ip.entry + 1
+        projectName = `${ip.name} ${ipEntry}`
         hype = clamp(IP_CONFIG.sequelHypeBase + ip.level * IP_CONFIG.sequelHypePerLevel, 0, 100)
       }
       draft.projects.push({
         id: uid(draft, 'prj'),
-        name: script.title,
+        name: projectName,
         scriptId: script.id,
         stage,
         team: action.team,

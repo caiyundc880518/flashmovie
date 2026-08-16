@@ -178,6 +178,35 @@ export function TeamBuildScreen({
     return p ? `《${p.name}》` : ''
   }
 
+  /** 一键沿用上一部原班人马（离职/忙碌成员跳过，空缺槽位需手动补） */
+  const applyOriginalTeam = () => {
+    if (!selectedIp) return setMsg('请先选择续作 IP')
+    const ip = selectedIp
+    const lastId = ip.films[ip.films.length - 1]
+    const prev =
+      state.projects.find((p) => p.id === lastId) ??
+      [...state.projects].reverse().find((p) => p.ipId === ip.id)
+    if (!prev) return setMsg(`「${ip.name}」还没有上一部作品，无法沿用原班人马`)
+    const onStaff = new Set(state.company.employeeIds)
+    const usable = (id?: string) => (id && onStaff.has(id) && !busySet.has(id) ? id : '')
+    const prevActors = (prev.team.actorIds ?? []).map(usable).filter(Boolean)
+    setSlots({
+      directorId: usable(prev.team.directorId),
+      actorIds: prevActors.length > 0 ? prevActors : [''],
+      shooterId: usable(prev.team.shooterId),
+      editorId: usable(prev.team.editorId),
+      marketId: usable(prev.team.marketId),
+      producerId: usable(prev.team.producerId),
+      technicianId: usable(prev.team.technicianId),
+    })
+    const skipped = [prev.team.directorId, ...(prev.team.actorIds ?? []), prev.team.shooterId, prev.team.editorId, prev.team.marketId, prev.team.producerId, prev.team.technicianId]
+      .filter((id): id is string => !!id)
+      .filter((id) => !usable(id)).length
+    setMsg(
+      `已沿用《${prev.name}》原班人马${skipped > 0 ? `（${skipped} 位离职/忙碌已跳过，请补空缺）` : '。'}`,
+    )
+  }
+
   const start = () => {
     if (!script) return setMsg('请先选择剧本')
     const actors = slots.actorIds.filter(Boolean)
@@ -385,13 +414,21 @@ export function TeamBuildScreen({
             </div>
           )}
           {selectedIp && (
-            <p className="dim">
-              续作《{selectedIp.name}》第 {selectedIp.entry + 1} 部
-              <b style={{ color: 'var(--gold)' }}> · 初始热度 {sequelHype}</b> · 票房加成 +{Math.round((selectedIp.sequelBonus - 1) * 100)}% · 发行商预付款加成 +{Math.round(selectedIp.level * IP_CONFIG.publisherPrepayPerLevel * 100)}%
-              {ipTypeMismatch && (
-                <span className="warn">（本片为 {TYPE_ZH[script?.type ?? 'drama']}，续作须为 {TYPE_ZH[selectedIp.type]}）</span>
-              )}
-            </p>
+            <>
+              <p className="dim">
+                续作《{selectedIp.name} {selectedIp.entry + 1}》
+                <b style={{ color: 'var(--gold)' }}> · 初始热度 {sequelHype}</b> · 票房加成 +{Math.round((selectedIp.sequelBonus - 1) * 100)}% · 发行商预付款加成 +{Math.round(selectedIp.level * IP_CONFIG.publisherPrepayPerLevel * 100)}%
+                {ipTypeMismatch && (
+                  <span className="warn">（本片为 {TYPE_ZH[script?.type ?? 'drama']}，续作须为 {TYPE_ZH[selectedIp.type]}）</span>
+                )}
+              </p>
+              <div className="btn-row">
+                <button className="btn-primary" onClick={applyOriginalTeam}>
+                  👥 沿用上一部原班人马
+                </button>
+                <span className="dim">离职/忙碌的成员会自动跳过，空缺槽位手动补充。</span>
+              </div>
+            </>
           )}
 
           <div className="config-row">
