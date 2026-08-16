@@ -22,6 +22,23 @@ const MAIN_SKILL_BY_ROLE: Partial<Record<RoleId, SkillKey>> = {
 }
 
 /**
+ * 重算 CA（与技能体系自洽）：
+ * 有主技能的职位 CA = 主技能（生成时主技能 ≈ CA，结算/衰减不会突变）；
+ * 无主技能（制片人/编剧/助理）用 技能均值×0.7 + 峰值×0.3。
+ */
+export function recalcCA(w: Worker): void {
+  const main = MAIN_SKILL_BY_ROLE[w.role]
+  if (main) {
+    w.basic.ca = clamp(Math.round(w.skills[main]), 0, w.basic.pa)
+  } else {
+    const keys = Object.keys(w.skills) as SkillKey[]
+    const avg = keys.reduce((s, k) => s + w.skills[k], 0) / keys.length
+    const max = Math.max(...keys.map((k) => w.skills[k]))
+    w.basic.ca = clamp(Math.round(avg * 0.7 + max * 0.3), 0, w.basic.pa)
+  }
+}
+
+/**
  * 项目结算后员工成长（GDD §4.4 / §7.4）
  * - 经验 += 项目基准 × 职位权重
  * - 技能点 = 经验 × 学习系数 × (1 + Gift/Intelligence 修正)
@@ -80,11 +97,8 @@ export function applyProjectGrowth(
       }
     }
 
-    // 重算 CA
-    const keys = Object.keys(w.skills) as SkillKey[]
-    const avg = keys.reduce((s, k) => s + w.skills[k], 0) / keys.length
-    const max = Math.max(...keys.map((k) => w.skills[k]))
-    w.basic.ca = clamp(Math.round(avg * 0.7 + max * 0.3), 0, w.basic.pa)
+    // 重算 CA（与技能自洽：主技能职位 = 主技能）
+    recalcCA(w)
 
     // Fame
     if (performance >= 75) w.basic.fame = clamp(w.basic.fame + 3, 0, 100)
@@ -140,9 +154,7 @@ export function applyWeeklyWorkerState(w: Worker, inProject: boolean, rng: Rng):
       }
       // 同步重算 CA：让 CA 平时就反映真实状态，
       // 避免「空闲期技能衰减、结算时才一次性暴露导致 CA 暴跌」的体验断层
-      const avg = keys.reduce((s, k) => s + w.skills[k], 0) / keys.length
-      const max = Math.max(...keys.map((k) => w.skills[k]))
-      w.basic.ca = clamp(Math.round(avg * 0.7 + max * 0.3), 0, w.basic.pa)
+      recalcCA(w)
       w.basic.fame = clamp(w.basic.fame * (1 - GROWTH.fameDecayPerWeek), 0, 100)
     }
   }

@@ -4,6 +4,7 @@ import { BASE_SALARY_BY_ROLE, ROLES } from '../config/roles'
 import { ECONOMY } from '../config/economy'
 import { RECRUIT_POOL_MAP, type RecruitPoolId } from '../config/recruit'
 import { generateName } from '../config/names'
+import { recalcCA } from '../rules/growth'
 import type { Rng } from '../rng'
 import { clamp, pick, randInt, round1, weightedPick } from '../rng'
 
@@ -79,12 +80,12 @@ export function generateWorker(
     sexy: randInt(rng, 20, 80),
   }
 
-  // 技能：主职位技能接近 CA，其余为 CA 的一定比例
+  // 技能：主职位技能贴近 CA（95–105%），其余为 CA 的一定比例
   const skills: SkillMap = { act: 0, direct: 0, shoot: 0, edit: 0, market: 0, technical: 0, advertise: 0, vfx: 0 }
   const mainSkill = ROLES[roleId].skill
   for (const key of SKILL_KEYS) {
     if (mainSkill === key) {
-      skills[key] = clamp(Math.round(ca * randInt(rng, 80, 110) / 100), 0, 100)
+      skills[key] = clamp(Math.round(ca * randInt(rng, 95, 105) / 100), 0, 100)
     } else {
       skills[key] = clamp(Math.round(ca * randInt(rng, 30, 60) / 100), 0, 100)
     }
@@ -95,7 +96,7 @@ export function generateWorker(
 
   const mainType = rng() < 0.3 ? 'none' : pick(rng, FILM_TYPES)
 
-  return {
+  const w: Worker = {
     id: '',
     name: generateName(rng),
     role: roleId,
@@ -113,6 +114,10 @@ export function generateWorker(
     awards: [],
     experience: 0,
   }
+  // 初始 CA 与技能重算公式自洽（CA = 主技能），保证首次结算不突变；
+  // 薪资仍按技能均值计算，不受 CA 定义影响
+  recalcCA(w)
+  return w
 }
 
 /** 生成一批候选人（招聘市场；role 指定时定向抽取该职位） */
