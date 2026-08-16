@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { useGameStore } from '../ui/store/gameStore'
 import { CompanyScreen } from '../ui/screens/CompanyScreen'
+import { TechScreen } from '../ui/screens/TechScreen'
+import { AudienceScreen } from '../ui/screens/AudienceScreen'
+import { MarketScreen } from '../ui/screens/MarketScreen'
+import { IpoScreen } from '../ui/screens/IpoScreen'
 import { ScriptMarketScreen } from '../ui/screens/ScriptMarketScreen'
 import { EmployeesScreen } from '../ui/screens/EmployeesScreen'
 import { RecruitScreen } from '../ui/screens/RecruitScreen'
@@ -19,7 +23,11 @@ import { TUTORIAL_STEPS, tutorialStep } from '../core/rules/tutorial'
 
 type Nav =
   | { screen: 'company' }
+  | { screen: 'tech' }
+  | { screen: 'audience' }
   | { screen: 'market' }
+  | { screen: 'ipo' }
+  | { screen: 'marketScripts' }
   | { screen: 'employees' }
   | { screen: 'recruit' }
   | { screen: 'team'; teamScriptId?: string }
@@ -34,7 +42,11 @@ type NavKey = Exclude<Nav['screen'], 'project'>
 
 const NAV_ITEMS: Array<{ key: NavKey; label: string }> = [
   { key: 'company', label: '公司' },
-  { key: 'market', label: '剧本市场' },
+  { key: 'tech', label: '科技研发' },
+  { key: 'audience', label: '观众群体' },
+  { key: 'market', label: '地区市场' },
+  { key: 'ipo', label: 'IPO 上市' },
+  { key: 'marketScripts', label: '剧本市场' },
   { key: 'employees', label: '员工' },
   { key: 'recruit', label: '招聘' },
   { key: 'team', label: '组队立项' },
@@ -71,7 +83,7 @@ export function App() {
   const currentStep = TUTORIAL_STEPS[step]
   const PAGE_ZH: Record<string, string> = {
     company: '公司',
-    market: '剧本市场',
+    marketScripts: '剧本市场',
     recruit: '招聘',
     team: '组队立项',
     projects: '项目',
@@ -141,7 +153,11 @@ export function App() {
             </div>
           )}
           {nav.screen === 'company' && <CompanyScreen />}
-          {nav.screen === 'market' && (
+          {nav.screen === 'tech' && <TechScreen />}
+          {nav.screen === 'audience' && <AudienceScreen />}
+          {nav.screen === 'market' && <MarketScreen />}
+          {nav.screen === 'ipo' && <IpoScreen />}
+          {nav.screen === 'marketScripts' && (
             <ScriptMarketScreen onBuildTeam={(id) => setNav({ screen: 'team', teamScriptId: id })} />
           )}
           {nav.screen === 'employees' && <EmployeesScreen />}

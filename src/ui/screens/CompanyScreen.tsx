@@ -2,14 +2,11 @@ import { useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { SEASON_ZH, TYPE_ZH, fmtWan } from '../format'
 import { ECONOMY } from '../../core/config/economy'
-import { INVESTOR_CONFIG, IPO_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
+import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
 import { IP_CONFIG } from '../../core/config/ip'
-import { TECH_CONFIG, TECH_LINES } from '../../core/config/tech'
-import { techLevelOf, techProgressInLevel } from '../../core/rules/tech'
-import { audienceFit, regionMarkets, type RegionMarket } from '../../core/rules/audience'
 import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
-import type { AudienceGroup, Competitor, GameState, IpAsset } from '../../core/types'
+import type { Competitor, IpAsset } from '../../core/types'
 
 export function CompanyScreen() {
   const state = useGameStore((s) => s.state)
@@ -20,12 +17,7 @@ export function CompanyScreen() {
   const { company, calendar, world } = state
   const payroll = company.employeeIds.reduce((sum, id) => sum + (state.workers[id]?.salary ?? 0), 0)
   const totalLoan = company.loans.reduce((s, l) => s + l.principal, 0)
-  const totalRevenue = company.history.reduce(
-    (s, r) => s + (r.revenue ?? r.boxOffice * ECONOMY.cinemaShare),
-    0,
-  )
   const schoolMax = company.public ? SCHOOL_CONFIG.maxLevelPublic : SCHOOL_CONFIG.maxLevel
-  const canIpo = !company.public && company.reputation >= IPO_CONFIG.minReputation && totalRevenue >= IPO_CONFIG.minTotalRevenue
 
   return (
     <div className="screen">
@@ -175,154 +167,6 @@ export function CompanyScreen() {
       </section>
 
       <section className="panel">
-        <h2>科技研发 · VFX Tech</h2>
-        <p className="dim">
-          投入资金推进研发；技术/特效员工的 VFX 技能越高，每次投入的进度越多。研发进度满 100 自动升级。
-        </p>
-        <div className="tech-list">
-          {TECH_LINES.map((line) => {
-            const level = techLevelOf(state, line.id)
-            const progress = Math.floor(techProgressInLevel(state.company.tech, line.id))
-            const done = level >= line.maxLevel
-            const affordable = state.company.cash >= TECH_CONFIG.investCost
-            return (
-              <div key={line.id} className="tech-row">
-                <div className="tech-info">
-                  <div className="tech-head">
-                    <span className="slot-title">
-                      {line.icon} {line.name}
-                    </span>
-                    {done ? (
-                      <span className="tag tag-gold">已满级</span>
-                    ) : (
-                      <span className="tag tag-required">
-                        Lv.{level}/{line.maxLevel}
-                      </span>
-                    )}
-                  </div>
-                  <div className="dim">{line.desc}</div>
-                  <div className="attr-line">
-                    当前：<b className="good">{level > 0 ? line.effectText(level) : '未解锁'}</b>
-                  </div>
-                  {!done && <div className="dim">下一级：{line.effectText(level + 1)}</div>}
-                </div>
-                <div className="tech-progress">
-                  <div className="progress">
-                    <div className="progress-fill" style={{ width: `${progress}%` }} />
-                  </div>
-                  <span className="dim">
-                    {progress} / {TECH_CONFIG.progressPerLevel}
-                  </span>
-                </div>
-                <button
-                  className="btn-primary"
-                  disabled={!affordable || done}
-                  onClick={() => dispatch({ type: 'investTech', lineId: line.id })}
-                >
-                  {done ? '已满级' : affordable ? `投入研发（${TECH_CONFIG.investCost} 万）` : '现金不足'}
-                </button>
-              </div>
-            )
-          })}
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2>观众群体</h2>
-        <p className="dim">
-          票房按「群体规模 × 类型关注度」加权结算；容忍度低的市场更挑剔差片。偏好每季度缓慢漂移。
-        </p>
-        <DataTable<AudienceGroup>
-          columns={audienceColumns}
-          rows={world.audience}
-          rowKey={(g) => g.id}
-          emptyText="暂无观众群体数据。"
-        />
-        <div className="dim" style={{ marginTop: 10 }}>
-          当前主流：{world.trend ? TYPE_ZH[world.trend.type] : '—'}（观众契合 ×
-          {world.trend ? audienceFit(state, world.trend.type).toFixed(2) : '—'}）
-        </div>
-      </section>
-
-      <section className="panel">
-        <h2>地区市场</h2>
-        <p className="dim">
-          按地区聚合观众群体。宣发时可选择「主攻地区」集中发行——当地偏好匹配则票房放大，错配则收益下降。
-        </p>
-        <DataTable<RegionMarket>
-          columns={regionColumns(state)}
-          rows={regionMarkets(state)}
-          rowKey={(r) => r.region}
-          emptyText="暂无地区数据。"
-        />
-      </section>
-
-      <section className="panel">
-        <h2>市场事件</h2>
-        {world.activeEvents.length === 0 ? (
-          <p className="dim">暂无进行中的市场事件。</p>
-        ) : (
-          <div className="event-list">
-            {world.activeEvents.map((e) => (
-              <div key={e.id} className="event-block">
-                <div className="event-title">⚡ {e.title}</div>
-                <div className="event-desc">{e.desc}</div>
-                <div className="dim">
-                  剩余 {Math.max(0, e.untilWeek - calendar.week)} 周
-                  {e.boxOfficeMul ? ` · 票房 ×${e.boxOfficeMul}` : ''}
-                  {e.typeBoomMul && e.type ? ` · ${TYPE_ZH[e.type]}片 ×${e.typeBoomMul}` : ''}
-                  {e.vfxBonus ? ` · VFX +${Math.round(e.vfxBonus * 100)}%` : ''}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="panel">
-        <h2>IPO 上市（解锁大规模扩张）</h2>
-        {company.public ? (
-          <>
-            <div className="stat-row">
-              <span className="stat-label">上市时间</span>
-              <span>
-                第 {company.public.year} 年 · 第 {company.public.week} 周
-              </span>
-              <span className="stat-label">融资额</span>
-              <MoneyText value={company.public.raised} />
-            </div>
-            <p className="dim">
-              已解锁：贷款额度 ×{IPO_CONFIG.loanCapFactorAfter}、写作学校上限 {SCHOOL_CONFIG.maxLevelPublic}{' '}
-              级、IP 授权收入 ×{IPO_CONFIG.ipRoyaltyMultiplier}；股东每季度分红
-              （{Math.round(IPO_CONFIG.dividendRatio * 100)}% 现金，保底 {IPO_CONFIG.dividendBase} 万）。
-            </p>
-          </>
-        ) : (
-          <>
-            <div className="stat-row">
-              <span className="stat-label">声誉</span>
-              <span>
-                {Math.round(company.reputation)} / {IPO_CONFIG.minReputation}
-              </span>
-              <span className="stat-label">累计片方收入</span>
-              <MoneyText value={totalRevenue} />
-              <span className="dim">/ {IPO_CONFIG.minTotalRevenue}</span>
-            </div>
-            {canIpo ? (
-              <button className="btn-primary" onClick={() => dispatch({ type: 'ipo' })}>
-                🚀 启动上市
-              </button>
-            ) : (
-              <p className="dim">
-                满足「声誉 ≥ {IPO_CONFIG.minReputation} 且 累计片方收入 ≥ {IPO_CONFIG.minTotalRevenue}{' '}
-                万」后可上市融资。
-              </p>
-            )}
-          </>
-        )}
-      </section>
-
-      <section className="panel">
         <h2>市场动态</h2>
         <DataTable<Competitor>
           columns={competitorColumns}
@@ -334,66 +178,6 @@ export function CompanyScreen() {
     </div>
   )
 }
-
-const audienceColumns: Column<AudienceGroup>[] = [
-  { key: 'name', label: '群体', render: (g) => <span className="table-name">{g.name}</span> },
-  { key: 'region', label: '地区', render: (g) => g.region },
-  { key: 'size', label: '规模', render: (g) => `${Math.round(g.size * 100)}%` },
-  {
-    key: 'tolerance',
-    label: '容忍度',
-    render: (g) => (g.tolerance >= 0.6 ? <span className="good">宽和</span> : g.tolerance >= 0.45 ? '一般' : <span className="bad">挑剔</span>),
-  },
-  {
-    key: 'focus',
-    label: '类型偏好',
-    render: (g) => {
-      const top = (Object.keys(g.focus) as (keyof typeof g.focus)[])
-        .map((t) => ({ t, v: g.focus[t] }))
-        .sort((a, b) => b.v - a.v)
-        .slice(0, 2)
-      return top.map((x, i) => (
-        <span key={x.t}>
-          {i > 0 ? ' · ' : ''}
-          {TYPE_ZH[x.t]} {x.v.toFixed(2)}
-        </span>
-      ))
-    },
-  },
-]
-
-const regionColumns = (state: GameState): Column<RegionMarket>[] => [
-  { key: 'region', label: '地区', render: (r) => <span className="table-name">{r.region}</span> },
-  { key: 'size', label: '市场份额', render: (r) => `${Math.round(r.size * 100)}%` },
-  {
-    key: 'pref',
-    label: '类型偏好',
-    render: (r) => {
-      const top = (Object.keys(r.focus) as (keyof typeof r.focus)[])
-        .map((t) => ({ t, v: r.focus[t] }))
-        .sort((a, b) => b.v - a.v)
-      return (
-        <>
-          {top.slice(0, 2).map((x, i) => (
-            <span key={x.t}>
-              {i > 0 ? ' · ' : ''}
-              <b>{TYPE_ZH[x.t]}</b> {x.v.toFixed(2)}
-            </span>
-          ))}
-          <span className="dim"> 其余 {top.slice(2).map((x) => TYPE_ZH[x.t]).join('/')}</span>
-        </>
-      )
-    },
-  },
-  {
-    key: 'fit',
-    label: '主流契合',
-    render: (r) => {
-      const fit = audienceFit(state, state.world.trend?.type ?? 'drama', r.region)
-      return <span style={{ color: fit >= 1 ? 'var(--ok)' : 'var(--danger)' }}>×{fit.toFixed(2)}</span>
-    },
-  },
-]
 
 const competitorColumns: Column<Competitor>[] = [
   { key: 'name', label: '影业', render: (c) => <span className="table-name">{c.name}</span> },

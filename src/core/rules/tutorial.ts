@@ -5,7 +5,7 @@ export interface TutorialStepDef {
   id: number
   title: string
   /** 前往的导航页（App 的 NavKey） */
-  page: 'company' | 'market' | 'recruit' | 'team' | 'projects'
+  page: 'company' | 'marketScripts' | 'recruit' | 'team' | 'projects'
   /** 完成说明 */
   hint: string
 }
@@ -20,7 +20,7 @@ export const TUTORIAL_STEPS: TutorialStepDef[] = [
   {
     id: 2,
     title: '储备剧本',
-    page: 'market',
+    page: 'marketScripts',
     hint: '去「剧本市场」购买 1 个剧本；或在「公司」页签约编剧长期产出。',
   },
   {
