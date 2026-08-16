@@ -2,7 +2,6 @@ import { useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { SEASON_ZH, TYPE_ZH, fmtWan } from '../format'
 import { ECONOMY } from '../../core/config/economy'
-import { SCHOOL_CONFIG } from '../../core/config/company'
 import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
 import type { Competitor } from '../../core/types'
@@ -16,7 +15,6 @@ export function CompanyScreen() {
   const { company, calendar, world } = state
   const payroll = company.employeeIds.reduce((sum, id) => sum + (state.workers[id]?.salary ?? 0), 0)
   const totalLoan = company.loans.reduce((s, l) => s + l.principal, 0)
-  const schoolMax = company.public ? SCHOOL_CONFIG.maxLevelPublic : SCHOOL_CONFIG.maxLevel
 
   return (
     <div className="screen">
@@ -82,33 +80,6 @@ export function CompanyScreen() {
           </div>
           <div className="cal-row">剧本市场刷新：{world.marketRefreshIn} 周后</div>
           <div className="cal-row">签约编剧创作中：{Object.keys(state.writerQueues).length} 位</div>
-        </section>
-      </div>
-
-      <div className="grid-2">
-        <section className="panel">
-          <h2>写作学校</h2>
-          <div className="stat-row">
-            <span className="stat-label">等级</span>
-            <span>
-              {company.schoolLevel} / {schoolMax}
-            </span>
-          </div>
-          <p className="dim">
-            签约编剧产出质量 +{Math.round(SCHOOL_CONFIG.writerQualityPerLevel * company.schoolLevel * 100)}%，
-            精品剧本概率 +{Math.round(SCHOOL_CONFIG.boutiqueChancePerLevel * company.schoolLevel * 100)}%。
-          </p>
-          {company.schoolLevel < schoolMax ? (
-            <button
-              disabled={company.cash < SCHOOL_CONFIG.upgradeCost[company.schoolLevel + 1]}
-              onClick={() => dispatch({ type: 'upgradeSchool' })}
-            >
-              升级到 {company.schoolLevel + 1} 级（
-              <MoneyText value={SCHOOL_CONFIG.upgradeCost[company.schoolLevel + 1]} />）
-            </button>
-          ) : (
-            <p className="dim">学校已满级{company.public ? '。' : '（上市后可扩建至 5 级）。'}</p>
-          )}
         </section>
       </div>
 
