@@ -29,22 +29,23 @@ export function generateCompetitors(rng: Rng, uid: (prefix: string) => string): 
   )
 }
 
-/** 生成影评人（3–5 位） */
+/** 生成影评人（固定 5 位，名字不重复） */
 export function generateCritics(rng: Rng, uid: (prefix: string) => string): Critic[] {
   const namePool = [...WORLD_CONFIG.criticNames]
-  return Array.from(
-    { length: randInt(rng, WORLD_CONFIG.criticCount[0], WORLD_CONFIG.criticCount[1]) },
-    () => ({
+  return Array.from({ length: WORLD_CONFIG.criticCount[0] }, () => {
+    const idx = Math.floor(rng() * namePool.length)
+    const name = namePool.splice(idx, 1)[0]
+    return {
       id: uid('crit'),
-      name: pick(rng, namePool),
+      name,
       taste: rng() < 0.6 ? pick(rng, FILM_TYPES) : ('none' as const),
       influence: randInt(
         rng,
         WORLD_CONFIG.criticInfluenceRange[0],
         WORLD_CONFIG.criticInfluenceRange[1],
       ),
-    }),
-  )
+    }
+  })
 }
 
 /** 生成发行商（2–4 家） */

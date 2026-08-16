@@ -96,8 +96,23 @@ describe('世界模拟', () => {
     const migrated = migrateSave(s)
     expect(migrated.version).toBe(9)
     expect(migrated.world.competitors.length).toBeGreaterThan(0)
-    expect(migrated.world.critics.length).toBeGreaterThan(0)
+    expect(migrated.world.critics).toHaveLength(5)
     expect(migrated.world.publishers.length).toBeGreaterThan(0)
     expect(migrated.world.investors.length).toBeGreaterThan(0)
+  })
+
+  it('旧档影评人不足 5 位时迁移补足', () => {
+    const s = createInitialState(19)
+    s.world.critics = [
+      { id: 'crit1', name: '陆离', taste: 'comedy', influence: 70 },
+      { id: 'crit2', name: '白墨', taste: 'action', influence: 60 },
+      { id: 'crit3', name: '苏晚', taste: 'none', influence: 50 },
+    ]
+    const migrated = migrateSave(s)
+    expect(migrated.world.critics).toHaveLength(5)
+    const names = migrated.world.critics.map((c) => c.name)
+    expect(new Set(names).size).toBe(5) // 名字不重复
+    const ids = migrated.world.critics.map((c) => c.id)
+    expect(new Set(ids).size).toBe(5) // id 不冲突
   })
 })

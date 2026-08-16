@@ -10,6 +10,9 @@ import type {
   World,
 } from '../types'
 import { createRng } from '../rng'
+import { pick, randInt } from '../rng'
+import { FILM_TYPES } from '../types'
+import { WORLD_CONFIG } from '../config/world'
 import {
   generateAudienceGroups,
   generateCompetitors,
@@ -129,12 +132,38 @@ function ensureWorldPopulated(s: GameState): GameState {
   const needAudience = !Array.isArray(world.audience) || world.audience.length === 0
   const needPubs = !Array.isArray(world.publishers) || world.publishers.length === 0
   const needInvs = !Array.isArray(world.investors) || world.investors.length === 0
-  if (needAll || needCritics || needAudience || needPubs || needInvs) {
+  // 影评人固定 5 位：已有但不足的旧档补足
+  const criticShort = Array.isArray(world.critics) && world.critics.length < WORLD_CONFIG.criticCount[0]
+  if (needAll || needCritics || criticShort || needAudience || needPubs || needInvs) {
     const rng = createRng((s.seed ^ 0x51a7) >>> 0)
     let n = 1
     const uid = (p: string) => `${p}${(n++).toString(36)}`
     if (needAll) world.competitors = generateCompetitors(rng, uid)
-    if (needCritics) world.critics = generateCritics(rng, uid)
+    if (needCritics) {
+      world.critics = generateCritics(rng, uid)
+    } else if (criticShort) {
+      // 补足缺口影评人：沿用名池中未被占用的名字，编号避开现有 id
+      const usedNames = new Set(world.critics.map((c) => c.name))
+      const namePool = WORLD_CONFIG.criticNames.filter((nm) => !usedNames.has(nm))
+      const usedIds = new Set(world.critics.map((c) => c.id))
+      let idN = 1
+      while (usedIds.has(`crit${idN}`)) idN++
+      const gap = WORLD_CONFIG.criticCount[0] - world.critics.length
+      for (let i = 0; i < gap; i++) {
+        const idx = Math.floor(rng() * namePool.length)
+        const name = namePool.splice(idx, 1)[0]
+        world.critics.push({
+          id: `crit${idN++}`,
+          name,
+          taste: rng() < 0.6 ? pick(rng, FILM_TYPES) : ('none' as const),
+          influence: randInt(
+            rng,
+            WORLD_CONFIG.criticInfluenceRange[0],
+            WORLD_CONFIG.criticInfluenceRange[1],
+          ),
+        })
+      }
+    }
     if (needAudience) world.audience = generateAudienceGroups(rng, uid)
     if (needPubs) world.publishers = generatePublishers(rng, uid)
     if (needInvs) world.investors = generateInvestors(rng, uid)
