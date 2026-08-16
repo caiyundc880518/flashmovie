@@ -14,6 +14,8 @@ export function ScriptMarketScreen({ onBuildTeam }: { onBuildTeam: (scriptId: st
   const { world, company, scripts } = state
   const usedScriptIds = new Set(state.projects.map((p) => p.scriptId))
   const owned = company.ownedScriptIds.map((id) => scripts[id]).filter(Boolean)
+  // 消耗品：已立项的剧本从剧本库移除（不可复用）
+  const availableOwned = owned.filter((sc) => !usedScriptIds.has(sc.id))
   const writerQueue = Object.entries(state.writerQueues)
   const schoolMax = company.public ? SCHOOL_CONFIG.maxLevelPublic : SCHOOL_CONFIG.maxLevel
 
@@ -48,37 +50,32 @@ export function ScriptMarketScreen({ onBuildTeam }: { onBuildTeam: (scriptId: st
 
   const libraryTab = (
     <>
-      <p className="dim">自购/编剧产出的剧本都在这里；已拍摄的剧本不可复用。</p>
+      <p className="dim">剧本是消耗品：立项后即从剧本库移除，不可重复拍摄。</p>
       <div className="poster-grid">
-        {owned.map((sc) => {
-          const used = usedScriptIds.has(sc.id)
-          return (
-            <PosterCard key={sc.id} title={sc.title} type={sc.type}>
-              <div className="attr-line">
-                艺术 {sc.artPot} · 市场 {sc.marketPot} · 规模 {sc.scale} 场
-              </div>
-              <div className="attr-line">
-                编剧：
-                {sc.writerId && state.workers[sc.writerId]
-                  ? state.workers[sc.writerId].name
-                  : '外部'}
-              </div>
-              {used ? (
-                <span className="tag tag-pro">已拍摄 · 不可复用</span>
-              ) : (
-                <div className="btn-row">
-                  <button className="btn-primary" onClick={() => onBuildTeam(sc.id)}>
-                    用此剧本立项
-                  </button>
-                  <button onClick={() => dispatch({ type: 'sellScript', scriptId: sc.id })}>
-                    出售
-                  </button>
-                </div>
-              )}
-            </PosterCard>
-          )
-        })}
-        {owned.length === 0 && <p className="dim empty-hint">剧本库为空，先买一个吧。</p>}
+        {availableOwned.map((sc) => (
+          <PosterCard key={sc.id} title={sc.title} type={sc.type}>
+            <div className="attr-line">
+              艺术 {sc.artPot} · 市场 {sc.marketPot} · 规模 {sc.scale} 场
+            </div>
+            <div className="attr-line">
+              编剧：
+              {sc.writerId && state.workers[sc.writerId]
+                ? state.workers[sc.writerId].name
+                : '外部'}
+            </div>
+            <div className="btn-row">
+              <button className="btn-primary" onClick={() => onBuildTeam(sc.id)}>
+                用此剧本立项
+              </button>
+              <button onClick={() => dispatch({ type: 'sellScript', scriptId: sc.id })}>
+                出售
+              </button>
+            </div>
+          </PosterCard>
+        ))}
+        {availableOwned.length === 0 && (
+          <p className="dim empty-hint">剧本库为空——去「在售剧本」购买，或签约编剧持续产出吧。</p>
+        )}
       </div>
     </>
   )
@@ -89,8 +86,8 @@ export function ScriptMarketScreen({ onBuildTeam }: { onBuildTeam: (scriptId: st
         <h2>剧本市场</h2>
         <Tabs
           tabs={[
+            { key: 'library', label: `公司剧本库（${availableOwned.length}）`, content: libraryTab },
             { key: 'market', label: `在售剧本（${world.marketScripts.length}）`, content: marketTab },
-            { key: 'library', label: `公司剧本库（${owned.length}）`, content: libraryTab },
           ]}
         />
       </section>
