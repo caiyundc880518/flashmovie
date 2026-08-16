@@ -659,6 +659,76 @@ select {
   line-height: 1.7;
 }
 
+/* ===== 新手引导 ===== */
+.tutorial-bar {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  background: linear-gradient(90deg, rgba(232, 182, 76, 0.12), rgba(76, 139, 245, 0.08));
+  border: 1px solid rgba(232, 182, 76, 0.35);
+  border-radius: 10px;
+  padding: 10px 16px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.tutorial-bar:hover {
+  border-color: var(--gold);
+}
+.tutorial-progress {
+  font-weight: 600;
+  color: var(--gold);
+  flex-shrink: 0;
+}
+.tutorial-current {
+  flex: 1;
+}
+.tutorial-hint {
+  color: var(--text-dim);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.tutorial-step {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 14px 16px;
+  margin-bottom: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tutorial-step-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.step-check {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-dim);
+}
+.tutorial-done {
+  border-color: rgba(76, 195, 138, 0.4);
+}
+.tutorial-done .step-check {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+.tutorial-current {
+  border-color: rgba(232, 182, 76, 0.6);
+  box-shadow: 0 0 14px rgba(232, 182, 76, 0.12);
+}
+.tutorial-current .step-check {
+  border-color: var(--gold);
+  color: var(--gold);
+}
+
 /* ===== 科技研发 ===== */
 .tech-list {
   display: flex;

@@ -400,6 +400,12 @@ export function reduce(state: GameState, action: Action): GameState {
       break
     }
 
+    case 'finishTutorialIntro': {
+      // 新手引导：关闭欢迎弹窗后记录已看
+      draft.tutorial = 1
+      break
+    }
+
     case 'resolveEvent': {
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p) return state

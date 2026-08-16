@@ -82,6 +82,7 @@ export function createInitialState(seed?: number): GameState {
     scripts: {},
     projects: [],
     writerQueues: {},
+    tutorial: 0,
   }
   return state
 }

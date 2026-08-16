@@ -12,8 +12,10 @@ import { NewsScreen } from '../ui/screens/NewsScreen'
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen'
 import { AwardsScreen } from '../ui/screens/AwardsScreen'
 import { AwardsCeremonyModal } from '../ui/components/AwardsCeremonyModal'
+import { Modal } from '../ui/components/Modal'
 import { MoneyText } from '../ui/components/MoneyText'
 import { SEASON_ZH } from '../ui/format'
+import { TUTORIAL_STEPS, tutorialStep } from '../core/rules/tutorial'
 
 type Nav =
   | { screen: 'company' }
@@ -53,6 +55,8 @@ export function App() {
   const [nav, setNav] = useState<Nav>({ screen: 'company' })
   // 已看过的颁奖届次（避免重复弹出）
   const [seenCeremonyYear, setSeenCeremonyYear] = useState<number | null>(null)
+  // 新手任务面板开关
+  const [tutorialOpen, setTutorialOpen] = useState(false)
 
   useEffect(() => {
     void boot()
@@ -60,6 +64,18 @@ export function App() {
 
   if (!booted) return <div className="boot-screen">载入存档…</div>
   if (!state) return null
+
+  // 新手引导：派生进度 + 显示开关（旧档 tutorial 为 undefined = 已完成）
+  const step = tutorialStep(state)
+  const showTutorialBar = state.tutorial !== undefined && step < 5
+  const currentStep = TUTORIAL_STEPS[step]
+  const PAGE_ZH: Record<string, string> = {
+    company: '公司',
+    market: '剧本市场',
+    recruit: '招聘',
+    team: '组队立项',
+    projects: '项目',
+  }
 
   return (
     <div className="app-shell">
@@ -115,6 +131,15 @@ export function App() {
         </header>
 
         <div className="content">
+          {showTutorialBar && (
+            <div className="tutorial-bar" onClick={() => setTutorialOpen(true)}>
+              <span className="tutorial-progress">🧭 新手任务 {step}/5</span>
+              <span className="tutorial-current">
+                {currentStep ? `当前：${currentStep.title}` : '全部完成'}
+              </span>
+              <span className="tutorial-hint">点击查看任务清单 →</span>
+            </div>
+          )}
           {nav.screen === 'company' && <CompanyScreen />}
           {nav.screen === 'market' && (
             <ScriptMarketScreen onBuildTeam={(id) => setNav({ screen: 'team', teamScriptId: id })} />
@@ -149,6 +174,67 @@ export function App() {
           ceremony={state.lastCeremony}
           onClose={() => setSeenCeremonyYear(state.lastCeremony!.year)}
         />
+      )}
+
+      {/* 新手引导：欢迎弹窗（新档首次进入） */}
+      {state.tutorial === 0 && (
+        <Modal title="🎬 欢迎来到星光影业" onClose={() => dispatch({ type: 'finishTutorialIntro' })}>
+          <p>
+            你是一家新成立的电影公司 CEO，目标是拍出叫好又叫座的作品，打造属于自己的电影帝国，最终<b>上市</b>。
+          </p>
+          <p className="dim">
+            三条主线：<b>养成</b>（员工成长 / 签约编剧 / 写作学校 / 科技研发）→ <b>制作</b>（剧本 → 组队 →
+            拍摄 → 剪辑）→ <b>商业</b>（宣发 / 发行渠道 / 票房 / 口碑 / IP 系列化 / 上市）。
+          </p>
+          <p className="dim">
+            先按顶部的「🧭 新手任务」完成 5 步，拍出你的第一部电影。随时可以推进一周来观察世界变化。
+          </p>
+          <div className="btn-row">
+            <button className="btn-primary" onClick={() => dispatch({ type: 'finishTutorialIntro' })}>
+              开始征程 ▶
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {/* 新手引导：任务清单 */}
+      {tutorialOpen && (
+        <Modal title="🧭 新手任务" wide onClose={() => setTutorialOpen(false)}>
+          {TUTORIAL_STEPS.map((t, i) => {
+            const done = i < step
+            const current = i === step
+            return (
+              <div key={t.id} className={`tutorial-step${done ? ' tutorial-done' : ''}${current ? ' tutorial-current' : ''}`}>
+                <div className="tutorial-step-head">
+                  <span className="step-check">{done ? '✓' : t.id}</span>
+                  <span className="slot-title">{t.title}</span>
+                  {done ? (
+                    <span className="tag tag-pro">完成</span>
+                  ) : current ? (
+                    <span className="tag tag-required">进行中</span>
+                  ) : (
+                    <span className="tag">待完成</span>
+                  )}
+                </div>
+                <p className="dim">{t.hint}</p>
+                {current && (
+                  <button
+                    className="btn-primary"
+                    onClick={() => {
+                      setNav({ screen: t.page })
+                      setTutorialOpen(false)
+                    }}
+                  >
+                    前往{PAGE_ZH[t.page]} →
+                  </button>
+                )}
+              </div>
+            )
+          })}
+          {step >= 5 && (
+            <p className="msg">🎉 新手任务全部完成，放手经营你的电影帝国吧！</p>
+          )}
+        </Modal>
       )}
     </div>
   )

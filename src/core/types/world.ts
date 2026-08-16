@@ -154,4 +154,6 @@ export interface GameState {
   writerQueues: Record<string, number>
   /** 最近一届 TMA 颁奖结果（跨年时生成） */
   lastCeremony?: YearAwards
+  /** 新手引导：0 = 未看过欢迎（新档），≥1 = 已看过；undefined = 旧档视为已完成 */
+  tutorial?: number
 }
