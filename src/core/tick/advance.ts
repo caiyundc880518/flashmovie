@@ -9,7 +9,7 @@ import type {
 } from '../types'
 import { FILM_TYPES } from '../types'
 import { ECONOMY } from '../config/economy'
-import { SCHOOL_CONFIG } from '../config/company'
+import { IPO_CONFIG, SCHOOL_CONFIG } from '../config/company'
 import { IP_CONFIG } from '../config/ip'
 import { SCRIPT_POOL } from '../config/scripts'
 import { SHOOTING_EVENTS, INDUSTRY_EVENTS, FILM_TYPE_ZH } from '../config/events'
@@ -125,16 +125,29 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     if (w) draft.company.cash -= w.salary
   }
 
-  // 1.5 IP 衍生授权收入：每季度（13 周）结算周边/授权/画廊收入（GDD §3.8）
+  // 1.5 IP 衍生授权收入：每季度（13 周）结算周边/授权/画廊收入（GDD §3.8）；上市后放大（IPO 扩张）
   if (draft.company.ips.length > 0 && draft.calendar.week % IP_CONFIG.quarterWeeks === 0) {
-    const royalty = round1(draft.company.ips.reduce((s, ip) => s + ip.royaltyPerQuarter, 0))
+    const ipMul = draft.company.public ? IPO_CONFIG.ipRoyaltyMultiplier : 1
+    const royalty = round1(
+      draft.company.ips.reduce((s, ip) => s + ip.royaltyPerQuarter * ipMul, 0),
+    )
     if (royalty > 0) {
       draft.company.cash += royalty
       for (const ip of draft.company.ips) {
-        ip.royaltyEarned = round1(ip.royaltyEarned + ip.royaltyPerQuarter)
+        ip.royaltyEarned = round1(ip.royaltyEarned + ip.royaltyPerQuarter * ipMul)
       }
       pushNews(draft, `IP 衍生授权季度结算：周边/授权/画廊共收入 ${royalty} 万元。`)
     }
+  }
+
+  // 1.55 上市股东季度分红（GDD §3.1 IPO 代价）
+  if (draft.company.public && draft.calendar.week % 13 === 0) {
+    const dividend = Math.max(
+      IPO_CONFIG.dividendBase,
+      Math.round(draft.company.cash * IPO_CONFIG.dividendRatio),
+    )
+    draft.company.cash = round1(draft.company.cash - dividend)
+    pushNews(draft, `上市股东分红：支付 ${dividend} 万元。`)
   }
 
   // 1.6 观众群体偏好季度微调：类型关注度缓慢漂移（GDD §6）

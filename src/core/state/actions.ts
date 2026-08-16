@@ -26,4 +26,5 @@ export type Action =
   | { type: 'upgradeSchool' }
   | { type: 'signInvestor'; investorId: string }
   | { type: 'investTech'; lineId: string }
+  | { type: 'ipo' }
   | { type: 'release'; projectId: string }

@@ -50,6 +50,7 @@ export type {
   CompanyInvestor,
   FinancialReport,
   Loan,
+  PublicCompany,
 } from './company'
 export type {
   IpAsset,

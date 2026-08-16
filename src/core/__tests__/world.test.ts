@@ -75,7 +75,7 @@ describe('世界模拟', () => {
     delete (v1.world as { publishers?: unknown }).publishers
     for (const p of v1.projects) delete (p as { channels?: unknown }).channels
     const migrated = migrateSave(v1)
-    expect(migrated.version).toBe(8)
+    expect(migrated.version).toBe(9)
     expect(migrated.world.competitors.length).toBeGreaterThanOrEqual(
       WORLD_CONFIG.competitorCount[0],
     )
@@ -95,7 +95,7 @@ describe('世界模拟', () => {
     delete (s.world as { publishers?: unknown }).publishers
     delete (s.world as { investors?: unknown }).investors
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(8)
+    expect(migrated.version).toBe(9)
     expect(migrated.world.competitors.length).toBeGreaterThan(0)
     expect(migrated.world.critics.length).toBeGreaterThan(0)
     expect(migrated.world.publishers.length).toBeGreaterThan(0)

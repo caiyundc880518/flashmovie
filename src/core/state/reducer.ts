@@ -8,7 +8,7 @@ import { generateWorker } from '../generators/workerGen'
 import { generateCandidates } from '../generators/workerGen'
 import { ECONOMY } from '../config/economy'
 import { SCRIPT_POOL } from '../config/scripts'
-import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../config/company'
+import { INVESTOR_CONFIG, IPO_CONFIG, SCHOOL_CONFIG } from '../config/company'
 import { IP_CONFIG } from '../config/ip'
 import { RECRUIT_POOLS } from '../config/recruit'
 import { TECH_CONFIG, TECH_LINES, techLevel } from '../config/tech'
@@ -113,7 +113,11 @@ export function reduce(state: GameState, action: Action): GameState {
     }
 
     case 'takeLoan': {
-      const cap = Math.max(0, draft.company.cash * ECONOMY.loanCapFactor)
+      // 上市后贷款额度提升（大规模扩张，GDD §3.1）
+      const factor = draft.company.public
+        ? IPO_CONFIG.loanCapFactorAfter
+        : ECONOMY.loanCapFactor
+      const cap = Math.max(0, draft.company.cash * factor)
       const amount = Math.min(Math.max(0, action.amount), cap)
       if (amount <= 0) return state
       draft.company.cash += amount
@@ -310,7 +314,11 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case 'upgradeSchool': {
       const next = draft.company.schoolLevel + 1
-      if (next >= SCHOOL_CONFIG.upgradeCost.length) return state
+      // 普通上限 3 级，上市后解锁至 5 级
+      const maxLevel = draft.company.public
+        ? SCHOOL_CONFIG.maxLevelPublic
+        : SCHOOL_CONFIG.maxLevel
+      if (next > maxLevel) return state
       const cost = SCHOOL_CONFIG.upgradeCost[next]
       if (draft.company.cash < cost) return state
       draft.company.cash -= cost
@@ -362,6 +370,33 @@ export function reduce(state: GameState, action: Action): GameState {
       if (after > before) {
         pushNews(draft, `科技突破！「${line.name}」升至 ${after} 级：${line.effectText(after)}`)
       }
+      break
+    }
+
+    case 'ipo': {
+      // IPO 上市（GDD §3.1）：声誉与累计收入达标后融资，解锁大规模扩张
+      if (draft.company.public) return state
+      const rep = draft.company.reputation
+      if (rep < IPO_CONFIG.minReputation) return state
+      const totalRevenue = draft.company.history.reduce(
+        (s, r) => s + (r.revenue ?? r.boxOffice * ECONOMY.cinemaShare),
+        0,
+      )
+      if (totalRevenue < IPO_CONFIG.minTotalRevenue) return state
+      const valuation = Math.round(
+        rep * IPO_CONFIG.valuationPerRep + totalRevenue * IPO_CONFIG.valuationRevenueRatio,
+      )
+      const raised = Math.round(valuation * IPO_CONFIG.raiseRatio)
+      draft.company.cash = round1(draft.company.cash + raised)
+      draft.company.public = {
+        week: draft.calendar.week,
+        year: draft.calendar.year,
+        raised,
+      }
+      pushNews(
+        draft,
+        `星光影业成功上市！IPO 融资 ${raised} 万元（估值 ${valuation} 万）。贷款额度提升、写作学校可扩建至 ${SCHOOL_CONFIG.maxLevelPublic} 级、IP 授权收入提高 ${Math.round((IPO_CONFIG.ipRoyaltyMultiplier - 1) * 100)}%，股东每季度分红。`,
+      )
       break
     }
 

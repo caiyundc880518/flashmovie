@@ -22,6 +22,15 @@ export interface CompanyInvestor {
   remainingToCollect: number
 }
 
+/** 上市公司状态（IPO，GDD §3.1） */
+export interface PublicCompany {
+  /** 上市周/年 */
+  week: number
+  year: number
+  /** IPO 融资额（万） */
+  raised: number
+}
+
 /** 公司 */
 export interface Company {
   name: string
@@ -44,6 +53,8 @@ export interface Company {
   ips: IpAsset[]
   /** 科技研发进度：科技线 id → 累计进度（等级 = floor(进度/100)，上限见配置） */
   tech: Record<string, number>
+  /** 上市状态（IPO 后写入） */
+  public?: PublicCompany
 }
 
 export interface FinancialReport {

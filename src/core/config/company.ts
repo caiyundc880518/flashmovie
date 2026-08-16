@@ -2,16 +2,39 @@
  * 写作学校 + 投资人 + 化学反应 配置（GDD §3.1 / §4.4 / §4.5）
  */
 
-/** 写作学校：等级 0–3，升级费用（万），效果 */
+/** 写作学校：等级 0–5（上市后解锁 4–5 级），升级费用（万），效果 */
 export const SCHOOL_CONFIG = {
   /** 各等级升级费用：升到第 i 级需要 upgradeCost[i]（万）；0 为初始 */
-  upgradeCost: [0, 400, 1000, 2200],
+  upgradeCost: [0, 400, 1000, 2200, 3800, 6000],
+  /** 普通上限 / 上市后上限 */
+  maxLevel: 3,
+  maxLevelPublic: 5,
   /** 每级签约编剧产出质量加成（×） */
   writerQualityPerLevel: 0.05,
   /** 每级「精品剧本」触发概率（每部产出 ×） */
   boutiqueChancePerLevel: 0.08,
   /** 精品剧本属性加成 */
   boutiqueBonus: 20,
+} as const
+
+/** IPO 上市（GDD §3.1 融资：上市融资，解锁大规模扩张） */
+export const IPO_CONFIG = {
+  /** 上市条件：最低声誉 0–100 */
+  minReputation: 60,
+  /** 上市条件：累计片方收入（万） */
+  minTotalRevenue: 8000,
+  /** 估值 = 声誉 × perRep + 累计收入 × revenueRatio（万） */
+  valuationPerRep: 60,
+  valuationRevenueRatio: 0.6,
+  /** 融资额 = 估值 × raiseRatio */
+  raiseRatio: 0.35,
+  /** 季度股东分红 = max(分红基数, 现金 × 比例)（万） */
+  dividendBase: 50,
+  dividendRatio: 0.03,
+  /** 上市后贷款额度倍数（原 ECONOMY.loanCapFactor ×3） */
+  loanCapFactorAfter: 5,
+  /** 上市后 IP 季度授权收入倍率 */
+  ipRoyaltyMultiplier: 1.5,
 } as const
 
 /** 投资人 */

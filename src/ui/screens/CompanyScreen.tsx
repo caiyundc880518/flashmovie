@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { SEASON_ZH, TYPE_ZH, fmtWan } from '../format'
 import { ECONOMY } from '../../core/config/economy'
-import { INVESTOR_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
+import { INVESTOR_CONFIG, IPO_CONFIG, SCHOOL_CONFIG } from '../../core/config/company'
 import { IP_CONFIG } from '../../core/config/ip'
 import { TECH_CONFIG, TECH_LINES } from '../../core/config/tech'
 import { techLevelOf, techProgressInLevel } from '../../core/rules/tech'
@@ -20,6 +20,12 @@ export function CompanyScreen() {
   const { company, calendar, world } = state
   const payroll = company.employeeIds.reduce((sum, id) => sum + (state.workers[id]?.salary ?? 0), 0)
   const totalLoan = company.loans.reduce((s, l) => s + l.principal, 0)
+  const totalRevenue = company.history.reduce(
+    (s, r) => s + (r.revenue ?? r.boxOffice * ECONOMY.cinemaShare),
+    0,
+  )
+  const schoolMax = company.public ? SCHOOL_CONFIG.maxLevelPublic : SCHOOL_CONFIG.maxLevel
+  const canIpo = !company.public && company.reputation >= IPO_CONFIG.minReputation && totalRevenue >= IPO_CONFIG.minTotalRevenue
 
   return (
     <div className="screen">
@@ -93,13 +99,15 @@ export function CompanyScreen() {
           <h2>写作学校</h2>
           <div className="stat-row">
             <span className="stat-label">等级</span>
-            <span>{company.schoolLevel} / 3</span>
+            <span>
+              {company.schoolLevel} / {schoolMax}
+            </span>
           </div>
           <p className="dim">
             签约编剧产出质量 +{Math.round(SCHOOL_CONFIG.writerQualityPerLevel * company.schoolLevel * 100)}%，
             精品剧本概率 +{Math.round(SCHOOL_CONFIG.boutiqueChancePerLevel * company.schoolLevel * 100)}%。
           </p>
-          {company.schoolLevel < 3 ? (
+          {company.schoolLevel < schoolMax ? (
             <button
               disabled={company.cash < SCHOOL_CONFIG.upgradeCost[company.schoolLevel + 1]}
               onClick={() => dispatch({ type: 'upgradeSchool' })}
@@ -108,7 +116,7 @@ export function CompanyScreen() {
               <MoneyText value={SCHOOL_CONFIG.upgradeCost[company.schoolLevel + 1]} />）
             </button>
           ) : (
-            <p className="dim">学校已满级。</p>
+            <p className="dim">学校已满级{company.public ? '。' : '（上市后可扩建至 5 级）。'}</p>
           )}
         </section>
 
@@ -268,6 +276,49 @@ export function CompanyScreen() {
               </div>
             ))}
           </div>
+        )}
+      </section>
+
+      <section className="panel">
+        <h2>IPO 上市（解锁大规模扩张）</h2>
+        {company.public ? (
+          <>
+            <div className="stat-row">
+              <span className="stat-label">上市时间</span>
+              <span>
+                第 {company.public.year} 年 · 第 {company.public.week} 周
+              </span>
+              <span className="stat-label">融资额</span>
+              <MoneyText value={company.public.raised} />
+            </div>
+            <p className="dim">
+              已解锁：贷款额度 ×{IPO_CONFIG.loanCapFactorAfter}、写作学校上限 {SCHOOL_CONFIG.maxLevelPublic}{' '}
+              级、IP 授权收入 ×{IPO_CONFIG.ipRoyaltyMultiplier}；股东每季度分红
+              （{Math.round(IPO_CONFIG.dividendRatio * 100)}% 现金，保底 {IPO_CONFIG.dividendBase} 万）。
+            </p>
+          </>
+        ) : (
+          <>
+            <div className="stat-row">
+              <span className="stat-label">声誉</span>
+              <span>
+                {Math.round(company.reputation)} / {IPO_CONFIG.minReputation}
+              </span>
+              <span className="stat-label">累计片方收入</span>
+              <MoneyText value={totalRevenue} />
+              <span className="dim">/ {IPO_CONFIG.minTotalRevenue}</span>
+            </div>
+            {canIpo ? (
+              <button className="btn-primary" onClick={() => dispatch({ type: 'ipo' })}>
+                🚀 启动上市
+              </button>
+            ) : (
+              <p className="dim">
+                满足「声誉 ≥ {IPO_CONFIG.minReputation} 且 累计片方收入 ≥ {IPO_CONFIG.minTotalRevenue}{' '}
+                万」后可上市融资。
+              </p>
+            )}
+          </>
         )}
       </section>
 
