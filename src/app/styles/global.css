@@ -927,6 +927,40 @@ select {
   font-size: 14px;
 }
 /* 选人弹窗：候选人卡片 */
+.candidate-filter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.candidate-filter .chip {
+  padding: 5px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-dim);
+}
+.candidate-filter .chip:hover {
+  border-color: var(--gold);
+}
+.candidate-filter .chip-active {
+  color: var(--gold);
+  border-color: var(--gold);
+  background: rgba(232, 182, 76, 0.08);
+}
+.candidate-pager {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 16px;
+  color: var(--text-dim);
+  font-size: 12.5px;
+}
+.candidate-pager button {
+  padding: 6px 14px;
+}
 .candidate-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));

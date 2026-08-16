@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { Worker } from '../../core/types'
+import { ROLE_IDS } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { ECONOMY } from '../../core/config/economy'
 import { IP_CONFIG } from '../../core/config/ip'
@@ -24,6 +25,16 @@ interface Slots {
 }
 
 type SlotKey = Exclude<keyof Slots, 'actorIds'>
+
+/** 槽位 key → 员工 role（用于选人弹窗默认职位筛选） */
+const SLOT_ROLE: Record<SlotKey, string> = {
+  directorId: 'director',
+  shooterId: 'shooter',
+  editorId: 'editor',
+  marketId: 'market',
+  producerId: 'producer',
+  technicianId: 'technician',
+}
 
 /** 槽位定义：必配/可选 + 核心技能 + 一句话职责 */
 const SLOT_DEFS: Record<SlotKey, { label: string; required: boolean; coreSkill?: string; hint: string }> = {
@@ -77,6 +88,9 @@ export function TeamBuildScreen({
   const [ipId, setIpId] = useState(initialIpId ?? '')
   const [msg, setMsg] = useState('')
   const [picker, setPicker] = useState<PickerState | null>(null)
+  // 选人弹窗：职位筛选 + 分页
+  const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [page, setPage] = useState(0)
   const [detailId, setDetailId] = useState<string | null>(null)
   const [created, setCreated] = useState<{
     id: string
@@ -145,7 +159,12 @@ export function TeamBuildScreen({
       return { ...s, actorIds: actorIds.length > 0 ? actorIds : [''] }
     })
 
-  const openPicker = (key: SlotKey | 'actor', index?: number) => setPicker({ key, index })
+  const openPicker = (key: SlotKey | 'actor', index?: number) => {
+    setPicker({ key, index })
+    // 打开弹窗时按当前槽位职位预筛
+    setRoleFilter(key === 'actor' ? 'actor' : SLOT_ROLE[key])
+    setPage(0)
+  }
   const pickWorker = (w: Worker) => () => {
     if (!picker) return
     if (picker.key === 'actor') setActor(picker.index ?? 0, w.id)
@@ -292,6 +311,17 @@ export function TeamBuildScreen({
         : ''
   const detailWorker = detailId ? state.workers[detailId] : undefined
 
+  // 选人列表：职位筛选 → 分页
+  const PAGE_SIZE = 12
+  const filteredEmployees =
+    roleFilter === 'all' ? allEmployees : allEmployees.filter((w) => w.role === roleFilter)
+  const pageCount = Math.max(1, Math.ceil(filteredEmployees.length / PAGE_SIZE))
+  const safePage = Math.min(page, pageCount - 1)
+  const pageEmployees = filteredEmployees.slice(
+    safePage * PAGE_SIZE,
+    (safePage + 1) * PAGE_SIZE,
+  )
+
   return (
     <div className="screen">
       <section className="panel">
@@ -402,59 +432,101 @@ export function TeamBuildScreen({
         </section>
       )}
 
-      {/* 选人弹窗：候选人完整信息 */}
+      {/* 选人弹窗：职位筛选 + 分页 */}
       {picker && (
         <Modal title={pickerTitle} wide onClose={() => setPicker(null)}>
           {pickerDef && <p className="dim">{pickerDef.hint}</p>}
           {allEmployees.length === 0 ? (
             <p className="dim">公司还没有员工，先去「招聘」页雇人吧。</p>
           ) : (
-            <div className="candidate-grid">
-              {allEmployees.map((w) => {
-                const busy = busySet.has(w.id)
-                const alreadyUsed = pickedIds.has(w.id) && w.id !== currentValue
-                const disabled = busy || alreadyUsed
-                return (
-                  <div key={w.id} className={`candidate-card${disabled ? ' candidate-disabled' : ''}`}>
-                    <div className="candidate-head">
-                      <span className="table-name">{w.name}</span>
-                      <span className="tag">{ROLE_ZH[w.role]}</span>
-                    </div>
-                    <div className="attr-line">
-                      {w.gender === 'male' ? '男' : '女'} · {w.age}岁 · 周薪 <MoneyText value={w.salary} />
-                    </div>
-                    <div className="attr-line">
-                      PA {w.basic.pa} · CA <b className="ca-cell">{w.basic.ca}</b> · Fame {Math.round(w.basic.fame)}
-                    </div>
-                    <div className="attr-line">
-                      心情 {Math.round(w.active.mood)} · 状态{' '}
-                      {busy ? (
-                        <span className="warn">拍摄中 {busyProjectName(w)}</span>
-                      ) : (
-                        <span className="ok">空闲{w.idleWeeks > 0 ? `（${w.idleWeeks} 周）` : ''}</span>
+            <>
+              <div className="candidate-filter">
+                <button
+                  className={`chip${roleFilter === 'all' ? ' chip-active' : ''}`}
+                  onClick={() => {
+                    setRoleFilter('all')
+                    setPage(0)
+                  }}
+                >
+                  全部（{allEmployees.length}）
+                </button>
+                {ROLE_IDS.map((r) => {
+                  const n = allEmployees.filter((w) => w.role === r).length
+                  if (n === 0) return null
+                  return (
+                    <button
+                      key={r}
+                      className={`chip${roleFilter === r ? ' chip-active' : ''}`}
+                      onClick={() => {
+                        setRoleFilter(r)
+                        setPage(0)
+                      }}
+                    >
+                      {ROLE_ZH[r]}（{n}）
+                    </button>
+                  )
+                })}
+              </div>
+
+              <div className="candidate-grid">
+                {pageEmployees.map((w) => {
+                  const busy = busySet.has(w.id)
+                  const alreadyUsed = pickedIds.has(w.id) && w.id !== currentValue
+                  const disabled = busy || alreadyUsed
+                  return (
+                    <div key={w.id} className={`candidate-card${disabled ? ' candidate-disabled' : ''}`}>
+                      <div className="candidate-head">
+                        <span className="table-name">{w.name}</span>
+                        <span className="tag">{ROLE_ZH[w.role]}</span>
+                      </div>
+                      <div className="attr-line">
+                        {w.gender === 'male' ? '男' : '女'} · {w.age}岁 · 周薪 <MoneyText value={w.salary} />
+                      </div>
+                      <div className="attr-line">
+                        PA {w.basic.pa} · CA <b className="ca-cell">{w.basic.ca}</b> · Fame {Math.round(w.basic.fame)}
+                      </div>
+                      <div className="attr-line">
+                        心情 {Math.round(w.active.mood)} · 状态{' '}
+                        {busy ? (
+                          <span className="warn">拍摄中 {busyProjectName(w)}</span>
+                        ) : (
+                          <span className="ok">空闲{w.idleWeeks > 0 ? `（${w.idleWeeks} 周）` : ''}</span>
+                        )}
+                      </div>
+                      {pickerCoreSkill && (
+                        <Bar
+                          label={`${SKILL_ZH[pickerCoreSkill]}技能`}
+                          value={w.skills[pickerCoreSkill as keyof typeof w.skills]}
+                        />
                       )}
+                      <div className="btn-row">
+                        <button
+                          className="btn-primary"
+                          disabled={disabled}
+                          onClick={pickWorker(w)}
+                          title={disabled ? (busy ? '该员工正在拍摄其他项目' : '该员工已安排其他职位') : '选用'}
+                        >
+                          选用
+                        </button>
+                        <button onClick={() => setDetailId(w.id)}>详情</button>
+                      </div>
                     </div>
-                    {pickerCoreSkill && (
-                      <Bar
-                        label={`${SKILL_ZH[pickerCoreSkill]}技能`}
-                        value={w.skills[pickerCoreSkill as keyof typeof w.skills]}
-                      />
-                    )}
-                    <div className="btn-row">
-                      <button
-                        className="btn-primary"
-                        disabled={disabled}
-                        onClick={pickWorker(w)}
-                        title={disabled ? (busy ? '该员工正在拍摄其他项目' : '该员工已安排其他职位') : '选用'}
-                      >
-                        选用
-                      </button>
-                      <button onClick={() => setDetailId(w.id)}>详情</button>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
+                  )
+                })}
+              </div>
+
+              <div className="candidate-pager">
+                <button disabled={safePage <= 0} onClick={() => setPage(safePage - 1)}>
+                  ← 上一页
+                </button>
+                <span>
+                  第 {safePage + 1} / {pageCount} 页 · 共 {filteredEmployees.length} 人
+                </span>
+                <button disabled={safePage >= pageCount - 1} onClick={() => setPage(safePage + 1)}>
+                  下一页 →
+                </button>
+              </div>
+            </>
           )}
         </Modal>
       )}
