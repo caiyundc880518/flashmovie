@@ -13,8 +13,7 @@ describe('世界模拟', () => {
     const s = createInitialState(5)
     expect(s.world.competitors.length).toBeGreaterThanOrEqual(WORLD_CONFIG.competitorCount[0])
     expect(s.world.competitors.length).toBeLessThanOrEqual(WORLD_CONFIG.competitorCount[1])
-    expect(s.world.critics.length).toBeGreaterThanOrEqual(WORLD_CONFIG.criticCount[0])
-    expect(s.world.critics.length).toBeLessThanOrEqual(WORLD_CONFIG.criticCount[1])
+    expect(s.world.critics).toHaveLength(5) // 影评人固定 5 位
     expect(s.world.publishers.length).toBeGreaterThan(0)
   })
 

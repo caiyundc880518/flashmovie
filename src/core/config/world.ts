@@ -32,8 +32,8 @@ export const WORLD_CONFIG = {
     overlapWeeks: 1,
   },
 
-  /** 影评人数量范围 */
-  criticCount: [3, 5] as const,
+  /** 影评人数量（固定 5 位） */
+  criticCount: [5, 5] as const,
   /** 影评人名池 */
   criticNames: ['陆离', '闻人语', '白墨', '顾影', '程述', '苏晚', '秋山', '裴砚'],
   /** 影评人影响力范围 */
