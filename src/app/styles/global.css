@@ -125,13 +125,47 @@ select {
 .side-nav {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
+}
+/* 多级分组：组标题 + 子项 */
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.nav-group-title {
+  text-align: left;
+  background: transparent;
+  border-color: transparent;
+  padding: 6px 8px;
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.nav-group-title:hover {
+  color: var(--text);
+  background: var(--bg-card);
+}
+.nav-caret {
+  font-size: 9px;
+  color: var(--gold);
+  width: 10px;
+  flex-shrink: 0;
+  transition: transform 0.15s;
+}
+.nav-group-items {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
 }
 .nav-item {
   text-align: left;
   background: transparent;
   border-color: transparent;
-  padding: 7px 12px;
+  padding: 7px 12px 7px 20px;
   font-size: 14px;
 }
 .nav-item:hover {

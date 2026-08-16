@@ -40,21 +40,47 @@ type Nav =
 
 type NavKey = Exclude<Nav['screen'], 'project'>
 
-const NAV_ITEMS: Array<{ key: NavKey; label: string }> = [
-  { key: 'company', label: '公司' },
-  { key: 'marketScripts', label: '剧本市场' },
-  { key: 'employees', label: '员工' },
-  { key: 'recruit', label: '招聘' },
-  { key: 'team', label: '组队立项' },
-  { key: 'projects', label: '项目' },
-  { key: 'critics', label: '影评人' },
-  { key: 'tech', label: '科技研发' },
-  { key: 'audience', label: '观众群体' },
-  { key: 'market', label: '地区市场' },
-  { key: 'ipo', label: 'IPO 上市' },
-  { key: 'news', label: '新闻' },
-  { key: 'leaderboard', label: '排行榜' },
-  { key: 'awards', label: '颁奖' },
+/** 左侧多级导航：分组 → 页面 */
+const NAV_GROUPS: Array<{ group: string; items: Array<{ key: NavKey; label: string }> }> = [
+  {
+    group: '公司管理',
+    items: [
+      { key: 'company', label: '公司' },
+      { key: 'tech', label: '科技研发' },
+      { key: 'market', label: '地区市场' },
+      { key: 'ipo', label: 'IPO 上市' },
+    ],
+  },
+  {
+    group: '演职员管理',
+    items: [
+      { key: 'employees', label: '员工' },
+      { key: 'recruit', label: '招聘' },
+    ],
+  },
+  {
+    group: '电影管理',
+    items: [
+      { key: 'marketScripts', label: '剧本市场' },
+      { key: 'team', label: '组队立项' },
+      { key: 'projects', label: '项目' },
+    ],
+  },
+  {
+    group: '电影媒体',
+    items: [
+      { key: 'critics', label: '影评人' },
+      { key: 'audience', label: '观众群体' },
+    ],
+  },
+  {
+    group: '世界管理',
+    items: [
+      { key: 'news', label: '新闻' },
+      { key: 'leaderboard', label: '排行榜' },
+      { key: 'awards', label: '颁奖' },
+    ],
+  },
 ]
 
 export function App() {
@@ -69,6 +95,31 @@ export function App() {
   const [seenCeremonyYear, setSeenCeremonyYear] = useState<number | null>(null)
   // 新手任务面板开关
   const [tutorialOpen, setTutorialOpen] = useState(false)
+  // 侧栏折叠的分组（默认全展开）
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+
+  /** 跳转页面：同时展开目标所在分组 */
+  const goTo = (key: NavKey) => {
+    setNav({ screen: key })
+    const group = NAV_GROUPS.find((g) => g.items.some((i) => i.key === key))
+    if (group && collapsedGroups.has(group.group)) {
+      setCollapsedGroups((prev) => {
+        const next = new Set(prev)
+        next.delete(group.group)
+        return next
+      })
+    }
+  }
+
+  /** 切换分组的折叠/展开 */
+  const toggleGroup = (group: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(group)) next.delete(group)
+      else next.add(group)
+      return next
+    })
+  }
 
   useEffect(() => {
     void boot()
@@ -97,15 +148,31 @@ export function App() {
           <small>FlashMovie</small>
         </div>
         <nav className="side-nav">
-          {NAV_ITEMS.map((item) => (
-            <button
-              key={item.key}
-              className={nav.screen === item.key ? 'nav-item nav-active' : 'nav-item'}
-              onClick={() => setNav({ screen: item.key })}
-            >
-              {item.label}
-            </button>
-          ))}        </nav>
+          {NAV_GROUPS.map((g) => {
+            const collapsed = collapsedGroups.has(g.group)
+            return (
+              <div key={g.group} className={`nav-group${collapsed ? ' nav-group-collapsed' : ''}`}>
+                <button className="nav-group-title" onClick={() => toggleGroup(g.group)}>
+                  <span className="nav-caret">{collapsed ? '▸' : '▾'}</span>
+                  {g.group}
+                </button>
+                {!collapsed && (
+                  <div className="nav-group-items">
+                    {g.items.map((item) => (
+                      <button
+                        key={item.key}
+                        className={nav.screen === item.key ? 'nav-item nav-active' : 'nav-item'}
+                        onClick={() => goTo(item.key)}
+                      >
+                        {item.label}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )
+          })}
+        </nav>
         <div className="sidebar-bottom">
           <button
             className="nav-item"
@@ -237,7 +304,7 @@ export function App() {
                   <button
                     className="btn-primary"
                     onClick={() => {
-                      setNav({ screen: t.page })
+                      goTo(t.page)
                       setTutorialOpen(false)
                     }}
                   >
