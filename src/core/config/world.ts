@@ -38,6 +38,8 @@ export const WORLD_CONFIG = {
   criticNames: ['陆离', '闻人语', '白墨', '顾影', '程述', '苏晚', '秋山', '裴砚'],
   /** 影评人影响力范围 */
   criticInfluenceRange: [40, 90] as const,
+  /** 年度换血概率：每年底随机 0–1 位退休并补入新锐（保持 5 位） */
+  criticRetireChance: 0.6,
   /** 类型偏好加分 / 不匹配减分（10 分制） */
   tasteBonus: 1.0,
   tasteMismatchPenalty: 0.5,
