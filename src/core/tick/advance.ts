@@ -10,7 +10,6 @@ import type {
 import { FILM_TYPES } from '../types'
 import { ECONOMY } from '../config/economy'
 import { IPO_CONFIG, SCHOOL_CONFIG } from '../config/company'
-import { IP_CONFIG } from '../config/ip'
 import { SCRIPT_POOL } from '../config/scripts'
 import { SHOOTING_EVENTS, INDUSTRY_EVENTS, FILM_TYPE_ZH } from '../config/events'
 import { WORLD_CONFIG } from '../config/world'
@@ -19,6 +18,7 @@ import type { Rng } from '../rng'
 import { chance, clamp, pick, randInt, round1, weightedPick } from '../rng'
 import { applyWeeklyWorkerState } from '../rules/growth'
 import { chemistrySpeedFactor } from '../rules/chemistry'
+import { settleDistribution, settleIpLongtail } from './distribution'
 import { applyAwardEffects, computeYearAwards } from '../rules/awards'
 import { annualCriticRotation } from '../rules/critics'
 import { generateScript, generateTierScript } from '../generators/scriptGen'
@@ -143,25 +143,8 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     if (w) draft.company.cash -= w.salary
   }
 
-  // 1.5 IP 衍生授权收入：每季度（13 周）结算周边/授权/画廊收入（GDD §3.8）；上市后放大（IPO 扩张）
-  if (draft.company.ips.length > 0 && draft.calendar.week % IP_CONFIG.quarterWeeks === 0) {
-    const ipMul = draft.company.public ? IPO_CONFIG.ipRoyaltyMultiplier : 1
-    const royalty = round1(
-      draft.company.ips.reduce(
-        (s, ip) => s + ip.royaltyPerQuarter * (1 + (ip.merchBonus ?? 0) / 100) * ipMul,
-        0,
-      ),
-    )
-    if (royalty > 0) {
-      draft.company.cash += royalty
-      for (const ip of draft.company.ips) {
-        ip.royaltyEarned = round1(
-          ip.royaltyEarned + ip.royaltyPerQuarter * (1 + (ip.merchBonus ?? 0) / 100) * ipMul,
-        )
-      }
-      pushNews(draft, `IP 衍生授权季度结算：周边/授权/画廊共收入 ${royalty} 万元。`)
-    }
-  }
+  // 1.5 IP 长尾收益（每周结算）：热门度衰减 + 周边收入 + 版权交易合同分期（GDD §3.8 大修）
+  settleIpLongtail(draft)
 
   // 1.55 上市股东季度分红（GDD §3.1 IPO 代价）
   if (draft.company.public && draft.calendar.week % 13 === 0) {
@@ -195,7 +178,12 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
   // 3. 员工状态（项目内/空闲）
   const busy = new Set<string>()
   for (const p of draft.projects) {
-    if (p.stage !== 'released') for (const id of teamIds(p.team)) busy.add(id)
+    if (p.stage !== 'released') {
+      for (const id of teamIds(p.team)) busy.add(id)
+    } else if (p.run && !p.run.firstRunEnded) {
+      // 首轮放映（待映/放映中）期间：成员仍视为在项目内（不空闲衰减），首轮下片结算后才真正释放
+      for (const id of teamIds(p.team)) busy.add(id)
+    }
   }
   for (const id of draft.company.employeeIds) {
     const w = draft.workers[id]
@@ -269,6 +257,9 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
       p.stage = 'editing'
     }
   }
+
+  // 5.5 发行放映每周结算：待映攒预售 → 每周票房 → 自动下片（GDD §3.6 大修）
+  settleDistribution(draft)
 
   // 6. 市场刷新（剧本 + 候选人）
   draft.world.marketRefreshIn -= 1

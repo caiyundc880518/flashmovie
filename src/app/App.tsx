@@ -14,6 +14,7 @@ import { RecruitScreen } from '../ui/screens/RecruitScreen'
 import { TeamBuildScreen } from '../ui/screens/TeamBuildScreen'
 import { ProjectsScreen } from '../ui/screens/ProjectsScreen'
 import { ProjectDetailScreen } from '../ui/screens/ProjectDetailScreen'
+import { ReleasedProjectScreen } from '../ui/screens/ReleasedProjectScreen'
 import { CriticsScreen } from '../ui/screens/CriticsScreen'
 import { NewsScreen } from '../ui/screens/NewsScreen'
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen'
@@ -23,10 +24,11 @@ import { AwardsCeremonyModal } from '../ui/components/AwardsCeremonyModal'
 import { Modal } from '../ui/components/Modal'
 import { NewGameModal } from '../ui/components/NewGameModal'
 import { ProjectEventModal } from '../ui/components/ProjectEventModal'
+import { ReviewFlipModal } from '../ui/components/ReviewFlipModal'
 import { MoneyText } from '../ui/components/MoneyText'
 import { SEASON_ZH } from '../ui/format'
 import { ROLE_ZH } from '../ui/format'
-import { ROLE_IDS, type TimingQuality } from '../core/types'
+import { ROLE_IDS, type CriticReview, type FilmResult, type TimingQuality } from '../core/types'
 import { TimingMinigame } from '../ui/components/TimingMinigame'
 
 type Nav =
@@ -122,6 +124,26 @@ export function App() {
   const [pendingGame, setPendingGame] = useState<{ projectId: string; kind: 'shot' | 'edit' } | null>(null)
   // 作弊菜单：在招聘市场生成满属性免费人才
   const [cheatOpen, setCheatOpen] = useState(false)
+  // 上映成功后的口碑揭晓弹窗（由 App 承载：上映后详情页切换到已上映页，弹窗不丢失）
+  const [flipReview, setFlipReview] = useState<{
+    projectId: string
+    projectName: string
+    reviews: CriticReview[]
+    audience?: { score: number; text?: string }
+  } | null>(null)
+
+  /** 定档上映成功后：弹影评翻牌（成员成长结算在首轮下片时，见已上映详情页） */
+  const handleReleased = (projectId: string, result: FilmResult) => {
+    setFlipReview({
+      projectId,
+      projectName: result.name,
+      reviews: result.reviews,
+      audience:
+        result.audienceScore !== undefined
+          ? { score: result.audienceScore, text: result.audienceText }
+          : undefined,
+    })
+  }
 
   /** 打开项目详情：记录来源页，返回时回到上一页面 */
   const openProject = (id: string) => {
@@ -331,12 +353,16 @@ export function App() {
               onGoToProject={openProject}
             />
           )}
-          {nav.screen === 'project' && (
-            <ProjectDetailScreen
-              projectId={nav.projectId}
-              onBack={() => setNav(projectReturn ?? { screen: 'projects' })}
-            />
-          )}
+          {nav.screen === 'project' && (() => {
+            const proj = state.projects.find((x) => x.id === nav.projectId)
+            const back = () => setNav(projectReturn ?? { screen: 'projects' })
+            // 已上映项目走独立的电影档案详情页
+            return proj?.stage === 'released' ? (
+              <ReleasedProjectScreen projectId={nav.projectId} onBack={back} />
+            ) : (
+              <ProjectDetailScreen projectId={nav.projectId} onBack={back} onReleased={handleReleased} />
+            )
+          })()}
         </div>
       </div>
 
@@ -397,6 +423,16 @@ export function App() {
           />
         )
       })()}
+
+      {/* 定档上映：影评/观众口碑翻牌弹窗（成员成长结算在首轮下片后，详情页可查） */}
+      {flipReview && (
+        <ReviewFlipModal
+          projectName={flipReview.projectName}
+          reviews={flipReview.reviews}
+          audience={flipReview.audience}
+          onClose={() => setFlipReview(null)}
+        />
+      )}
 
       {/* 新游戏 / 重置存档：输入公司名 */}
       {newGameOpen && (

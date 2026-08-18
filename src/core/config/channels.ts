@@ -86,6 +86,41 @@ export const CHANNEL_CONFIG = {
   freeViewHypePer: 0.01,
   /** 免费：广告收入直接归片方 */
   freeShare: 1,
+
+  /** 发行放映期（每周动态结算；数值为平衡期初值，后续长线回归校准） */
+  run: {
+    /** 定档最多提前周数 */
+    presaleMaxWeeks: 8,
+    /** 待映期每周预售累积（万）= hype × 此系数 */
+    presalePerHypePerWeek: 2,
+    /** 预售加成上限（首周票房占比，如 0.4 = +40%） */
+    presaleCapRatio: 0.4,
+    /** 待映期热度每周衰减（保留率） */
+    hypeDecayPerWeek: 0.95,
+    /** 自动下片地板：当周票房低于此值（万）结束本段 */
+    floorWan: 1,
+    /** 每周衰减保留率（渠道；week1Share = 1 − decayRate，保证中性反馈总票房 ≈ expectedTotal） */
+    decayRate: { cinema: 0.55, web: 0.85, dvd: 0.9, free: 0.95 },
+    /** 硬上限周数（渠道兜底，防衰减曲线磨不过地板） */
+    maxWeeks: { cinema: 12, web: 30, dvd: 40, free: 52 },
+    /** 再发行长尾系数（该渠道 expectedTotal × 此值） */
+    rereleaseFactor: 0.5,
+    /** 口碑/MP 反馈环（票房表现驱动 + 向影评评分回归） */
+    feedback: {
+      /** 口碑每周向影评评分（固定）回归的力度 0~1 */
+      criticPull: 0.15,
+      /** 票房表现对口碑的扰动强度（超预期比例 → 口碑变化） */
+      perfK: 0.8,
+      /** 衰减修正系数：口碑/MP 偏离基础 → hold 偏离 1 */
+      holdK: 0.4,
+      holdMin: 0.7,
+      holdMax: 1.3,
+      /** MP 随口碑同向变化的刻度（每 1 口碑点 → MP 点数） */
+      mpStep: 6,
+    },
+    /** 网络：单次播放收益（元/万次，仅用于换算播放量展示） */
+    webPerView: 10,
+  },
 } as const
 
 /**

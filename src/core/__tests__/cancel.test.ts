@@ -110,7 +110,7 @@ describe('取消未上映项目', () => {
     s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
     s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
     s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
-    s = reduce(s, { type: 'release', projectId: pid })
+    s = reduce(s, { type: 'release', projectId: pid, weeks: 0 })
     expect(s.projects[0].stage).toBe('released')
     // 已上映 → 取消被拒绝
     const before = s.projects.length

@@ -5,6 +5,7 @@ import { createRng } from '../rng'
 import { generateScript } from '../generators/scriptGen'
 import { generateWorker } from '../generators/workerGen'
 import { IP_CONFIG } from '../config/ip'
+import { releaseAndFinish } from './helpers'
 import type { FilmProject, GameState, IpAsset, SkillKey } from '../types'
 
 /** 构造一个「宣发中」的强项目（票房/口碑必然达标） */
@@ -101,7 +102,7 @@ function pushIp(s: GameState, over: Partial<IpAsset> = {}): IpAsset {
 describe('IP 售后与续作', () => {
   it('首作票房口碑双达标 → 沉淀为 IP，结果记录系列信息', () => {
     let s = makeStrongState()
-    s = reduce(s, { type: 'release', projectId: 'prj-test' })
+    s = releaseAndFinish(s, 'prj-test')
     expect(s.company.ips.length).toBe(1)
     const ip = s.company.ips[0]
     expect(ip.entry).toBe(1)
@@ -118,7 +119,7 @@ describe('IP 售后与续作', () => {
 
   it('票房或口碑不达标 → 不沉淀 IP', () => {
     let s = makeStrongState(7, true)
-    s = reduce(s, { type: 'release', projectId: 'prj-test' })
+    s = releaseAndFinish(s, 'prj-test')
     expect(s.company.ips.length).toBe(0)
     expect(s.projects[0].result?.ipName).toBeUndefined()
   })
@@ -138,7 +139,7 @@ describe('IP 售后与续作', () => {
     p.ipEntry = 2
     p.name = '《测试系列 2》'
     const cashBefore = s.company.cash
-    s = reduce(s, { type: 'release', projectId: 'prj-test' })
+    s = releaseAndFinish(s, 'prj-test')
 
     const grown = s.company.ips[0]
     expect(grown.entry).toBe(2)
@@ -164,8 +165,8 @@ describe('IP 售后与续作', () => {
     sequel.projects[0].ipEntry = 2
     sequel.projects[0].name = '《测试系列 2》'
 
-    const r1 = reduce(orig, { type: 'release', projectId: 'prj-test' })
-    const r2 = reduce(sequel, { type: 'release', projectId: 'prj-test' })
+    const r1 = releaseAndFinish(orig, 'prj-test')
+    const r2 = releaseAndFinish(sequel, 'prj-test')
     expect(r2.projects[0].result!.boxOffice).toBeGreaterThan(r1.projects[0].result!.boxOffice)
     expect(r2.projects[0].result!.boxOffice).toBeGreaterThanOrEqual(
       Math.round(r1.projects[0].result!.boxOffice * 1.1),
@@ -206,30 +207,26 @@ describe('IP 售后与续作', () => {
     expect(rejected.projects.length).toBe(before)
   })
 
-  it('季度结算：到达第 13 周发放衍生授权收入，非结算周不发', () => {
+  it('IP 热门度周边收入：每周入账、随热门度衰减', () => {
     let s = createInitialState(23)
     s.company.cash = 1000
     s.company.employeeIds = []
-    pushIp(s, { royaltyPerQuarter: 36, royaltyEarned: 0 })
+    pushIp(s, { hotness: 60, royaltyEarned: 0 })
+    s.calendar = { year: 1, week: 1 }
 
-    // 非结算周：第 11 周 → 12 周
-    s.calendar = { year: 1, week: 11 }
+    // 第一周：热门度 60 → ×0.98 = 58.8；周边 = 58.8 × 0.15 × 1.0 = 8.82
     s = reduce(s, { type: 'advanceWeek' })
-    expect(s.calendar.week).toBe(12)
-    expect(s.company.cash).toBe(1000 - 5) // 只有办公成本，无授权
-    expect(s.company.ips[0].royaltyEarned).toBe(0)
+    expect(s.calendar.week).toBe(2)
+    expect(s.company.cash).toBe(1000 - 5 + 8.8) // 办公 5 + 周边 8.82→8.8
+    expect(s.company.ips[0].royaltyEarned).toBe(8.8)
 
-    // 结算周：第 12 周 → 13 周，发放 36
+    // 第二周：热门度继续衰减 → 周边更低
+    const earned1 = s.company.ips[0].royaltyEarned
+    const cash1 = s.company.cash
     s = reduce(s, { type: 'advanceWeek' })
-    expect(s.calendar.week).toBe(13)
-    expect(s.company.cash).toBe(1000 - 5 - 5 + 36)
-    expect(s.company.ips[0].royaltyEarned).toBe(36)
-    expect(s.world.news.some((n) => n.text.includes('IP 衍生授权'))).toBe(true)
-
-    // 第 13 周 → 14 周：非结算周不再发
-    s = reduce(s, { type: 'advanceWeek' })
-    expect(s.company.cash).toBe(1000 - 5 - 5 + 36 - 5)
-    expect(s.company.ips[0].royaltyEarned).toBe(36)
+    expect(s.company.ips[0].royaltyEarned).toBeGreaterThan(earned1)
+    expect(s.company.ips[0].hotness).toBeLessThan(58.8)
+    expect(s.company.cash).toBeGreaterThan(cash1 - 5)
   })
 
   it('续作向发行商争取预付款溢价（发行商机制保留历史数据）', () => {
@@ -238,7 +235,7 @@ describe('IP 售后与续作', () => {
     pushIp(s, { level: 2 })
     s.projects[0].ipId = 'ip-test'
     s.projects[0].ipEntry = 2
-    s = reduce(s, { type: 'release', projectId: 'prj-test' })
+    s = releaseAndFinish(s, 'prj-test')
     expect(s.projects[0].result?.ipName).toBe('《测试系列》')
     expect(s.projects[0].result?.ipEntry).toBe(2)
   })

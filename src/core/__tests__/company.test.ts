@@ -118,12 +118,14 @@ describe('写作学校与投资人', () => {
     const cashMid = s.company.cash
     s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
     s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
-    s = reduce(s, { type: 'release', projectId: pid })
-    const r = s.projects[0].result!
-    const investorPaid = r.revenue! * inv.share
-    // 分账后现金 = 上映后现金 - 投资人分成
-    expect(s.company.cash).toBeLessThanOrEqual(cashMid + r.revenue!)
-    expect(s.company.investor!.remainingToCollect).toBeLessThan(remaining)
+    s = reduce(s, { type: 'release', projectId: pid, weeks: 0 })
+    s = reduce(s, { type: 'advanceWeek' }) // 首周结算：收入入账 + 投资人按比例分成
+    const run = s.projects[0].run!.runs[0]
+    const w1 = run.weekly[0]
+    const investorPaid = w1.revenue * inv.share
     expect(investorPaid).toBeGreaterThan(0)
+    expect(s.company.investor!.remainingToCollect).toBeLessThan(remaining)
+    // 现金增量不可能超过当周分账
+    expect(s.company.cash).toBeLessThanOrEqual(cashMid + w1.revenue)
   })
 })

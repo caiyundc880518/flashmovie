@@ -40,6 +40,13 @@ export type Action =
   | { type: 'investTech'; lineId: string }
   | { type: 'ipo' }
   | { type: 'cheatSpawnWorker'; role: RoleId }
-  | { type: 'release'; projectId: string }
+  // 定档上映：weeks = 提前周数（0 = 本周立即上映），进入放映/预售
+  | { type: 'release'; projectId: string; weeks: number }
+  // 手动下片：结束当前放映段（本周已结算收入保留）
+  | { type: 'endRun'; projectId: string }
+  // 再发行：选择严格更低档渠道，下周开映（不定档不预售）
+  | { type: 'rerelease'; projectId: string; channel: Channel }
+  // 版权交易：把 IP 版权卖给电视剧/游戏公司（固定总额每周分期）
+  | { type: 'sellCopyright'; ipId: string; kind: 'tv' | 'game' }
   // 取消未上映项目：投入不退、剧组人员释放回员工池
   | { type: 'cancelProject'; projectId: string }

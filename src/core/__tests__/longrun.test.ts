@@ -123,7 +123,7 @@ function simulateRun(seed: number, maxWeeks = 260, opts: SimOptions = {}): RunRe
         }
         // 渠道已配置即可上映（宣发即渠道投入）
         if (mp.channel) {
-          s = reduce(s, { type: 'release', projectId: p.id })
+          s = reduce(s, { type: 'release', projectId: p.id, weeks: 0 })
         }
       }
     }

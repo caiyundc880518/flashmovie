@@ -23,3 +23,32 @@ export const IP_CONFIG = {
   /** 续作向发行商争取的预付款加成（每级 ×，Lv5 时 +20%） */
   publisherPrepayPerLevel: 0.04,
 } as const
+
+/**
+ * IP 长尾收益配置（热门度周边 + 版权交易；数值为平衡期初值）
+ */
+export const IP_LONGTAIL_CONFIG = {
+  /** 热门度每周衰减保留率（0.98 ≈ 34 周腰斩） */
+  hotnessDecay: 0.98,
+  /** 旧档迁移：hotness = level × 此系数 */
+  hotnessSeedPerLevel: 20,
+  /** 续作抬升：hotness += (finalMp − 50) × 此系数 */
+  hotnessSequelK: 0.6,
+  /** 周边收入基础系数：周周边 = hotness × 此值 × 等级加成 × (1 + merchBonus/100)（万/周） */
+  merchBasePerHotness: 0.15,
+  /** 周边收入等级加成：每级 +20% */
+  merchLevelK: 0.2,
+  /** 版权交易 */
+  copyright: {
+    /** 合同总额基数（万）：tv / game */
+    tvBase: 400,
+    gameBase: 700,
+    /** 合同期（周）：tv / game */
+    tvWeeks: 12,
+    gameWeeks: 20,
+    /** 等级加成：× (1 + (level−1)×levelK) */
+    levelK: 0.5,
+    /** 热门度加成：× (hotnessK + hotness/100)，hotness 0 → 0.5，100 → 1.5 */
+    hotnessK: 0.5,
+  },
+} as const

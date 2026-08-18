@@ -23,6 +23,73 @@ export type TimingQuality = 'perfect' | 'good' | 'miss'
 /** 发行渠道（GDD §3.6 四渠道：影院/网络/DVD/免费；流媒体已取消） */
 export type Channel = 'cinema' | 'web' | 'dvd' | 'free'
 
+/** 发行放映生命周期状态：待映攒预售 / 放映中 / 已下片可再发行 / 彻底完结 */
+export type FilmRunStatus = 'presale' | 'running' | 'idle' | 'finished'
+
+/** 单段放映的渠道配置快照（首轮来自定档时的宣发配置，再发行来自再发行面板） */
+export interface RunChannelConfig {
+  cinemaCount: number
+  webPlatforms: string[]
+  webWeeks: number
+  dvdPrice: number
+  freeAdPrice: number
+}
+
+/** 单周票房记录 */
+export interface WeeklyBoxOffice {
+  week: number
+  year: number
+  /** 当周票房（万） */
+  boxOffice: number
+  /** 当周片方分账（万） */
+  revenue: number
+  /** 影院：观影人次（万人次） */
+  admissions?: number
+  /** 网络/免费：播放量（万次） */
+  traffic?: number
+  /** DVD：销量（万张） */
+  units?: number
+  /** 当周结算用的动态 MP（0~100） */
+  mp: number
+  /** 当周结算用的动态观众口碑（0~10） */
+  audience: number
+}
+
+/** 单段放映（首轮或每段再发行），每周动态结算 */
+export interface FilmRun {
+  id: string
+  channel: Channel
+  isFirst: boolean
+  config: RunChannelConfig
+  /** 本段预计总票房（万，中性反馈下整段 ≈ 此值；首轮=base×倍数，再发行×长尾系数） */
+  expectedTotal: number
+  startWeek: number
+  startYear: number
+  endWeek?: number
+  endYear?: number
+  status: 'running' | 'ended'
+  /** 该段每周票房记录 */
+  weekly: WeeklyBoxOffice[]
+  /** 渠道投放成本（开映当周一次性扣，万） */
+  channelCost: number
+}
+
+/** 发行/长尾状态（仅 released 项目） */
+export interface FilmRunState {
+  status: FilmRunStatus
+  currentRunId: string | null
+  runs: FilmRun[]
+  /** 定档的正式变现周/年 */
+  releaseWeek: number
+  releaseYear: number
+  /** 首轮预售累计（万，加成首周票房） */
+  presale: number
+  /** 首轮是否已下片（一次性结算只做一次） */
+  firstRunEnded: boolean
+  /** 影片基础票房潜力（无渠道 gross，定档时计算，供各段 expectedTotal） */
+  basePotential: number
+}
+
 /** 电影项目 */
 export interface FilmProject {
   id: string
@@ -82,10 +149,20 @@ export interface FilmProject {
   ipEntry?: number
   /** 主攻地区（宣发阶段选择，空 = 全国通发；GDD §6 Area） */
   targetRegion?: string
-  /** 结算结果（released 后写入） */
+  /** 结算结果（released 后写入；语义为"累计快照"，boxOffice/revenue/渠道指标为全渠道累计值） */
   result?: FilmResult
   /** 进入 released 的周（用于结果记录） */
   releasedWeek?: number
+  /** 发行/长尾状态（仅 released 项目；旧档迁移为 finished） */
+  run?: FilmRunState
+  /** 动态 MP（首轮每周更新，0~100） */
+  currentMp?: number
+  /** 动态观众口碑（首轮每周更新，0~10） */
+  currentAudience?: number
+  /** 首轮下片时锁定的最终 MP（成员成长/再发行用） */
+  finalMp?: number
+  /** 首轮下片时锁定的最终观众口碑 */
+  finalAudience?: number
 }
 
 /** 项目内随机事件（2–3 选 1） */

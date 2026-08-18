@@ -2319,3 +2319,51 @@ input[type='range'] {
   font-size: 12px;
   line-height: 1.7;
 }
+
+/* ===== 已上映电影独立详情页 ===== */
+.film-hero {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  gap: 22px;
+  align-items: stretch;
+}
+.film-hero .poster {
+  height: 100%;
+}
+.film-hero-main {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.film-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+  padding: 12px 0;
+  border-top: 1px dashed var(--border);
+  border-bottom: 1px dashed var(--border);
+}
+.film-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.film-stat b {
+  font-size: 19px;
+  line-height: 1.15;
+  color: var(--text);
+}
+.film-stat span {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.film-hero-meta {
+  margin-top: 6px;
+}
+@media (max-width: 1000px) {
+  .film-hero {
+    grid-template-columns: 1fr;
+  }
+}

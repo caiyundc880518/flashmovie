@@ -39,6 +39,9 @@ import { SAVE_VERSION } from './schema'
  *       IP 新增 merchBonus（周边收入加成）。
  * v12：项目大修：渠道改单选（cinema/web/dvd/free，流媒体/发行商取消），
  *       新增 warmup（筹备预热）、shotGameBonus/pendingShotGame/editGameDone/editGameBonus（强制小游戏）。
+ * v13：发行长尾大修：上映改「定档 + 每周动态票房结算 + 下片 + 再发行」；
+ *       旧已上映影片视为彻底完结（run.status='finished'，只读不参与再发行）；
+ *       IP 新增 hotness（热门度，旧档 = level×20）与 deals（版权合同，空）。
  */
 export function migrateSave(raw: unknown): GameState {
   if (!raw || typeof raw !== 'object') {
@@ -61,6 +64,7 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 9) state = migrateV9toV10(state)
   if (state.version === 10) state = migrateV10toV11(state)
   if (state.version === 11) state = migrateV11toV12(state)
+  if (state.version === 12) state = migrateV12toV13(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
   return state
@@ -190,8 +194,41 @@ function migrateV11toV12(s: GameState): GameState {
   return { ...s, version: 12 }
 }
 
-/** 世界实体为空时，用存档种子派生确定性生成 */
-function ensureWorldPopulated(s: GameState): GameState {
+/** v12 → v13：发行长尾大修。旧已上映影片=彻底完结；IP 补热门度/版权合同 */
+function migrateV12toV13(s: GameState): GameState {
+  const cal = s.calendar
+  for (const p of s.projects) {
+    const project = p as FilmProject & { releasedWeek?: number }
+    if (project.stage !== 'released') continue
+    const r = project.result
+    if (!project.run) {
+      // 旧已上映影片：视为首轮已下片、彻底完结（只读，不参与再发行）
+      project.run = {
+        status: 'finished',
+        currentRunId: null,
+        runs: [],
+        releaseWeek: project.releasedWeek ?? cal.week,
+        releaseYear: cal.year,
+        presale: 0,
+        firstRunEnded: true,
+        basePotential: r?.boxOffice ?? 0,
+      }
+      project.currentMp = r?.mp ?? 0
+      project.currentAudience = r?.audienceScore ?? 0
+      project.finalMp = r?.mp ?? 0
+      project.finalAudience = r?.audienceScore ?? 0
+    }
+  }
+  for (const ip of s.company.ips) {
+    if (typeof ip.hotness !== 'number') {
+      ip.hotness = Math.min(100, (ip.level ?? 1) * 20)
+    }
+    if (!Array.isArray(ip.deals)) ip.deals = []
+  }
+  return { ...s, version: 13 }
+}
+
+/** 世界实体为空时，用存档种子派生确定性生成 */function ensureWorldPopulated(s: GameState): GameState {
   const world = s.world as World & {
     competitors?: Competitor[]
     critics?: Critic[]

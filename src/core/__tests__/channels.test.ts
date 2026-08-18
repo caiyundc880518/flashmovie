@@ -160,15 +160,21 @@ describe('上映结算：渠道驱动最终票房并存储渠道指标', () => {
     s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
     s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
     s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 800 })
-    s = reduce(s, { type: 'release', projectId: pid })
-    const r = s.projects[0].result!
-    expect(r.channel).toBe('cinema')
-    expect(r.admissions).toBeGreaterThan(0)
-    // 影院 800 家：票房系数 > 1，最终票房高于未渠道化的基础票房
-    expect(r.boxOffice).toBeGreaterThan(r.admissions! * CHANNEL_CONFIG.cinemaAvgTicket - 0.001)
-    expect(r.revenue).toBeLessThan(r.boxOffice)
-    // 片方收入 = 票房 × 影院分账
-    expect(r.revenue).toBeCloseTo(r.boxOffice * ECONOMY.cinemaShare, 0)
+    s = reduce(s, { type: 'release', projectId: pid, weeks: 0 })
+    const rs = s.projects[0].run!
+    expect(rs.runs[0].channel).toBe('cinema')
+    expect(rs.runs[0].weekly.length).toBe(0) // 定档不瞬时结算
+    expect(s.projects[0].result!.boxOffice).toBe(0)
+    // 推进一周：首周票房结算，影院 800 家 → 票房系数 > 1
+    s = reduce(s, { type: 'advanceWeek' })
+    const run = s.projects[0].run!.runs[0]
+    const w1 = run.weekly[0]
+    expect(w1.admissions).toBeGreaterThan(0)
+    expect(run.expectedTotal).toBeGreaterThan(rs.basePotential) // 800 家影院放大基础票房
+    expect(w1.boxOffice).toBeGreaterThan(w1.admissions! * CHANNEL_CONFIG.cinemaAvgTicket - 0.001)
+    expect(w1.revenue).toBeLessThan(w1.boxOffice)
+    expect(w1.revenue).toBeCloseTo(w1.boxOffice * ECONOMY.cinemaShare, 0)
+    expect(s.projects[0].result!.boxOffice).toBeCloseTo(w1.boxOffice, 6)
   })
 
   it('DVD 渠道上映：记录卖出张数', () => {

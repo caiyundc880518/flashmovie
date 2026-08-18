@@ -2,28 +2,33 @@ import type { GameState, ProjectStage } from '../types'
 import { createRng, clamp, randInt, round1 } from '../rng'
 import { uid, teamIds, pushNews } from './utils'
 import { advanceWeek as tickAdvance } from '../tick/advance'
-import { channelRevenue, computeFilmResult } from '../rules/scoring'
-import { applyProjectGrowth } from '../rules/growth'
+import {
+  createRun,
+  createRunConfigForChannel,
+  endRun,
+  initRunState,
+  isLowerChannel,
+} from '../tick/distribution'
+import { computeFilmResult } from '../rules/scoring'
 import { generateWorker } from '../generators/workerGen'
 import { generateCandidates } from '../generators/workerGen'
 import { ECONOMY } from '../config/economy'
 import { SCRIPT_POOL } from '../config/scripts'
 import { INVESTOR_CONFIG, IPO_CONFIG, SCHOOL_CONFIG } from '../config/company'
-import { IP_CONFIG } from '../config/ip'
+import { IP_CONFIG, IP_LONGTAIL_CONFIG } from '../config/ip'
 import { RECRUIT_POOLS } from '../config/recruit'
 import { ROLES } from '../config/roles'
 import { TEN_PULL_DISCOUNT, WRITER_POOLS } from '../config/writers'
 import { TECH_CONFIG, TECH_LINES, techLevel } from '../config/tech'
 import { techBonuses } from '../rules/tech'
-import { ipLevel, refreshIpDerived, royaltyPerQuarter, sequelBonusFactor } from '../rules/ip'
 import { TIMING_CONFIG } from '../config/minigame'
 import { VFX_CONFIG } from '../config/minigame'
 import { BUDGET_CONFIG } from '../config/budget'
 import { AD_CONFIG, AD_SPONSOR_MAP } from '../config/ads'
-import { CHANNEL_CONFIG, TOTAL_CINEMAS, WEB_PLATFORMS } from '../config/channels'
+import { CHANNEL_CONFIG, CHANNEL_INFO, TOTAL_CINEMAS, WEB_PLATFORMS } from '../config/channels'
 import { availableVfxTiers } from '../rules/scoring'
 import type { Action } from './actions'
-import type { IpAsset, SkillKey } from '../types'
+import type { SkillKey } from '../types'
 
 /**
  * 状态容器：纯函数 reduce(action, state) → state
@@ -579,149 +584,98 @@ export function reduce(state: GameState, action: Action): GameState {
     }
 
     case 'release': {
+      // 定档：决定提前周数（weeks=0 本周上映；>0 待映攒预售），不瞬时结算
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p || p.stage !== 'marketing') return state
       if (!p.channel) return state
-      const result = computeFilmResult(draft, p, rng)
-      // 渠道结算（单选渠道）：影院/网络/DVD/免费；发行商机制已取消
-      // 渠道驱动最终票房：影院数/时长/张数/播放量直接决定票房与片方分账
-      const channel = p.channel
-      const { boxOffice, revenue, channelCost, admissions, dvdUnits, freeViews } = channelRevenue(p, result.boxOffice)
-      // 渠道投放成本（影院家数 × 单价 / 网络平台与时长 / DVD 制作 / 免费平台费）
-      if (channelCost > 0) draft.company.cash -= round1(channelCost)
-      draft.company.cash += round1(revenue)
-      // 投资人分成：按片方收入比例扣除，直至回收完毕退出
-      const investor = draft.company.investor
-      if (investor) {
-        const investorIncome = revenue * investor.share
-        draft.company.cash -= round1(investorIncome)
-        investor.remainingToCollect = round1(investor.remainingToCollect - investorIncome)
-        if (investor.remainingToCollect <= 0) {
-          draft.company.investor = undefined
-          pushNews(draft, `投资人「${investor.name}」已回收全部投资，退出公司。`)
-        }
-      }
-      // 免费渠道：换口碑
-      let repGain = result.reputationGain
-      if (channel === 'free') repGain = clamp(repGain + 2, -3, 6)
-      draft.company.reputation = clamp(draft.company.reputation + repGain, 0, 100)
-      // 广告赞助结算（GDD §3.3 植入广告扩展）：逐家校验「影评均分 ≥ 要求」且「演员最高 Fame ≥ 要求」
-      const maxActorFame = Math.max(
-        0,
-        ...p.team.actorIds.map((id) => draft.workers[id]?.basic.fame ?? 0),
-      )
-      const adSettlement = p.adSponsorIds.map((id) => {
-        const ad = AD_SPONSOR_MAP[id]
-        if (!ad) return null
-        const met = result.criticScore >= ad.minCriticScore && maxActorFame >= ad.requiredFame
-        return { id: ad.id, name: ad.name, fee: ad.sponsorFee, met }
-      }).filter((x): x is NonNullable<typeof x> => !!x)
-      const adIncome = adSettlement.reduce((s, a) => s + (a.met ? a.fee : 0), 0)
-      if (adIncome > 0) draft.company.cash += round1(adIncome)
-      const unmet = adSettlement.filter((a) => !a.met)
-      if (unmet.length > 0) {
-        pushNews(
-          draft,
-          `《${p.name}》未达广告商赞助要求（影评 ${result.criticScore.toFixed(1)} 分 / 演员 Fame ${maxActorFame}）：${unmet
-            .map((a) => a.name)
-            .join('、')} 赞助未到账。`,
-        )
-      }
-      if (adIncome > 0) {
-        pushNews(draft, `《${p.name}》植入广告赞助到账 ${adIncome} 万元。`)
-      }
-      // 高知名度广告商提升 IP 周边收入（累计 merchBonus，cap 100%）
-      const maxMerch = Math.max(0, ...p.adSponsorIds.map((id) => AD_SPONSOR_MAP[id]?.merchBonus ?? 0))
-      const applyMerch = (ip: IpAsset) => {
-        if (maxMerch > 0) {
-          ip.merchBonus = clamp(ip.merchBonus + maxMerch, 0, AD_CONFIG.merchBonusCap)
-        }
-      }
-      // IP 售后与续作（GDD §3.8）：续作成长已有 IP；首作达标则沉淀新 IP
-      let ipName: string | undefined
-      let ipEntry: number | undefined
-      const sequelIp = p.ipId ? draft.company.ips.find((x) => x.id === p.ipId) : undefined
-      if (sequelIp) {
-        sequelIp.entry = Math.max(sequelIp.entry, p.ipEntry ?? sequelIp.entry + 1)
-        sequelIp.totalBoxOffice = round1(sequelIp.totalBoxOffice + result.boxOffice)
-        sequelIp.bestBoxOffice = Math.max(sequelIp.bestBoxOffice, result.boxOffice)
-        sequelIp.bestCriticScore = Math.max(sequelIp.bestCriticScore, result.criticScore)
-        sequelIp.films.push(p.id)
-        const prevLevel = sequelIp.level
-        refreshIpDerived(sequelIp)
-        applyMerch(sequelIp)
-        if (sequelIp.level > prevLevel) {
-          pushNews(
-            draft,
-            `《${sequelIp.name}》系列累计票房突破 ${Math.round(sequelIp.totalBoxOffice)} 万，IP 升级至 Lv.${sequelIp.level}！`,
-          )
-        }
-        ipName = sequelIp.name
-        ipEntry = sequelIp.entry
-      } else if (
-        result.boxOffice >= IP_CONFIG.originBoxOffice &&
-        result.criticScore >= IP_CONFIG.originCriticScore
-      ) {
-        const type = draft.scripts[p.scriptId]?.type ?? 'drama'
-        const lv = ipLevel(result.boxOffice)
-        const newIp: IpAsset = {
-          id: uid(draft, 'ip'),
-          name: p.name,
-          type,
-          entry: 1,
-          originWeek: draft.calendar.week,
-          originYear: draft.calendar.year,
-          totalBoxOffice: round1(result.boxOffice),
-          bestBoxOffice: round1(result.boxOffice),
-          bestCriticScore: result.criticScore,
-          level: lv,
-          royaltyPerQuarter: royaltyPerQuarter(lv),
-          sequelBonus: sequelBonusFactor(lv),
-          merchBonus: 0,
-          royaltyEarned: 0,
-          films: [p.id],
-        }
-        applyMerch(newIp)
-        draft.company.ips.push(newIp)
-        pushNews(
-          draft,
-          `《${p.name}》票房 ${Math.round(result.boxOffice)} 万、影评 ${result.criticScore.toFixed(1)} 分，沉淀为公司 IP（Lv.${lv}），可立项续作！`,
-        )
-        ipName = newIp.name
-        ipEntry = 1
-      }
-      const settlements = applyProjectGrowth(draft, p, result)
-      p.result = {
-        ...result,
-        // 最终票房 = 渠道驱动后的票房（影院可放大数倍）
-        boxOffice: round1(boxOffice),
-        revenue: round1(revenue),
-        channel,
-        channels: [channel],
-        admissions,
-        dvdUnits,
-        freeViews,
-        ipName,
-        ipEntry,
-        targetRegion: p.targetRegion,
-        adSettlement: adSettlement.length > 0 ? adSettlement : undefined,
-        adIncome: adIncome > 0 ? round1(adIncome) : undefined,
-        settlement: settlements,
-      }
+      const weeks = Math.max(0, Math.min(Math.floor(action.weeks) || 0, CHANNEL_CONFIG.run.presaleMaxWeeks))
+      // 固定品质：影评/AP/六项分数/初始 MP/口碑（此后不变，口碑/MP 动态漂移）
+      const fixed = computeFilmResult(draft, p, rng)
+      p.run = initRunState(draft, p, weeks, fixed.boxOffice)
+      p.currentMp = fixed.mp
+      p.currentAudience = fixed.audienceScore ?? 0
       p.stage = 'released'
       p.releasedWeek = draft.calendar.week
-      draft.company.history.push(p.result)
+      // result：固定品质 + 累计从 0 开始（每周结算累加）
+      p.result = {
+        ...fixed,
+        boxOffice: 0,
+        revenue: 0,
+        admissions: 0,
+        dvdUnits: 0,
+        freeViews: 0,
+        channel: p.channel,
+        channels: [p.channel],
+        targetRegion: p.targetRegion,
+      }
+      // 释放 crew（制作期结束）
       for (const id of teamIds(p.team)) {
         const w = draft.workers[id]
         if (w) w.currentProjectId = null
       }
       pushNews(
         draft,
-        `《${p.name}》上映！票房 ${Math.round(result.boxOffice)} 万元，AP ${result.ap} / MP ${result.mp}。`,
+        weeks > 0
+          ? `《${p.name}》定档：${weeks} 周后（第 ${p.run.releaseWeek} 周）正式上映，等待期间将累积预售。`
+          : `《${p.name}》定档本周上映，进入${CHANNEL_INFO[p.channel].label}档放映。`,
       )
+      break
+    }
+
+    case 'endRun': {
+      // 手动下片：结束当前放映段（本周已结算收入保留）
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'released' || !p.run) return state
+      const rs = p.run
+      const run = rs.runs.find((x) => x.id === rs.currentRunId)
+      if (!run || run.status !== 'running') return state
+      endRun(draft, p, run)
+      break
+    }
+
+    case 'rerelease': {
+      // 再发行：选择严格更低档渠道，下周开映（不定档不预售）
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'released' || !p.run) return state
+      const rs = p.run
+      if (rs.status !== 'idle') return state
+      const last = rs.runs[rs.runs.length - 1]
+      if (!last || !isLowerChannel(action.channel, last.channel)) return state
+      const run = createRun(draft, p, action.channel, false, createRunConfigForChannel(action.channel))
+      rs.runs.push(run)
+      rs.currentRunId = run.id
+      rs.status = 'running'
+      pushNews(draft, `《${p.name}》再发行：登陆${CHANNEL_INFO[action.channel].label}渠道，下周开映。`)
+      break
+    }
+
+    case 'sellCopyright': {
+      // 版权交易：IP 版权卖给电视剧/游戏公司，固定总额每周分期
+      const ip = draft.company.ips.find((x) => x.id === action.ipId)
+      if (!ip) return state
+      const deals = ip.deals ?? []
+      if (deals.some((d) => d.kind === action.kind && d.status === 'active')) return state
+      const cc = IP_LONGTAIL_CONFIG.copyright
+      const base = action.kind === 'tv' ? cc.tvBase : cc.gameBase
+      const weeks = action.kind === 'tv' ? cc.tvWeeks : cc.gameWeeks
+      const total = round1(
+        base * (1 + ((ip.level ?? 1) - 1) * cc.levelK) * (cc.hotnessK + (ip.hotness ?? 0) / 100),
+      )
+      deals.push({
+        id: uid(draft, 'cpr'),
+        kind: action.kind,
+        total,
+        paid: 0,
+        weeks,
+        weeksPaid: 0,
+        status: 'active',
+        startWeek: draft.calendar.week,
+        startYear: draft.calendar.year,
+      })
+      ip.deals = deals
       pushNews(
         draft,
-        `《${p.name}》口碑出炉：影评人平均 ${result.criticScore.toFixed(1)} 分，观众评分 ${(result.audienceScore ?? 0).toFixed(1)} 分。`,
+        `《${ip.name}》IP 版权授权给${action.kind === 'tv' ? '电视剧' : '游戏'}公司，合同总额 ${total} 万（${weeks} 周分期到账）。`,
       )
       break
     }

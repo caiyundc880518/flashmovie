@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../state/initialState'
-import { reduce } from '../state/reducer'
 import { createRng } from '../rng'
 import { generateScript } from '../generators/scriptGen'
 import { generateWorker } from '../generators/workerGen'
 import { applyWeeklyWorkerState } from '../rules/growth'
 import { GROWTH } from '../config/growth'
+import { releaseAndFinish } from './helpers'
 import type { FilmProject, GameState, SkillKey } from '../types'
 
 /** 构造一部「宣发中」的项目（含 5 名成员），直接上映结算 */
@@ -79,7 +79,7 @@ describe('上映结算：成员成长明细', () => {
     const caBefore: Record<string, number> = {}
     for (const id of s.company.employeeIds) caBefore[id] = s.workers[id].basic.ca
 
-    s = reduce(s, { type: 'release', projectId: 'prj-settle' })
+    s = releaseAndFinish(s, 'prj-settle')
     const result = s.projects[0].result!
     expect(result.settlement).toBeDefined()
     expect(result.settlement!.length).toBe(5)
@@ -106,7 +106,7 @@ describe('上映结算：成员成长明细', () => {
   it('表现优秀 → Fame/心情上升；表现差 → 心情下降', () => {
     let s = makeReadyState(7)
     // 强制低表现：把 groupPerformance 预置为低分（release 用 result.groupPerformance 结算成长）
-    s = reduce(s, { type: 'release', projectId: 'prj-settle' })
+    s = releaseAndFinish(s, 'prj-settle')
     const result = s.projects[0].result!
     // 高分片（AP/口碑好）→ 至少大多数成员 Fame ≥ 0
     expect(result.settlement!.every((st) => st.fameGain >= 0)).toBe(true)
@@ -143,7 +143,7 @@ describe('上映结算：成员成长明细', () => {
 
     // 随后参与项目结算：技能只增 → CA 不再暴跌（caGain ≥ 0）
     actor.idleWeeks = 0
-    s = reduce(s, { type: 'release', projectId: 'prj-settle' })
+    s = releaseAndFinish(s, 'prj-settle')
     const st = s.projects[0].result!.settlement!.find((x) => x.workerId === 'w-actor')!
     expect(st.caGain).toBeGreaterThanOrEqual(0)
     // 衰减已削弱：20 周空闲 CA 跌幅显著收敛（远小于此前 20+ 点的暴跌）

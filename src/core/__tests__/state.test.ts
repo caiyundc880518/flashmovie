@@ -4,6 +4,7 @@ import { reduce } from '../state/reducer'
 import type { GameState, RoleId } from '../types'
 import { createRng } from '../rng'
 import { generateWorker } from '../generators/workerGen'
+import { releaseAndFinish } from './helpers'
 
 /** 构造一个"买得起剧本、有齐全职位员工"的测试状态 */
 function buildReadyState(seed = 42): GameState {
@@ -167,15 +168,17 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
     s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
     expect(s.projects[0].stage).toBe('marketing')
 
-    // 宣发 + 上映
+    // 宣发 + 定档上映（本周）→ 推进到首轮下片（一次性结算）
     s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
     s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
-    s = reduce(s, { type: 'release', projectId: pid })
+    s = releaseAndFinish(s, pid)
 
     const p = s.projects[0]
     expect(p.stage).toBe('released')
     expect(p.result).toBeDefined()
     expect(p.result!.boxOffice).toBeGreaterThan(0)
+    expect(p.run!.runs.length).toBeGreaterThan(0)
+    expect(p.run!.firstRunEnded).toBe(true)
     expect(s.company.history).toHaveLength(1)
     expect(s.workers['test-director'].experience).toBeGreaterThan(0)
     expect(s.workers['test-actor'].career).toHaveLength(1)
@@ -292,22 +295,27 @@ describe('发行渠道（单选四渠道）', () => {
   }
 
   it('影院渠道：投放影院越多收入越高，成本按家数计', () => {
-    let { s, pid } = setupFilm(21)
-    s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
-    s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
-    s = reduce(s, { type: 'release', projectId: pid })
-    const r = s.projects[0].result!
-    expect(r.channel).toBe('cinema')
-    expect(r.revenue!).toBeGreaterThan(0)
-    // 成本 = 100 家 × 0.2 万
-    const p = s.projects[0]
-    expect(p.spent).toBeGreaterThanOrEqual(100 * 0.2)
+    const mk = (seed: number, count: number) => {
+      let { s, pid } = setupFilm(seed)
+      s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
+      s = reduce(s, { type: 'setCinemaCount', projectId: pid, count })
+      s = reduce(s, { type: 'release', projectId: pid, weeks: 0 })
+      s = reduce(s, { type: 'advanceWeek' }) // 首周结算
+      const run = s.projects[0].run!.runs[0]
+      return { run, cash: s.company.cash, s, pid }
+    }
+    const small = mk(21, 100)
+    const big = mk(22, 300)
+    expect(big.run.weekly[0].revenue).toBeGreaterThan(small.run.weekly[0].revenue)
+    // 成本 = 家数 × 单价（开映当周从现金扣）
+    expect(small.run.channelCost).toBeCloseTo(100 * 0.2, 1)
+    expect(big.run.channelCost).toBeCloseTo(300 * 0.2, 1)
   })
 
   it('宣发阶段之外不能改渠道', () => {
     let { s, pid } = setupFilm(24)
     s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
-    s = reduce(s, { type: 'release', projectId: pid })
+    s = reduce(s, { type: 'release', projectId: pid, weeks: 0 })
     const r = s.projects[0].result!
     // 已上映后改渠道 → 拒绝
     s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'dvd' })

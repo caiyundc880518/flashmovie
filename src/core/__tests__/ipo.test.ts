@@ -108,19 +108,20 @@ describe('IPO 上市（GDD §3.1）', () => {
     expect(s.world.news.some((n) => n.text.includes('股东分红'))).toBe(true)
   })
 
-  it('上市后 IP 季度授权收入 ×1.5', () => {
+  it('上市后 IP 热门度周边收入 ×1.5（上市放大）', () => {
     let s = makeRichState(21)
     s.company.public = { week: 1, year: 1, raised: 1000 }
     s.company.employeeIds = []
     s.company.cash = 1000
+    // hotness 缺省 → 结算时按 level×20 起跳（20），上市放大 ×1.5
     s.company.ips = [
       { id: 'ip1', name: '《系列》', type: 'action', entry: 1, originWeek: 1, originYear: 1, totalBoxOffice: 2000, bestBoxOffice: 2000, bestCriticScore: 75, level: 1, royaltyPerQuarter: 12, sequelBonus: 1.05, merchBonus: 0, royaltyEarned: 0, films: ['p1'] },
     ]
     s.calendar = { year: 1, week: 12 }
     s = reduce(s, { type: 'advanceWeek' })
-    // 1000 - 5 办公 = 995；+18 IP 授权 = 1013；分红 = max(50, 1013×5%≈51) = 51 → 962
-    expect(s.company.cash).toBe(962)
-    expect(s.company.ips[0].royaltyEarned).toBe(18)
+    // 1000 − 5 办公 = 995；周边 = 20 × 0.15 × 1.5 = 4.5 → 999.5；分红 = max(50, ~50) = 50 → 949.5
+    expect(s.company.cash).toBe(949.5)
+    expect(s.company.ips[0].royaltyEarned).toBe(4.5)
   })
 
   it('累计收入对旧档缺 revenue 的兼容：用票房 × 影院分账兜底', () => {

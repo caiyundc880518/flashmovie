@@ -174,7 +174,7 @@ describe('TMA 颁奖', () => {
     s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
     s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
     s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
-    s = reduce(s, { type: 'release', projectId: pid })
+    s = reduce(s, { type: 'release', projectId: pid, weeks: 0 })
     // 推进到年底 + 跨年
     for (let i = 0; i < 60; i++) s = reduce(s, { type: 'advanceWeek' })
     expect(s.calendar.year).toBeGreaterThan(1)

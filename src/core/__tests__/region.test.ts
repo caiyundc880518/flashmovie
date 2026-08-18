@@ -5,6 +5,7 @@ import { createRng } from '../rng'
 import { generateScript } from '../generators/scriptGen'
 import { generateWorker } from '../generators/workerGen'
 import { audienceFit, regionMarkets } from '../rules/audience'
+import { releaseAndFinish } from './helpers'
 import type { AudienceGroup, FilmProject, GameState, SkillKey } from '../types'
 
 /** 两个地区市场：华东偏好喜剧，华北偏好动作 */
@@ -126,7 +127,7 @@ describe('地区市场（GDD §6 Area）', () => {
   it('release：结算结果记录主攻地区', () => {
     let s = makeProject(makeState(11))
     s = reduce(s, { type: 'setTargetRegion', projectId: 'prj-region', region: '华东' })
-    s = reduce(s, { type: 'release', projectId: 'prj-region' })
+    s = reduce(s, { type: 'release', projectId: 'prj-region', weeks: 0 })
     expect(s.projects[0].result!.targetRegion).toBe('华东')
   })
 
@@ -135,8 +136,8 @@ describe('地区市场（GDD §6 Area）', () => {
     good.projects[0].targetRegion = '华东'
     const bad = makeProject(makeState(13))
     bad.projects[0].targetRegion = '华北'
-    const rGood = reduce(good, { type: 'release', projectId: 'prj-region' })
-    const rBad = reduce(bad, { type: 'release', projectId: 'prj-region' })
+    const rGood = releaseAndFinish(good, 'prj-region')
+    const rBad = releaseAndFinish(bad, 'prj-region')
     expect(rGood.projects[0].result!.boxOffice).toBeGreaterThan(rBad.projects[0].result!.boxOffice)
   })
 })

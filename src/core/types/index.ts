@@ -44,6 +44,11 @@ export type {
   TeamAssignments,
   CriticReview,
   Channel,
+  FilmRun,
+  FilmRunState,
+  FilmRunStatus,
+  RunChannelConfig,
+  WeeklyBoxOffice,
   WorkerSettlement,
   AdSettlement,
   FilmAward,
@@ -58,6 +63,7 @@ export type {
 } from './company'
 export type {
   IpAsset,
+  CopyrightDeal,
 } from './ip'
 export type {
   GameState,

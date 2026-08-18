@@ -4,6 +4,7 @@ import { reduce } from '../state/reducer'
 import type { GameState, RoleId } from '../types'
 import { createRng } from '../rng'
 import { generateWorker } from '../generators/workerGen'
+import { releaseAndFinish } from './helpers'
 
 const TEAM = {
   directorId: 'e-director',
@@ -48,8 +49,7 @@ function playOneFilm(s: GameState, scriptId: string): GameState {
   }
   s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
   s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
-  s = reduce(s, { type: 'release', projectId: pid })
-  return s
+  return releaseAndFinish(s, pid)
 }
 
 describe('经济平衡冒烟', () => {

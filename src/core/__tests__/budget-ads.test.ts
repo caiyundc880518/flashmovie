@@ -8,6 +8,7 @@ import { computeFilmResult, availableVfxTiers, vfxTierAt } from '../rules/scorin
 import { BUDGET_CONFIG, allocBonus, allocTotal } from '../config/budget'
 import { AD_CONFIG, AD_SPONSORS, AD_SPONSOR_MAP } from '../config/ads'
 import { ECONOMY } from '../config/economy'
+import { releaseAndFinish } from './helpers'
 import type { FilmProject, GameState, SkillKey } from '../types'
 
 /** 构造宣发中项目：可控预算占比/特效档位/广告商 */
@@ -237,7 +238,7 @@ describe('植入广告（Ad Sponsors）', () => {
       { budgetAlloc: { story: 100, vfx: 0, acting: 100, edit: 0 }, adSponsorIds: ['ad_tea', 'ad_watch', 'ad_luxury'] },
       { techVfx: 80, actorFame: 60, skillLevel: 85 },
     )
-    s = reduce(s, { type: 'release', projectId: 'prj-ba' })
+    s = releaseAndFinish(s, 'prj-ba')
     const result = s.projects[0].result!
     const settled = result.adSettlement!
     const tea = settled.find((a) => a.id === 'ad_tea')!
@@ -264,7 +265,7 @@ describe('植入广告（Ad Sponsors）', () => {
     }
     const r = computeFilmResult(s, s.projects[0], createRng(0))
     expect(r.criticScore).toBeLessThan(7.5)
-    const s2 = reduce(s, { type: 'release', projectId: 'prj-ba' })
+    const s2 = releaseAndFinish(s, 'prj-ba')
     const result = s2.projects[0].result!
     expect(result.adIncome ?? 0).toBe(0)
     expect(result.adSettlement?.[0].met).toBe(false)
@@ -276,13 +277,13 @@ describe('植入广告（Ad Sponsors）', () => {
       { budgetAlloc: { story: 100, vfx: 0, acting: 100, edit: 0 }, adSponsorIds: ['ad_watch'] },
       { techVfx: 80, actorFame: 80 },
     )
-    s = reduce(s, { type: 'release', projectId: 'prj-ba' })
+    s = releaseAndFinish(s, 'prj-ba')
     const ip = s.company.ips[0]
     expect(ip).toBeDefined()
     expect(ip.merchBonus).toBe(AD_SPONSOR_MAP.ad_watch.merchBonus)
   })
 
-  it('周边加成提升季度授权收入', () => {
+  it('周边加成提升 IP 热门度周边收入（每周入账）', () => {
     let s = makeProjectState()
     const ip = {
       id: 'ip-merch',
@@ -300,14 +301,16 @@ describe('植入广告（Ad Sponsors）', () => {
       merchBonus: 50,
       royaltyEarned: 0,
       films: [],
+      hotness: 50,
+      deals: [],
     }
     s.company.ips = [ip]
     s.company.employeeIds = []
     s.company.cash = 1000
-    s.calendar = { year: 1, week: 12 }
+    s.calendar = { year: 1, week: 1 }
     s = reduce(s, { type: 'advanceWeek' })
-    // 1000 − 5 办公 = 995；+12 × 1.5 = 18 → 1013
-    expect(s.company.cash).toBe(1013)
+    // 1000 − 5 办公 = 995；热门度 50→49（衰减）× 0.15 × (1+50%) ≈ 11.03 → 1006
+    expect(s.company.cash).toBe(1006)
   })
 
   it('startProject 拒绝超过上限的广告商数量', () => {
@@ -530,23 +533,28 @@ describe('拍摄流程大修（预热/小游戏/单渠道）', () => {
     }
     s = reduce(s, { type: 'applyEditGame', projectId: pid, qualities: ['perfect', 'perfect', 'perfect'] })
     s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
-    // 影院 100 家 vs 1000 家
+    // 影院 100 家 vs 1000 家：首周票房影院数越多越高
     const base = structuredClone(s)
+    const w1rev = (st: GameState): number => {
+      st = reduce(st, { type: 'advanceWeek' }) // 首周结算
+      const run = st.projects[0].run!.runs[0]
+      return run.weekly[0].revenue
+    }
     s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
     s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
-    s = reduce(s, { type: 'release', projectId: pid })
-    const rA = s.projects[0].result!
+    s = reduce(s, { type: 'release', projectId: pid, weeks: 0 })
+    const rA = w1rev(s)
     let s2 = structuredClone(base)
     s2 = reduce(s2, { type: 'setChannel', projectId: pid, channel: 'cinema' })
     s2 = reduce(s2, { type: 'setCinemaCount', projectId: pid, count: 1000 })
-    s2 = reduce(s2, { type: 'release', projectId: pid })
-    const rB = s2.projects[0].result!
-    expect(rB.revenue!).toBeGreaterThan(rA.revenue!)
+    s2 = reduce(s2, { type: 'release', projectId: pid, weeks: 0 })
+    const rB = w1rev(s2)
+    expect(rB).toBeGreaterThan(rA)
     // 网络渠道：平台/时长为空时也能结算
     let s3 = structuredClone(base)
     s3 = reduce(s3, { type: 'setChannel', projectId: pid, channel: 'web' })
     s3 = reduce(s3, { type: 'setWebConfig', projectId: pid, platforms: ['腾讯视频', '爱奇艺'], weeks: 6 })
-    s3 = reduce(s3, { type: 'release', projectId: pid })
+    s3 = reduce(s3, { type: 'release', projectId: pid, weeks: 0 })
     expect(s3.projects[0].result!.channel).toBe('web')
   })
 })
