@@ -99,58 +99,47 @@ export function ReleasedProjectScreen({
     </>
   )
 
-  /** TAB1 电影信息：海报/基础信息 + 上映档案 + 成片评分 + 剧组 */
+  /** TAB1 电影信息：电影详情卡片（拉满一整行）+ 成片评分 + 剧组 */
   const infoTab = (
     <>
-      <section className="panel">
-        <div className="film-hero">
-          <div className="film-hero-poster">
+      {script && (
+        <PosterCard
+          title={p.name}
+          type={script.type}
+          corner={<span className="stage-badge">已上映</span>}
+          typeInFooter
+          titleBadge={ip ? <span className="ip-badge">IP</span> : undefined}
+        >
+          <div className="attr-line">
+            类型：{TYPE_ZH[script.type]} · 上映于 第{r.year}年 第{r.week}周
+          </div>
+          <div className="attr-line">
+            预算 <MoneyText value={p.budget} /> · 总投入 <MoneyText value={p.spent} />
+          </div>
+          <div className="attr-line">
+            预算侧重：剧情 {p.budgetAlloc?.story ?? 0}% · VFX {p.budgetAlloc?.vfx ?? 0}% · 表演{' '}
+            {p.budgetAlloc?.acting ?? 0}% · 剪辑 {p.budgetAlloc?.edit ?? 0}%
+            {(p.adSponsorIds?.length ?? 0) > 0 ? ` · 含 ${p.adSponsorIds.length} 家植入广告` : ''}
+          </div>
+          {ip && (
+            <div className="attr-line">
+              系列续作：<span className="tag tag-gold">Lv.{ip.level}</span> 第 {p.ipEntry ?? '?'} 部 · 票房加成
+              +{Math.round((ip.sequelBonus - 1) * 100)}%
+            </div>
+          )}
+          <div className="attr-line">
+            特效等级：
+            <b>
+              {vfxTierAt(state.workers[p.team.technicianId ?? '']?.skills.vfx ?? 40, p.vfxLevel ?? 0).label}
+            </b>
             {script && (
-              <PosterCard
-                title={p.name}
-                type={script.type}
-                corner={<span className="stage-badge">已上映</span>}
-                typeInFooter
-                titleBadge={ip ? <span className="ip-badge">IP</span> : undefined}
-              >
-                <div className="attr-line">
-                  类型：{TYPE_ZH[script.type]} · 上映于 第{r.year}年 第{r.week}周
-                </div>
-                <div className="attr-line">
-                  预算 <MoneyText value={p.budget} /> · 总投入 <MoneyText value={p.spent} />
-                </div>
-                <div className="attr-line">
-                  预算侧重：剧情 {p.budgetAlloc?.story ?? 0}% · VFX {p.budgetAlloc?.vfx ?? 0}% · 表演{' '}
-                  {p.budgetAlloc?.acting ?? 0}% · 剪辑 {p.budgetAlloc?.edit ?? 0}%
-                  {(p.adSponsorIds?.length ?? 0) > 0 ? ` · 含 ${p.adSponsorIds.length} 家植入广告` : ''}
-                </div>
-                {ip && (
-                  <div className="attr-line">
-                    系列续作：<span className="tag tag-gold">Lv.{ip.level}</span> 第 {p.ipEntry ?? '?'} 部 · 票房加成
-                    +{Math.round((ip.sequelBonus - 1) * 100)}%
-                  </div>
-                )}
-                <div className="attr-line">
-                  特效等级：
-                  <b>
-                    {vfxTierAt(state.workers[p.team.technicianId ?? '']?.skills.vfx ?? 40, p.vfxLevel ?? 0).label}
-                  </b>
-                  {script && (
-                    <span className="dim">（{TYPE_ZH[script.type]} ×{vfxTypeFactor(script.type).toFixed(2)}）</span>
-                  )}
-                </div>
-                <Bar label="热度" value={p.hype} color="var(--gold)" />
-                {script?.desc && <p className="plot-desc">{script.desc}</p>}
-              </PosterCard>
+              <span className="dim">（{TYPE_ZH[script.type]} ×{vfxTypeFactor(script.type).toFixed(2)}）</span>
             )}
           </div>
-
-          <div className="film-hero-main">
-            <h2>上映档案</h2>
-            {archiveStats}
-          </div>
-        </div>
-      </section>
+          <Bar label="热度" value={p.hype} color="var(--gold)" />
+          {script?.desc && <p className="plot-desc">{script.desc}</p>}
+        </PosterCard>
+      )}
 
       <section className="panel">
         <h2>成片评分</h2>
@@ -447,13 +436,11 @@ export function ReleasedProjectScreen({
   )
 }
 
-/** 单段放映的曲线图（票房/分账/渠道指标/口碑/MP） */
+/** 单段放映的曲线图（票房/分账/渠道指标） */
 function RunCharts({ run }: { run: FilmRun }) {
   const box = run.weekly.map((w) => w.boxOffice)
   const rev = run.weekly.map((w) => w.revenue)
   const metric = run.weekly.map((w) => w.admissions ?? w.traffic ?? w.units ?? 0)
-  const aud = run.weekly.map((w) => w.audience)
-  const mp = run.weekly.map((w) => w.mp)
   const sum = run.weekly.reduce((a, w) => a + w.boxOffice, 0)
   const sumRev = run.weekly.reduce((a, w) => a + w.revenue, 0)
   const metricLabel =
@@ -482,14 +469,6 @@ function RunCharts({ run }: { run: FilmRun }) {
         <div className="lt-chart">
           <h4>每周{metricLabel}</h4>
           <LineChart series={[{ name: metricLabel, color: metricColor, values: metric }]} />
-        </div>
-        <div className="lt-chart">
-          <h4>观众口碑（0~10）</h4>
-          <LineChart series={[{ name: '口碑', color: '#f5a623', values: aud }]} yMin={0} yMax={10} format={(v) => v.toFixed(1)} />
-        </div>
-        <div className="lt-chart">
-          <h4>MP（0~100）</h4>
-          <LineChart series={[{ name: 'MP', color: '#4c8bf5', values: mp }]} yMin={0} yMax={100} format={(v) => String(Math.round(v))} />
         </div>
       </div>
     </div>
