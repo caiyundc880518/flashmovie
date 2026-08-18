@@ -314,30 +314,25 @@ export function ReleasedProjectScreen({
                   </>
                 )}
               </div>
+              {r.adSettlement && r.adSettlement.length > 0 && (
+                <div className="ad-settle-row">
+                  <span className="ad-settle-label">植入广告</span>
+                  <div className="ad-settle-chips">
+                    {r.adSettlement.map((a) => (
+                      <span key={a.id} className={`ad-chip ${a.met ? 'ad-chip-ok' : 'ad-chip-warn'}`}>
+                        {a.name} {a.met ? `+${fmtWan(a.fee)}` : '未达标'}
+                      </span>
+                    ))}
+                  </div>
+                  {r.adIncome ? (
+                    <b className="ad-total money">共到账 {fmtWan(r.adIncome)}</b>
+                  ) : (
+                    <b className="ad-total warn">全部未到账</b>
+                  )}
+                </div>
+              )}
             </div>
           )}
-          {r.adSettlement && r.adSettlement.length > 0 && (
-            <div className="stat-row">
-              <span className="stat-label">植入广告</span>
-              <span>
-                {r.adSettlement.map((a) => (
-                  <span key={a.id} className={a.met ? 'ok' : 'warn'}>
-                    {a.name} {a.met ? `+${fmtWan(a.fee)}` : '未达标'}
-                    {'　'}
-                  </span>
-                ))}
-                {r.adIncome ? (
-                  <b style={{ color: 'var(--gold)' }}>共到账 {fmtWan(r.adIncome)}</b>
-                ) : (
-                  <span className="warn">全部未到账</span>
-                )}
-              </span>
-            </div>
-          )}
-          <div className="stat-row settle-total">
-            <span className="stat-label">片方总收入</span>
-            <MoneyText value={r.revenue ?? r.boxOffice * ECONOMY.cinemaShare} />
-          </div>
         </div>
       </section>
 
