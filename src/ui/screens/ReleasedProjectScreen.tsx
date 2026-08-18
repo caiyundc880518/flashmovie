@@ -8,7 +8,6 @@ import { ROLE_ZH, SKILL_ZH, fmtScore10, fmtWan, scoreColor10, signedDelta } from
 import { PosterCard } from '../components/PosterCard'
 import { Bar } from '../components/Bar'
 import { MoneyText } from '../components/MoneyText'
-import { Modal } from '../components/Modal'
 import { DataTable, type Column } from '../components/DataTable'
 import { Tabs } from '../components/Tabs'
 import { LineChart } from '../components/LineChart'
@@ -28,7 +27,6 @@ export function ReleasedProjectScreen({
 }) {
   const state = useGameStore((s) => s.state)
   const dispatch = useGameStore((s) => s.dispatch)
-  const [settlement, setSettlement] = useState<WorkerSettlement[] | null>(null)
   const [rereleaseCh, setRereleaseCh] = useState<Channel | ''>('')
 
   if (!state) return null
@@ -258,86 +256,87 @@ export function ReleasedProjectScreen({
         <h2>上映结算</h2>
         <div className="settle-head">{archiveStats}</div>
         <div className="settle-body">
-          <div className="grid-2">
-            <div>
-              {r.channel && (
-                <div className="channel-effect" style={{ marginTop: 0 }}>
-                  <h3>宣发渠道效果</h3>
-                  {r.channel === 'cinema' && (
-                    <p>
-                      投放影院 <b>{p.cinemaCount || CHANNEL_CONFIG.cinemaDefaultCount} 家</b>
-                      （全国共 {TOTAL_CINEMAS} 家） · 观影人次
-                      <b style={{ color: 'var(--gold)' }}>{fmtWan(r.admissions ?? 0)}人次</b>
-                    </p>
-                  )}
-                  {r.channel === 'web' && (
-                    <p>
-                      上架平台 <b>{p.webPlatforms.length > 0 ? p.webPlatforms.join('、') : '—'}</b> · 投放时长
-                      <b style={{ color: 'var(--gold)' }}>{p.webWeeks || CHANNEL_CONFIG.webDefaultWeeks} 周</b>
-                    </p>
-                  )}
-                  {r.channel === 'dvd' && (
-                    <p>
-                      单价 <b>{p.dvdPrice || CHANNEL_CONFIG.dvdRefPrice} 元/张</b> · 卖出
-                      <b style={{ color: 'var(--gold)' }}>{fmtWan(r.dvdUnits ?? 0)}张</b>
-                    </p>
-                  )}
-                  {r.channel === 'free' && (
-                    <p>
-                      广告单价 <b>{p.freeAdPrice || 30} 元/千次</b> · 播放量
-                      <b style={{ color: 'var(--gold)' }}>{fmtWan(r.freeViews ?? 0)}次</b> · 广告收入
-                      <b style={{ color: 'var(--gold)' }}>{fmtWan(r.revenue ?? 0)}</b>
-                    </p>
-                  )}
-                </div>
-              )}
-              {r.adSettlement && r.adSettlement.length > 0 && (
-                <div className="stat-row">
-                  <span className="stat-label">植入广告</span>
-                  <span>
-                    {r.adSettlement.map((a) => (
-                      <span key={a.id} className={a.met ? 'ok' : 'warn'}>
-                        {a.name} {a.met ? `+${fmtWan(a.fee)}` : '未达标'}
-                        {'　'}
-                      </span>
-                    ))}
-                    {r.adIncome ? (
-                      <b style={{ color: 'var(--gold)' }}>共到账 {fmtWan(r.adIncome)}</b>
-                    ) : (
-                      <span className="warn">全部未到账</span>
-                    )}
-                  </span>
-                </div>
-              )}
-              <div className="stat-row">
-                <span className="stat-label">片方总收入</span>
-                <MoneyText value={r.revenue ?? r.boxOffice * ECONOMY.cinemaShare} />
+          {r.channel && (
+            <div className="channel-effect" style={{ marginTop: 0 }}>
+              <h3>宣发渠道效果</h3>
+              <div className="channel-effect-row">
+                {r.channel === 'cinema' && (
+                  <>
+                    <div className="channel-stat">
+                      <span>投放影院</span>
+                      <b>{p.cinemaCount || CHANNEL_CONFIG.cinemaDefaultCount} 家</b>
+                      <i>全国共 {TOTAL_CINEMAS} 家</i>
+                    </div>
+                    <div className="channel-stat">
+                      <span>观影人次</span>
+                      <b className="money">{fmtWan(r.admissions ?? 0)}人次</b>
+                    </div>
+                  </>
+                )}
+                {r.channel === 'web' && (
+                  <>
+                    <div className="channel-stat">
+                      <span>上架平台</span>
+                      <b>{p.webPlatforms.length > 0 ? p.webPlatforms.join('、') : '—'}</b>
+                    </div>
+                    <div className="channel-stat">
+                      <span>投放时长</span>
+                      <b>{p.webWeeks || CHANNEL_CONFIG.webDefaultWeeks} 周</b>
+                    </div>
+                  </>
+                )}
+                {r.channel === 'dvd' && (
+                  <>
+                    <div className="channel-stat">
+                      <span>单价</span>
+                      <b>{p.dvdPrice || CHANNEL_CONFIG.dvdRefPrice} 元/张</b>
+                    </div>
+                    <div className="channel-stat">
+                      <span>卖出</span>
+                      <b className="money">{fmtWan(r.dvdUnits ?? 0)}张</b>
+                    </div>
+                  </>
+                )}
+                {r.channel === 'free' && (
+                  <>
+                    <div className="channel-stat">
+                      <span>广告单价</span>
+                      <b>{p.freeAdPrice || 30} 元/千次</b>
+                    </div>
+                    <div className="channel-stat">
+                      <span>播放量</span>
+                      <b className="money">{fmtWan(r.freeViews ?? 0)}次</b>
+                    </div>
+                    <div className="channel-stat">
+                      <span>广告收入</span>
+                      <b className="money">{fmtWan(r.revenue ?? 0)}</b>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
-            <div>
-              <h3>成员成长结算</h3>
-              {r.settlement ? (
-                <>
-                  <p className="dim">
-                    每位成员的参与角色、表现评分与全部属性变化已入账，点击查看明细。
-                  </p>
-                  <div className="btn-row">
-                    <button className="btn-primary" onClick={() => setSettlement(r.settlement!)}>
-                      📊 查看全员属性变化
-                    </button>
-                  </div>
-                </>
-              ) : (
-                <ul className="career-list">
-                  {r.groupPerformance.map((g) => (
-                    <li key={g.workerId}>
-                      {state.workers[g.workerId]?.name ?? '未知'}（{ROLE_ZH[g.role]}） · 表现{' '}
-                      {Math.round(g.performance)}
-                    </li>
-                  ))}
-                </ul>
-              )}
+          )}
+          {r.adSettlement && r.adSettlement.length > 0 && (
+            <div className="stat-row">
+              <span className="stat-label">植入广告</span>
+              <span>
+                {r.adSettlement.map((a) => (
+                  <span key={a.id} className={a.met ? 'ok' : 'warn'}>
+                    {a.name} {a.met ? `+${fmtWan(a.fee)}` : '未达标'}
+                    {'　'}
+                  </span>
+                ))}
+                {r.adIncome ? (
+                  <b style={{ color: 'var(--gold)' }}>共到账 {fmtWan(r.adIncome)}</b>
+                ) : (
+                  <span className="warn">全部未到账</span>
+                )}
+              </span>
             </div>
+          )}
+          <div className="stat-row settle-total">
+            <span className="stat-label">片方总收入</span>
+            <MoneyText value={r.revenue ?? r.boxOffice * ECONOMY.cinemaShare} />
           </div>
         </div>
       </section>
@@ -400,6 +399,36 @@ export function ReleasedProjectScreen({
     </section>
   )
 
+  /** TAB5 成员成长：直接展示全员属性变化（原「查看全员属性变化」弹窗内容） */
+  const growthTab = (
+    <section className="panel">
+      <h2>成员成长结算</h2>
+      <p className="dim">
+        每位成员的参与角色、表现评分与全部属性变化已入账：经验、技能、CA、Fame 与心情的变化在首轮上映
+        下片时立即生效，并写入个人履历。
+      </p>
+      {r.settlement ? (
+        <DataTable<WorkerSettlement>
+          columns={settlementColumns(state)}
+          rows={r.settlement}
+          rowKey={(s) => s.workerId}
+          emptyText="无成员结算数据"
+        />
+      ) : r.groupPerformance.length > 0 ? (
+        <ul className="career-list">
+          {r.groupPerformance.map((g) => (
+            <li key={g.workerId}>
+              {state.workers[g.workerId]?.name ?? '未知'}（{ROLE_ZH[g.role]}） · 表现{' '}
+              {Math.round(g.performance)}
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="dim empty-hint">暂无成员成长数据。</p>
+      )}
+    </section>
+  )
+
   return (
     <div className="screen">
       <button className="back-mini" onClick={onBack} title="返回上一页">
@@ -412,22 +441,9 @@ export function ReleasedProjectScreen({
           { key: 'release', label: '电影上映', content: releaseTab },
           { key: 'reviews', label: '影评与观众口碑', content: reviewsTab },
           { key: 'awards', label: '获奖记录', content: awardsTab },
+          { key: 'growth', label: '成员成长', content: growthTab },
         ]}
       />
-
-      {settlement && (
-        <Modal title="📊 上映结算 · 成员成长明细" xwide onClose={() => setSettlement(null)}>
-          <p className="dim">
-            结算已入账：经验、技能、CA、Fame 与心情的变化会在上映时立即生效，并写入个人履历。
-          </p>
-          <DataTable<WorkerSettlement>
-            columns={settlementColumns(state)}
-            rows={settlement}
-            rowKey={(s) => s.workerId}
-            emptyText="无成员结算数据"
-          />
-        </Modal>
-      )}
     </div>
   )
 }

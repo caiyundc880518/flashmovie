@@ -642,7 +642,7 @@ select {
   background: var(--panel-2, #131c2e);
 }
 .channel-effect h3 {
-  margin: 0 0 8px;
+  margin: 0 0 10px;
   font-size: 13px;
   letter-spacing: 1px;
   color: var(--gold);
@@ -654,6 +654,50 @@ select {
 .channel-effect b {
   color: var(--text);
   margin: 0 2px;
+}
+/* 宣发渠道效果 · 横向一行统计 */
+.channel-effect-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.channel-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 132px;
+  padding: 9px 14px;
+  border-radius: 8px;
+  background: var(--bg-card, #0d1321);
+  border: 1px solid var(--border);
+}
+.channel-stat span {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.channel-stat b {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 0;
+}
+.channel-stat b.money {
+  color: var(--gold);
+}
+.channel-stat i {
+  font-style: normal;
+  font-size: 10.5px;
+  color: var(--text-dim);
+  letter-spacing: 0.5px;
+}
+/* 片方总收入强调 */
+.settle-total {
+  margin-top: 4px;
+}
+.settle-total .money {
+  font-size: 18px;
+  font-weight: 800;
 }
 .channel-preview {
   margin-top: 18px;
@@ -2469,6 +2513,10 @@ input[type='range'] {
   align-items: center;
   gap: 14px;
   flex-wrap: wrap;
+}
+/* 手动下片按钮靠右 */
+.run-status-head .btn-danger {
+  margin-left: auto;
 }
 .run-status-tag {
   font-size: 12px;
