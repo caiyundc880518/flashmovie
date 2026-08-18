@@ -15,6 +15,7 @@ import { TeamBuildScreen } from '../ui/screens/TeamBuildScreen'
 import { ProjectsScreen } from '../ui/screens/ProjectsScreen'
 import { ProjectDetailScreen } from '../ui/screens/ProjectDetailScreen'
 import { ReleasedProjectScreen } from '../ui/screens/ReleasedProjectScreen'
+import { LongtailScreen } from '../ui/screens/LongtailScreen'
 import { CriticsScreen } from '../ui/screens/CriticsScreen'
 import { NewsScreen } from '../ui/screens/NewsScreen'
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen'
@@ -45,6 +46,7 @@ type Nav =
   | { screen: 'ipDetail'; ipId: string }
   | { screen: 'team'; teamScriptId?: string; teamIpId?: string }
   | { screen: 'projects' }
+  | { screen: 'longtail' }
   | { screen: 'critics' }
   | { screen: 'news' }
   | { screen: 'leaderboard' }
@@ -80,6 +82,7 @@ const NAV_GROUPS: Array<{ group: string; items: Array<{ key: NavKey; label: stri
       { key: 'marketScripts', label: '剧本市场' },
       { key: 'team', label: '组队立项' },
       { key: 'projects', label: '项目' },
+      { key: 'longtail', label: '长尾收益' },
     ],
   },
   {
@@ -344,6 +347,9 @@ export function App() {
           {nav.screen === 'awards' && <AwardsScreen />}
           {nav.screen === 'projects' && (
             <ProjectsScreen onOpenProject={openProject} />
+          )}
+          {nav.screen === 'longtail' && (
+            <LongtailScreen onOpenProject={openProject} />
           )}
           {nav.screen === 'team' && (
             <TeamBuildScreen

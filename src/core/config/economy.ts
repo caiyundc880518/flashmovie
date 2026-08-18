@@ -45,7 +45,7 @@ export const ECONOMY = {
    * 良好决策的片 gross 1500–2500 万、渠道分账后净赚 30%–80%；
    * 明星团队 + 全加成叠满上限约 5000–7000 万，避免现金滚雪球失控。
    */
-  boxOfficeBasePerStage: 110,
+  boxOfficeBasePerStage: 130,
   /** 票房修正系数范围 */
   boxOfficeFactor: {
     /** mp 0–100 → 0.4–2.0 */

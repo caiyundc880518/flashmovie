@@ -108,12 +108,12 @@ export const CHANNEL_CONFIG = {
     /** 口碑/MP 反馈环（票房表现驱动 + 向影评评分回归） */
     feedback: {
       /** 口碑每周向影评评分（固定）回归的力度 0~1 */
-      criticPull: 0.15,
+      criticPull: 0.1,
       /** 票房表现对口碑的扰动强度（超预期比例 → 口碑变化） */
       perfK: 0.8,
       /** 衰减修正系数：口碑/MP 偏离基础 → hold 偏离 1 */
       holdK: 0.4,
-      holdMin: 0.7,
+      holdMin: 0.85,
       holdMax: 1.3,
       /** MP 随口碑同向变化的刻度（每 1 口碑点 → MP 点数） */
       mpStep: 6,

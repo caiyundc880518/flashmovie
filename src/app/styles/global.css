@@ -2367,3 +2367,157 @@ input[type='range'] {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== 已上映电影 · 发行状态 + 放映动态 ===== */
+.run-status {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.run-status-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.run-status-tag {
+  font-size: 12px;
+  padding: 4px 12px;
+}
+.rerelease-box {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-left: auto;
+}
+.rerelease-box select {
+  min-width: 160px;
+}
+.run-block {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.run-block + .run-block,
+.run-block .run-divider {
+  margin-top: 14px;
+}
+.run-block-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.run-weekly {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.run-week-row {
+  display: grid;
+  grid-template-columns: 44px 1fr 96px 190px;
+  align-items: center;
+  gap: 10px;
+}
+.run-week-n {
+  font-size: 11px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+.run-week-bar {
+  background: var(--panel-2, #131c2e);
+  border-radius: 4px;
+  height: 12px;
+  overflow: hidden;
+}
+.run-week-bar i {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, #2f5d8a, var(--gold));
+  border-radius: 4px;
+  transition: width 0.3s;
+}
+.run-week-val {
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--text);
+  white-space: nowrap;
+}
+.run-week-meta {
+  font-size: 11px;
+  color: var(--text-dim);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 800px) {
+  .run-week-row {
+    grid-template-columns: 34px 1fr 76px;
+  }
+  .run-week-meta {
+    display: none;
+  }
+}
+
+/* ===== 长尾收益页 ===== */
+.lt-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2, #131c2e);
+  margin-bottom: 8px;
+}
+.lt-row .table-name {
+  min-width: 120px;
+}
+.lt-row select {
+  margin-left: auto;
+  min-width: 140px;
+}
+.lt-ip {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-2, #131c2e);
+  margin-bottom: 12px;
+}
+.lt-ip-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lt-ip-hot b {
+  font-size: 16px;
+}
+.lt-deals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 4px;
+}
+.lt-deal {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+}
+.lt-deal .btn-primary {
+  margin-left: auto;
+}
+@media (max-width: 900px) {
+  .lt-deals {
+    grid-template-columns: 1fr;
+  }
+}

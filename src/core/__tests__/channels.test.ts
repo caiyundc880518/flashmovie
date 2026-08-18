@@ -171,7 +171,10 @@ describe('上映结算：渠道驱动最终票房并存储渠道指标', () => {
     const w1 = run.weekly[0]
     expect(w1.admissions).toBeGreaterThan(0)
     expect(run.expectedTotal).toBeGreaterThan(rs.basePotential) // 800 家影院放大基础票房
-    expect(w1.boxOffice).toBeGreaterThan(w1.admissions! * CHANNEL_CONFIG.cinemaAvgTicket - 0.001)
+    // 人次 = 票房 ÷ 票价（各保留 1 位小数，容差一个票价单位）
+    expect(Math.abs(w1.boxOffice - w1.admissions! * CHANNEL_CONFIG.cinemaAvgTicket)).toBeLessThan(
+      CHANNEL_CONFIG.cinemaAvgTicket,
+    )
     expect(w1.revenue).toBeLessThan(w1.boxOffice)
     expect(w1.revenue).toBeCloseTo(w1.boxOffice * ECONOMY.cinemaShare, 0)
     expect(s.projects[0].result!.boxOffice).toBeCloseTo(w1.boxOffice, 6)

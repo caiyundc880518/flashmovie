@@ -116,8 +116,11 @@ describe('每周动态票房与口碑/MP 反馈', () => {
       expect(run.weekly[i].boxOffice).toBeLessThan(run.weekly[i - 1].boxOffice)
     }
     expect(run.weekly[0].boxOffice).toBeGreaterThan(run.weekly[run.weekly.length - 1].boxOffice)
-    // 最后一周低于地板才下片
-    expect(run.weekly[run.weekly.length - 1].boxOffice).toBeLessThan(CHANNEL_CONFIG.run.floorWan)
+    // 自动下片：最后一周 < 地板，或达硬上限周数（影院 12 周）
+    const last = run.weekly[run.weekly.length - 1]
+    const hitFloor = last.boxOffice < CHANNEL_CONFIG.run.floorWan
+    const hitCap = run.weekly.length >= CHANNEL_CONFIG.run.maxWeeks.cinema
+    expect(hitFloor || hitCap).toBe(true)
   })
 
   it('口碑/MP 随票房表现动态变化：最终 MP 锁定供结算', () => {

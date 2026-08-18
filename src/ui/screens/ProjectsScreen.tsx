@@ -1,5 +1,6 @@
 import { useGameStore } from '../store/gameStore'
 import { STAGE_ZH, fmtScore10, fmtWan, scoreColor10 } from '../format'
+import { CHANNEL_INFO } from '../../core/config/channels'
 import { PosterCard } from '../components/PosterCard'
 
 export function ProjectsScreen({ onOpenProject }: { onOpenProject: (id: string) => void }) {
@@ -38,6 +39,21 @@ export function ProjectsScreen({ onOpenProject }: { onOpenProject: (id: string) 
                   {p.stage === 'marketing' && <div>Hype {Math.round(p.hype)}</div>}
                   {p.stage === 'released' && p.result && (
                     <>
+                      {p.run && (
+                        <div className="attr-line">
+                          {p.run.status === 'presale' && <span className="tag">⏳ 待映 · 预售中</span>}
+                          {p.run.status === 'running' && (() => {
+                            const run = p.run!.runs.find((x) => x.id === p.run!.currentRunId)
+                            return (
+                              <span className="tag tag-gold">
+                                🎬 放映中 · {run ? `${CHANNEL_INFO[run.channel].label} 第${run.weekly.length + 1}周` : ''}
+                              </span>
+                            )
+                          })()}
+                          {p.run.status === 'idle' && <span className="tag">⏸ 已下片 · 可再发行</span>}
+                          {p.run.status === 'finished' && <span className="tag">🏁 已完结</span>}
+                        </div>
+                      )}
                       <div className="attr-line">
                         票房 <b>{fmtWan(p.result.boxOffice)}</b>
                       </div>

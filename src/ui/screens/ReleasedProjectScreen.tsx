@@ -1,7 +1,8 @@
 import { useState } from 'react'
-import type { CriticReview, GameState, WorkerSettlement } from '../../core/types'
+import type { Channel, CriticReview, GameState, WorkerSettlement } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { vfxTierAt, vfxTypeFactor } from '../../core/rules/scoring'
+import { lowerChannelsOf } from '../../core/tick/distribution'
 import { ECONOMY } from '../../core/config/economy'
 import { CHANNEL_CONFIG, CHANNEL_INFO, TOTAL_CINEMAS } from '../../core/config/channels'
 import { ROLE_ZH, SKILL_ZH, TYPE_ZH, fmtScore10, fmtWan, scoreColor10, signedDelta } from '../format'
@@ -12,8 +13,8 @@ import { Modal } from '../components/Modal'
 import { DataTable, type Column } from '../components/DataTable'
 
 /**
- * 已上映电影独立详情页：电影档案（海报 / 评分 / 影评 / 获奖 / 票房）+ 上映结算区块。
- * 与制作中的项目详情页分离；「上映结算」区块日后并入长尾收益管理大修。
+ * 已上映电影独立详情页：电影档案（海报 / 放映动态 / 评分 / 影评 / 获奖 / 票房）+ 上映结算区块。
+ * 含发行生命周期：待映预售 / 放映中（下片按钮）/ 已下片可再发行 / 彻底完结。
  */
 export function ReleasedProjectScreen({
   projectId,
@@ -23,8 +24,11 @@ export function ReleasedProjectScreen({
   onBack: () => void
 }) {
   const state = useGameStore((s) => s.state)
+  const dispatch = useGameStore((s) => s.dispatch)
   // 成员成长结算明细弹窗
   const [settlement, setSettlement] = useState<WorkerSettlement[] | null>(null)
+  // 再发行渠道选择
+  const [rereleaseCh, setRereleaseCh] = useState<Channel | ''>('')
 
   if (!state) return null
   const p = state.projects.find((x) => x.id === projectId)
@@ -35,12 +39,95 @@ export function ReleasedProjectScreen({
   const ip = p.ipId ? state.company.ips.find((x) => x.id === p.ipId) : undefined
   const ch = r.channel ?? r.channels?.[0]
   const channelLabel = ch ? CHANNEL_INFO[ch].label : null
+  const rs = p.run
+  const curRun = rs?.runs.find((x) => x.id === rs.currentRunId)
+  // 最近的（含已结束）一段 run，用于判断剩余渠道
+  const lastRun = rs ? rs.runs[rs.runs.length - 1] : undefined
+  const lowerCh = lastRun ? lowerChannelsOf(lastRun.channel) : []
 
   return (
     <div className="screen">
       <button className="back-mini" onClick={onBack} title="返回上一页">
         ← 返回
       </button>
+
+      {/* ===== 发行状态横幅：待映预售 / 放映中(下片) / 已下片(再发行) / 完结 ===== */}
+      {rs && (
+        <section className="panel run-status">
+          {rs.status === 'presale' && (
+            <>
+              <span className="tag run-status-tag">⏳ 待映 · 预售中</span>
+              <p className="dim">
+                距正式上映还有 {Math.max(0, rs.releaseWeek - state.calendar.week)} 周 · 已累积预售{' '}
+                <b style={{ color: 'var(--gold)' }}>{fmtWan(rs.presale)}</b>
+                · 当前热度 {Math.round(p.hype ?? 50)}（每周攒预售、热度会衰减）
+              </p>
+            </>
+          )}
+          {rs.status === 'running' && curRun && (
+            <>
+              <div className="run-status-head">
+                <span className="tag tag-gold run-status-tag">
+                  🎬 {CHANNEL_INFO[curRun.channel].label}档 · 放映第 {curRun.weekly.length + 1} 周
+                </span>
+                <button
+                  className="btn-danger"
+                  onClick={() => {
+                    if (window.confirm(`确认《${p.name}》手动下片？本周已结算收入保留。`)) {
+                      dispatch({ type: 'endRun', projectId: p.id })
+                    }
+                  }}
+                >
+                  ⏹ 手动下片
+                </button>
+              </div>
+              <p className="dim">
+                每周票房动态结算中，票房归零或达上限周数自动下片；首轮下片后结算成员成长与 IP 沉淀。
+              </p>
+            </>
+          )}
+          {rs.status === 'idle' && (
+            <>
+              <div className="run-status-head">
+                <span className="tag run-status-tag">⏸ 已下片 · 可再发行</span>
+                {lowerCh.length > 0 && (
+                  <div className="rerelease-box">
+                    <span className="slot-label">再发行渠道（严格更低档）</span>
+                    <select value={rereleaseCh} onChange={(e) => setRereleaseCh(e.target.value as Channel | '')}>
+                      <option value="">选择渠道…</option>
+                      {lowerCh.map((c) => (
+                        <option key={c} value={c}>
+                          {CHANNEL_INFO[c].label}
+                        </option>
+                      ))}
+                    </select>
+                    <button
+                      className="btn-primary"
+                      disabled={!rereleaseCh}
+                      onClick={() => {
+                        if (!rereleaseCh) return
+                        dispatch({ type: 'rerelease', projectId: p.id, channel: rereleaseCh as Channel })
+                        setRereleaseCh('')
+                      }}
+                    >
+                      下周开映 ▶
+                    </button>
+                  </div>
+                )}
+              </div>
+              <p className="dim">
+                再发行不定档不预售，选更低档渠道下周直接开映；收益按当前最终口碑/MP 结算，不再触发成长。
+              </p>
+            </>
+          )}
+          {rs.status === 'finished' && (
+            <>
+              <span className="tag run-status-tag">🏁 已彻底完结</span>
+              <p className="dim">本片已结束全部发行，仅保留档案。</p>
+            </>
+          )}
+        </section>
+      )}
 
       {/* ===== ① 上映档案：海报 + 关键数据 ===== */}
       <section className="panel">
@@ -138,6 +225,57 @@ export function ReleasedProjectScreen({
           </div>
         </div>
       </section>
+
+      {/* ===== 放映动态：每段放映的逐周票房曲线 ===== */}
+      {rs && rs.runs.length > 0 && (
+        <section className="panel">
+          <h2>🎬 放映动态</h2>
+          {rs.runs.map((run, ri) => {
+            const maxBox = Math.max(1, ...run.weekly.map((w) => w.boxOffice))
+            const sum = run.weekly.reduce((a, w) => a + w.boxOffice, 0)
+            const sumRev = run.weekly.reduce((a, w) => a + w.revenue, 0)
+            return (
+              <div key={run.id} className="run-block">
+                <div className="run-block-head">
+                  <span className="tag tag-gold">
+                    {run.isFirst ? '首轮' : '再发行'} · {CHANNEL_INFO[run.channel].label}
+                  </span>
+                  <span className="dim">
+                    {run.weekly.length} 周 · 累计票房 <b>{fmtWan(sum)}</b> · 分账 {fmtWan(sumRev)}
+                    {run.status === 'running' ? ' · 放映中' : ` · ${run.endWeek ? `第 ${run.endWeek} 周下片` : '已下片'}`}
+                  </span>
+                </div>
+                {run.weekly.length === 0 ? (
+                  <p className="dim empty-hint">尚未产生票房。</p>
+                ) : (
+                  <div className="run-weekly">
+                    {run.weekly.map((w, i) => (
+                      <div key={i} className="run-week-row">
+                        <span className="run-week-n">W{i + 1}</span>
+                        <div className="run-week-bar">
+                          <i style={{ width: `${Math.max(2, (w.boxOffice / maxBox) * 100)}%` }} />
+                        </div>
+                        <span className="run-week-val">{fmtWan(w.boxOffice)}</span>
+                        <span className="run-week-meta">
+                          {w.admissions !== undefined
+                            ? `${fmtWan(w.admissions)}人次`
+                            : w.traffic !== undefined
+                              ? `${fmtWan(w.traffic)}次播放`
+                              : w.units !== undefined
+                                ? `${fmtWan(w.units)}张`
+                                : ''}
+                          · 口碑 {w.audience.toFixed(1)} · MP {w.mp}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {ri < rs.runs.length - 1 && <div className="run-divider" />}
+              </div>
+            )
+          })}
+        </section>
+      )}
 
       {/* ===== ② 成片评分 ===== */}
       <section className="panel">
