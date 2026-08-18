@@ -704,6 +704,11 @@ select {
   display: flex;
   flex-direction: column;
 }
+/* 子卡片纵向拉伸：两栏卡片高度一致（以宣发渠道效果侧为准） */
+.effect-col .channel-effect-row {
+  flex: 1;
+  align-items: stretch;
+}
 .effect-divider {
   flex-shrink: 0;
   border-left: 1px dashed rgba(143, 160, 189, 0.4);
