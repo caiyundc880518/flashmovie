@@ -665,6 +665,7 @@ select {
   display: flex;
   flex-direction: column;
   gap: 3px;
+  flex: 1 1 0;
   min-width: 132px;
   padding: 9px 14px;
   border-radius: 8px;
