@@ -11,6 +11,7 @@ export function PosterCard({
   active,
   corner,
   typeInFooter,
+  typeInHead,
   titleBadge,
 }: {
   title: string
@@ -22,6 +23,8 @@ export function PosterCard({
   corner?: ReactNode
   /** true：类型改为卡片底部小 Label（头部不再显示类型） */
   typeInFooter?: boolean
+  /** true：类型改为头部左侧实心 Label，与右上角阶段 Label 并排（详情大卡用） */
+  typeInHead?: boolean
   /** 标题后紧跟的小 Label（如 IP 系列标识），不传则不显示 */
   titleBadge?: ReactNode
 }) {
@@ -33,15 +36,24 @@ export function PosterCard({
       onClick={onClick}
     >
       <div className="poster-head" style={{ background: color }}>
-        {!typeInFooter && <span className="poster-type">{TYPE_ZH[type]}</span>}
+        {typeInHead ? (
+          <div className="poster-head-row">
+            <span className="poster-head-type">{TYPE_ZH[type]}</span>
+            {corner && <span className="poster-head-corner">{corner}</span>}
+          </div>
+        ) : (
+          <>
+            {!typeInFooter && <span className="poster-type">{TYPE_ZH[type]}</span>}
+            {corner && <span className="poster-corner">{corner}</span>}
+          </>
+        )}
         <span className="poster-title">
           {title}
           {titleBadge && <span className="poster-title-badge">{titleBadge}</span>}
         </span>
-        {corner && <span className="poster-corner">{corner}</span>}
       </div>
       <div className="poster-body">{children}</div>
-      {typeInFooter && (
+      {typeInFooter && !typeInHead && (
         <div className="poster-foot">
           <span className="poster-foot-type" style={{ background: color }}>
             {TYPE_ZH[type]}

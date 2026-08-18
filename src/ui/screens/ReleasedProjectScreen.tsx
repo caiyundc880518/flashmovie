@@ -1,11 +1,10 @@
 import { useState } from 'react'
 import type { Channel, CriticReview, FilmRun, GameState, WorkerSettlement } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
-import { vfxTierAt, vfxTypeFactor } from '../../core/rules/scoring'
 import { lowerChannelsOf } from '../../core/tick/distribution'
 import { ECONOMY } from '../../core/config/economy'
 import { CHANNEL_CONFIG, CHANNEL_INFO, TOTAL_CINEMAS } from '../../core/config/channels'
-import { ROLE_ZH, SKILL_ZH, TYPE_ZH, fmtScore10, fmtWan, scoreColor10, signedDelta } from '../format'
+import { ROLE_ZH, SKILL_ZH, fmtScore10, fmtWan, scoreColor10, signedDelta } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { Bar } from '../components/Bar'
 import { MoneyText } from '../components/MoneyText'
@@ -107,19 +106,25 @@ export function ReleasedProjectScreen({
           title={p.name}
           type={script.type}
           corner={<span className="stage-badge">已上映</span>}
-          typeInFooter
+          typeInHead
           titleBadge={ip ? <span className="ip-badge">IP</span> : undefined}
         >
-          <div className="attr-line">
-            类型：{TYPE_ZH[script.type]} · 上映于 第{r.year}年 第{r.week}周
+          <div className="film-date">
+            <span className="film-date-icon">🎬</span>
+            <span className="film-date-label">上映时间</span>
+            <b>
+              第 {r.year} 年 · 第 {r.week} 周
+            </b>
           </div>
-          <div className="attr-line">
-            预算 <MoneyText value={p.budget} /> · 总投入 <MoneyText value={p.spent} />
-          </div>
-          <div className="attr-line">
-            预算侧重：剧情 {p.budgetAlloc?.story ?? 0}% · VFX {p.budgetAlloc?.vfx ?? 0}% · 表演{' '}
-            {p.budgetAlloc?.acting ?? 0}% · 剪辑 {p.budgetAlloc?.edit ?? 0}%
-            {(p.adSponsorIds?.length ?? 0) > 0 ? ` · 含 ${p.adSponsorIds.length} 家植入广告` : ''}
+          <div className="film-money">
+            <div className="film-money-chip">
+              <span>预算</span>
+              <MoneyText value={p.budget} />
+            </div>
+            <div className="film-money-chip">
+              <span>总投入</span>
+              <MoneyText value={p.spent} />
+            </div>
           </div>
           {ip && (
             <div className="attr-line">
@@ -127,15 +132,6 @@ export function ReleasedProjectScreen({
               +{Math.round((ip.sequelBonus - 1) * 100)}%
             </div>
           )}
-          <div className="attr-line">
-            特效等级：
-            <b>
-              {vfxTierAt(state.workers[p.team.technicianId ?? '']?.skills.vfx ?? 40, p.vfxLevel ?? 0).label}
-            </b>
-            {script && (
-              <span className="dim">（{TYPE_ZH[script.type]} ×{vfxTypeFactor(script.type).toFixed(2)}）</span>
-            )}
-          </div>
           <Bar label="热度" value={p.hype} color="var(--gold)" />
           {script?.desc && <p className="plot-desc">{script.desc}</p>}
         </PosterCard>

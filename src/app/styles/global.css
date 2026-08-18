@@ -2043,6 +2043,31 @@ input[type='range'] {
   white-space: nowrap;
 }
 
+/* ===== 海报头部徽章行（详情大卡：左侧类型 + 右侧阶段） ===== */
+.poster-head-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.poster-head-type {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 3px;
+  padding: 4px 14px;
+  border-radius: 999px;
+  background: rgba(13, 19, 33, 0.42);
+  color: #fff;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+  white-space: nowrap;
+}
+.poster-head-corner {
+  display: inline-flex;
+  flex-shrink: 0;
+  line-height: 1;
+}
+
 /* ===== 海报底部类型小 Label ===== */
 .poster-foot {
   padding: 8px 14px 10px;
@@ -2063,13 +2088,16 @@ input[type='range'] {
 /* ===== 阶段实心 Label（右上角） ===== */
 .stage-badge {
   display: inline-block;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  padding: 3px 9px;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 2px;
+  padding: 5px 15px;
   border-radius: 999px;
-  background: var(--gold);
+  background: linear-gradient(135deg, #f8dc94 0%, var(--gold) 55%, #d99b2e 100%);
   color: #0d1321;
+  box-shadow:
+    0 2px 10px rgba(232, 182, 76, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.55);
   white-space: nowrap;
 }
 
@@ -2364,6 +2392,57 @@ input[type='range'] {
 }
 .film-hero-meta {
   margin-top: 6px;
+}
+
+/* ===== 电影信息卡 · 上映时间 + 预算/总投入 美化 ===== */
+.film-date {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  align-self: flex-start;
+  padding: 7px 14px;
+  border-radius: 10px;
+  background: linear-gradient(135deg, rgba(232, 182, 76, 0.16), rgba(232, 182, 76, 0.05));
+  border: 1px solid rgba(232, 182, 76, 0.35);
+  color: var(--text);
+  font-size: 13px;
+}
+.film-date-icon {
+  font-size: 15px;
+}
+.film-date-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+}
+.film-date b {
+  color: var(--gold);
+  font-weight: 800;
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+}
+.film-money {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 10px;
+}
+.film-money-chip {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--panel-2, #131c2e);
+  border: 1px solid var(--border);
+}
+.film-money-chip span {
+  font-size: 10.5px;
+  color: var(--text-dim);
+  letter-spacing: 2px;
+}
+.film-money-chip .money {
+  font-size: 18px;
+  font-weight: 800;
 }
 @media (max-width: 1000px) {
   .film-hero {
