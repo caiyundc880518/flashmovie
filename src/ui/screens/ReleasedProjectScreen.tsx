@@ -315,21 +315,28 @@ export function ReleasedProjectScreen({
                 )}
               </div>
               {r.adSettlement && r.adSettlement.length > 0 && (
-                <div className="ad-settle-row">
-                  <span className="ad-settle-label">植入广告</span>
-                  <div className="ad-settle-chips">
+                <>
+                  <h4 className="ad-settle-title">植入广告</h4>
+                  <div className="channel-effect-row ad-settle-row-cards">
                     {r.adSettlement.map((a) => (
-                      <span key={a.id} className={`ad-chip ${a.met ? 'ad-chip-ok' : 'ad-chip-warn'}`}>
-                        {a.name} {a.met ? `+${fmtWan(a.fee)}` : '未达标'}
-                      </span>
+                      <div key={a.id} className="channel-stat">
+                        <span>{a.name}</span>
+                        <b className={a.met ? 'money' : 'ad-fail'}>{a.met ? `+${fmtWan(a.fee)}` : '未达标'}</b>
+                      </div>
                     ))}
+                    {r.adIncome ? (
+                      <div className="channel-stat">
+                        <span>广告到账合计</span>
+                        <b className="money">{fmtWan(r.adIncome)}</b>
+                      </div>
+                    ) : (
+                      <div className="channel-stat">
+                        <span>广告到账合计</span>
+                        <b className="ad-fail">全部未到账</b>
+                      </div>
+                    )}
                   </div>
-                  {r.adIncome ? (
-                    <b className="ad-total money">共到账 {fmtWan(r.adIncome)}</b>
-                  ) : (
-                    <b className="ad-total warn">全部未到账</b>
-                  )}
-                </div>
+                </>
               )}
             </div>
           )}

@@ -691,47 +691,20 @@ select {
   color: var(--text-dim);
   letter-spacing: 0.5px;
 }
-/* 植入广告（并入宣发渠道效果卡片内，填充整行） */
-.ad-settle-row {
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 10px;
-  padding-top: 10px;
+/* 植入广告（并入宣发渠道效果卡片，与小卡片同款统计卡） */
+.ad-settle-title {
+  margin: 14px 0 0;
+  padding-top: 12px;
   border-top: 1px dashed var(--border);
-}
-.ad-settle-label {
-  font-size: 10.5px;
-  color: var(--text-dim);
-  letter-spacing: 1px;
-  flex-shrink: 0;
-}
-.ad-settle-chips {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-}
-.ad-chip {
-  font-size: 11px;
-  padding: 3px 10px;
-  border-radius: 999px;
-  border: 1px solid;
-}
-.ad-chip-ok {
-  color: var(--ok);
-  border-color: rgba(76, 195, 138, 0.45);
-  background: rgba(76, 195, 138, 0.12);
-}
-.ad-chip-warn {
-  color: var(--danger);
-  border-color: rgba(224, 85, 85, 0.45);
-  background: rgba(224, 85, 85, 0.12);
-}
-.ad-total {
-  margin-left: auto;
   font-size: 12px;
-  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--gold);
+}
+.ad-settle-row-cards {
+  margin-top: 10px;
+}
+.ad-fail {
+  color: var(--danger);
 }
 .channel-preview {
   margin-top: 18px;
