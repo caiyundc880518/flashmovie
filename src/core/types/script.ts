@@ -38,6 +38,8 @@ export interface Script {
   trend: number
   /** 规模：需要的场次数（Stage 数） */
   scale: number
+  /** 剧情简介（简单介绍，展示用；旧档可能缺省） */
+  desc?: string
   requirement: ScriptRequirement
   /** 购买价格（千元），自有/自产为 0 */
   price: number

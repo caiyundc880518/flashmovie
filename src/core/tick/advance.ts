@@ -147,12 +147,17 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
   if (draft.company.ips.length > 0 && draft.calendar.week % IP_CONFIG.quarterWeeks === 0) {
     const ipMul = draft.company.public ? IPO_CONFIG.ipRoyaltyMultiplier : 1
     const royalty = round1(
-      draft.company.ips.reduce((s, ip) => s + ip.royaltyPerQuarter * ipMul, 0),
+      draft.company.ips.reduce(
+        (s, ip) => s + ip.royaltyPerQuarter * (1 + (ip.merchBonus ?? 0) / 100) * ipMul,
+        0,
+      ),
     )
     if (royalty > 0) {
       draft.company.cash += royalty
       for (const ip of draft.company.ips) {
-        ip.royaltyEarned = round1(ip.royaltyEarned + ip.royaltyPerQuarter * ipMul)
+        ip.royaltyEarned = round1(
+          ip.royaltyEarned + ip.royaltyPerQuarter * (1 + (ip.merchBonus ?? 0) / 100) * ipMul,
+        )
       }
       pushNews(draft, `IP 衍生授权季度结算：周边/授权/画廊共收入 ${royalty} 万元。`)
     }
@@ -238,6 +243,8 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
   // 5. 项目推进
   for (const p of draft.projects) {
     if (p.stage !== 'shooting') continue
+    // 被动小游戏：有待玩小游戏时本周暂停拍摄（必须完成小游戏才能继续推进）
+    if (p.pendingShotGame) continue
     const directorSkill = draft.workers[p.team.directorId ?? '']?.skills.direct ?? 40
     const shooterSkill = draft.workers[p.team.shooterId ?? '']?.skills.shoot ?? 40
     const avgMood = teamAvgMood(draft, p)
@@ -253,6 +260,10 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
 
     if (p.pendingEvents.length === 0 && p.shotStages < p.totalStages && chance(rng, 0.35)) {
       p.pendingEvents.push(generateProjectEvent(draft, rng))
+    }
+    // 被动触发拍摄小游戏：某几场戏需要完成运镜挑战（必须玩完才能继续推进）
+    if (!p.pendingShotGame && p.shotStages < p.totalStages && chance(rng, 0.4)) {
+      p.pendingShotGame = true
     }
     if (p.shotStages >= p.totalStages && p.stage === 'shooting') {
       p.stage = 'editing'

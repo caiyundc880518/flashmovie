@@ -114,7 +114,7 @@ describe('IPO 上市（GDD §3.1）', () => {
     s.company.employeeIds = []
     s.company.cash = 1000
     s.company.ips = [
-      { id: 'ip1', name: '《系列》', type: 'action', entry: 1, originWeek: 1, originYear: 1, totalBoxOffice: 2000, bestBoxOffice: 2000, bestCriticScore: 75, level: 1, royaltyPerQuarter: 12, sequelBonus: 1.05, royaltyEarned: 0, films: ['p1'] },
+      { id: 'ip1', name: '《系列》', type: 'action', entry: 1, originWeek: 1, originYear: 1, totalBoxOffice: 2000, bestBoxOffice: 2000, bestCriticScore: 75, level: 1, royaltyPerQuarter: 12, sequelBonus: 1.05, merchBonus: 0, royaltyEarned: 0, films: ['p1'] },
     ]
     s.calendar = { year: 1, week: 12 }
     s = reduce(s, { type: 'advanceWeek' })

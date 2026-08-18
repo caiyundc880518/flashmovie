@@ -100,6 +100,37 @@ describe('TMA 颁奖', () => {
     expect(s.company.reputation).toBeGreaterThan(repBefore)
   })
 
+  it('累计获奖数：awardCount 按获奖累加到对应影片', () => {
+    const s = setup()
+    s.workers['w-dir'] = generateWorker(createRng(1), 'director')
+    s.workers['w-act'] = generateWorker(createRng(2), 'actor')
+    const ceremony = computeYearAwards(s, 1)
+    applyAwardEffects(s, ceremony)
+    // 我方个人奖影片各累加 1；重复颁奖（跨年）继续累加
+    const film = s.company.history.find((h) => h.name === '《我方特效片》')
+    expect(film?.awardCount).toBeGreaterThanOrEqual(1)
+    applyAwardEffects(s, ceremony)
+    expect(s.company.history.find((h) => h.name === '《我方特效片》')?.awardCount).toBeGreaterThanOrEqual(2)
+  })
+
+  it('获奖名单：awards 记录奖项类别、获奖者与年份', () => {
+    const s = setup()
+    s.workers['w-dir'] = generateWorker(createRng(1), 'director')
+    s.workers['w-act'] = generateWorker(createRng(2), 'actor')
+    const tech = generateWorker(createRng(3), 'technician')
+    tech.id = 'w-tech'
+    s.workers['w-tech'] = tech
+    const techName = tech.name
+    const ceremony = computeYearAwards(s, 1)
+    applyAwardEffects(s, ceremony)
+    const film = s.company.history.find((h) => h.name === '《我方特效片》')
+    expect(film?.awards?.length).toBeGreaterThanOrEqual(1)
+    const vfxAward = film!.awards!.find((a) => a.category === '最佳特效')
+    expect(vfxAward).toBeDefined()
+    expect(vfxAward!.workerName).toBe(techName)
+    expect(vfxAward!.year).toBe(s.calendar.year)
+  })
+
   it('跨年集成：推进一整年产生颁奖典礼', () => {
     let s = createInitialState(43)
     s.company.cash = 10000
@@ -124,18 +155,25 @@ describe('TMA 颁奖', () => {
         editorId: 'e-editor',
         marketId: 'e-market',
       },
-      vfxPercent: 0,
-      hasAd: false,
+      budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 },
+      vfxLevel: 0,
+      adSponsorIds: [],
     })
     const pid = s.projects[0].id
     s = reduce(s, { type: 'startShooting', projectId: pid })
-    for (let i = 0; i < 24 && s.projects[0].stage === 'shooting'; i++) {
+    for (let i = 0; i < 30 && s.projects[0].stage === 'shooting'; i++) {
       s = reduce(s, { type: 'advanceWeek' })
       for (const ev of [...s.projects[0].pendingEvents]) {
         s = reduce(s, { type: 'resolveEvent', projectId: pid, eventId: ev.id, optionIndex: 0 })
       }
+      if (s.projects[0].pendingShotGame) {
+        s = reduce(s, { type: 'applyShotGame', projectId: pid, qualities: ['perfect', 'perfect', 'perfect'] })
+      }
     }
+    s = reduce(s, { type: 'applyEditGame', projectId: pid, qualities: ['perfect', 'perfect', 'perfect'] })
     s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
+    s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
+    s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
     s = reduce(s, { type: 'release', projectId: pid })
     // 推进到年底 + 跨年
     for (let i = 0; i < 60; i++) s = reduce(s, { type: 'advanceWeek' })

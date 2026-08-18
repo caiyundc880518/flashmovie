@@ -7,6 +7,7 @@ import { MarketScreen } from '../ui/screens/MarketScreen'
 import { FinancingScreen } from '../ui/screens/FinancingScreen'
 import { IpoScreen } from '../ui/screens/IpoScreen'
 import { IpsScreen } from '../ui/screens/IpsScreen'
+import { IpDetailScreen } from '../ui/screens/IpDetailScreen'
 import { ScriptMarketScreen } from '../ui/screens/ScriptMarketScreen'
 import { EmployeesScreen } from '../ui/screens/EmployeesScreen'
 import { RecruitScreen } from '../ui/screens/RecruitScreen'
@@ -21,9 +22,12 @@ import { MainMenuScreen } from '../ui/screens/MainMenuScreen'
 import { AwardsCeremonyModal } from '../ui/components/AwardsCeremonyModal'
 import { Modal } from '../ui/components/Modal'
 import { NewGameModal } from '../ui/components/NewGameModal'
+import { ProjectEventModal } from '../ui/components/ProjectEventModal'
 import { MoneyText } from '../ui/components/MoneyText'
 import { SEASON_ZH } from '../ui/format'
-import { TUTORIAL_STEPS, tutorialStep } from '../core/rules/tutorial'
+import { ROLE_ZH } from '../ui/format'
+import { ROLE_IDS, type TimingQuality } from '../core/types'
+import { TimingMinigame } from '../ui/components/TimingMinigame'
 
 type Nav =
   | { screen: 'company' }
@@ -36,6 +40,7 @@ type Nav =
   | { screen: 'employees' }
   | { screen: 'recruit' }
   | { screen: 'ips' }
+  | { screen: 'ipDetail'; ipId: string }
   | { screen: 'team'; teamScriptId?: string; teamIpId?: string }
   | { screen: 'projects' }
   | { screen: 'critics' }
@@ -44,7 +49,8 @@ type Nav =
   | { screen: 'awards' }
   | { screen: 'project'; projectId: string }
 
-type NavKey = Exclude<Nav['screen'], 'project'>
+/** 导航菜单项 key（排除带参页面 project / ipDetail） */
+type NavKey = Exclude<Nav['screen'], 'project' | 'ipDetail'>
 
 /** 左侧多级导航：分组 → 页面 */
 const NAV_GROUPS: Array<{ group: string; items: Array<{ key: NavKey; label: string }> }> = [
@@ -101,8 +107,6 @@ export function App() {
   const [nav, setNav] = useState<Nav>({ screen: 'company' })
   // 已看过的颁奖届次（避免重复弹出）
   const [seenCeremonyYear, setSeenCeremonyYear] = useState<number | null>(null)
-  // 新手任务面板开关
-  const [tutorialOpen, setTutorialOpen] = useState(false)
   // 侧栏折叠的分组（默认全展开）
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
   // 是否已进入游戏（false = 主菜单）
@@ -110,6 +114,66 @@ export function App() {
   // 新游戏 / 重置存档：输入公司名弹窗
   const [newGameOpen, setNewGameOpen] = useState(false)
   const [resetOpen, setResetOpen] = useState(false)
+  // 项目详情页的"返回上一页"：记录进入项目详情前的页面
+  const [projectReturn, setProjectReturn] = useState<Nav | null>(null)
+  // 拍摄阶段强制事件弹窗：有待决事件时阻止推进一周
+  const [pendingEvent, setPendingEvent] = useState<{ projectId: string; eventIndex: number } | null>(null)
+  // 强制小游戏（拍摄被动触发 / 剪辑必须完成）：不完成不能推进
+  const [pendingGame, setPendingGame] = useState<{ projectId: string; kind: 'shot' | 'edit' } | null>(null)
+  // 作弊菜单：在招聘市场生成满属性免费人才
+  const [cheatOpen, setCheatOpen] = useState(false)
+
+  /** 打开项目详情：记录来源页，返回时回到上一页面 */
+  const openProject = (id: string) => {
+    setProjectReturn(nav)
+    setNav({ screen: 'project', projectId: id })
+  }
+
+  /** 点推进一周：先处理待决事件 / 待玩小游戏（拍摄被动触发、剪辑必须完成），否则才推进 */
+  const advanceClick = () => {
+    const s = useGameStore.getState().state
+    // 1) 拍摄：有待决随机事件 → 弹事件
+    const evProj = s?.projects.find((p) => p.stage === 'shooting' && p.pendingEvents.length > 0)
+    if (evProj) {
+      setPendingEvent({ projectId: evProj.id, eventIndex: 0 })
+      return
+    }
+    // 2) 拍摄：有待玩小游戏（被动触发）→ 强制弹小游戏
+    const shotProj = s?.projects.find((p) => p.stage === 'shooting' && p.pendingShotGame)
+    if (shotProj) {
+      setPendingGame({ projectId: shotProj.id, kind: 'shot' })
+      return
+    }
+    // 3) 剪辑：必须完成剪辑小游戏才能推进
+    const editProj = s?.projects.find((p) => p.stage === 'editing' && !p.editGameDone)
+    if (editProj) {
+      setPendingGame({ projectId: editProj.id, kind: 'edit' })
+      return
+    }
+    dispatch({ type: 'advanceWeek' })
+  }
+
+  /** 处理完一个事件后：关闭弹窗（若同项目还有事件，下一次点推进时继续弹出） */
+  const handleEventResolve = (optionIndex: number) => {
+    if (!pendingEvent) return
+    const s = useGameStore.getState().state
+    const p = s?.projects.find((x) => x.id === pendingEvent.projectId)
+    const eventId = p?.pendingEvents[pendingEvent.eventIndex]?.id
+    if (!eventId) return
+    dispatch({ type: 'resolveEvent', projectId: pendingEvent.projectId, eventId, optionIndex })
+    setPendingEvent(null)
+  }
+
+  /** 强制小游戏完成（3 轮判定）：结算并关闭 */
+  const handleGameResult = (qualities: TimingQuality[]) => {
+    if (!pendingGame) return
+    dispatch(
+      pendingGame.kind === 'shot'
+        ? { type: 'applyShotGame', projectId: pendingGame.projectId, qualities }
+        : { type: 'applyEditGame', projectId: pendingGame.projectId, qualities },
+    )
+    setPendingGame(null)
+  }
 
   /** 跳转页面：同时展开目标所在分组 */
   const goTo = (key: NavKey) => {
@@ -158,18 +222,6 @@ export function App() {
   }
 
   if (!state) return null
-
-  // 新手引导：派生进度 + 显示开关（旧档 tutorial 为 undefined = 已完成）
-  const step = tutorialStep(state)
-  const showTutorialBar = state.tutorial !== undefined && step < 5
-  const currentStep = TUTORIAL_STEPS[step]
-  const PAGE_ZH: Record<string, string> = {
-    company: '公司',
-    marketScripts: '剧本市场',
-    recruit: '招聘',
-    team: '组队立项',
-    projects: '项目',
-  }
 
   return (
     <div className="app-shell">
@@ -225,21 +277,21 @@ export function App() {
             </span>
             <span className="top-stat">声誉 {Math.round(state.company.reputation)}</span>
           </div>
-          <button className="btn-primary btn-advance" onClick={() => dispatch({ type: 'advanceWeek' })}>
-            推进一周 ▶
-          </button>
+          <div className="topbar-actions">
+            <button
+              className="btn-cheat"
+              onClick={() => setCheatOpen(true)}
+              title="作弊：免费生成满属性人才进入招聘市场"
+            >
+              ⚡ 作弊
+            </button>
+            <button className="btn-primary btn-advance" onClick={advanceClick}>
+              推进一周 ▶
+            </button>
+          </div>
         </header>
 
         <div className="content">
-          {showTutorialBar && (
-            <div className="tutorial-bar" onClick={() => setTutorialOpen(true)}>
-              <span className="tutorial-progress">🧭 新手任务 {step}/5</span>
-              <span className="tutorial-current">
-                {currentStep ? `当前：${currentStep.title}` : '全部完成'}
-              </span>
-              <span className="tutorial-hint">点击查看任务清单 →</span>
-            </div>
-          )}
           {nav.screen === 'company' && <CompanyScreen />}
           {nav.screen === 'tech' && <TechScreen />}
           {nav.screen === 'audience' && <AudienceScreen />}
@@ -247,7 +299,17 @@ export function App() {
           {nav.screen === 'financing' && <FinancingScreen />}
           {nav.screen === 'ipo' && <IpoScreen />}
           {nav.screen === 'ips' && (
-            <IpsScreen onSequel={(ipId) => setNav({ screen: 'team', teamIpId: ipId })} />
+            <IpsScreen
+              onSequel={(ipId) => setNav({ screen: 'team', teamIpId: ipId })}
+              onOpenDetail={(ipId) => setNav({ screen: 'ipDetail', ipId })}
+            />
+          )}
+          {nav.screen === 'ipDetail' && (
+            <IpDetailScreen
+              ipId={nav.ipId}
+              onBack={() => setNav({ screen: 'ips' })}
+              onGoToProject={openProject}
+            />
           )}
           {nav.screen === 'marketScripts' && (
             <ScriptMarketScreen onBuildTeam={(id) => setNav({ screen: 'team', teamScriptId: id })} />
@@ -259,24 +321,82 @@ export function App() {
           {nav.screen === 'leaderboard' && <LeaderboardScreen />}
           {nav.screen === 'awards' && <AwardsScreen />}
           {nav.screen === 'projects' && (
-            <ProjectsScreen onOpenProject={(id) => setNav({ screen: 'project', projectId: id })} />
+            <ProjectsScreen onOpenProject={openProject} />
           )}
           {nav.screen === 'team' && (
             <TeamBuildScreen
               key={`${nav.teamScriptId ?? 'team'}-${nav.teamIpId ?? ''}`}
               initialScriptId={nav.teamScriptId}
               initialIpId={nav.teamIpId}
-              onGoToProject={(id) => setNav({ screen: 'project', projectId: id })}
+              onGoToProject={openProject}
             />
           )}
           {nav.screen === 'project' && (
             <ProjectDetailScreen
               projectId={nav.projectId}
-              onBack={() => setNav({ screen: 'projects' })}
+              onBack={() => setNav(projectReturn ?? { screen: 'projects' })}
             />
           )}
         </div>
       </div>
+
+      {/* 作弊菜单：选择职位，在招聘市场生成满属性免费人才 */}
+      {cheatOpen && (
+        <Modal title="⚡ 作弊菜单" onClose={() => setCheatOpen(false)}>
+          <p className="dim">
+            在招聘市场生成一位<b>全属性 100</b>（CA/PA 100）的<b>免费</b>人才，选择职位即可生成（雇佣也免费）。
+          </p>
+          <div className="cheat-grid">
+            {ROLE_IDS.map((r) => (
+              <button
+                key={r}
+                onClick={() => {
+                  dispatch({ type: 'cheatSpawnWorker', role: r })
+                  setCheatOpen(false)
+                }}
+              >
+                {ROLE_ZH[r]}
+              </button>
+            ))}
+          </div>
+        </Modal>
+      )}
+
+      {/* 拍摄阶段强制事件弹窗：有待决事件时点推进一周会先弹出 */}
+      {pendingEvent && (() => {
+        const proj = state?.projects.find((x) => x.id === pendingEvent.projectId)
+        const ev = proj?.pendingEvents[pendingEvent.eventIndex]
+        if (!proj || !ev) return null
+        return (
+          <ProjectEventModal
+            projectName={proj.name}
+            event={ev}
+            onResolve={handleEventResolve}
+            onLater={() => setPendingEvent(null)}
+          />
+        )
+      })()}
+
+      {/* 强制小游戏：拍摄被动触发 / 剪辑必须完成（不完成不能推进） */}
+      {pendingGame && (() => {
+        const proj = state?.projects.find((x) => x.id === pendingGame.projectId)
+        if (!proj) return null
+        const isShot = pendingGame.kind === 'shot'
+        return (
+          <TimingMinigame
+            title={isShot ? `🎬 《${proj.name}》运镜挑战` : `✂ 《${proj.name}》剪辑挑战`}
+            desc={
+              isShot
+                ? '这场戏需要完成运镜挑战（共 3 轮）。全部完美将大幅提升成片 AP/MP，全部失误则无加成。'
+                : '剪辑必须完成节奏挑战（共 3 轮）才能继续推进。全部完美将大幅提升成片 AP/MP。'
+            }
+            actionLabel={isShot ? '运镜' : '剪！'}
+            onResult={() => {}}
+            onFinish={handleGameResult}
+            onClose={() => setPendingGame(null)}
+          />
+        )
+      })()}
 
       {/* 新游戏 / 重置存档：输入公司名 */}
       {newGameOpen && (
@@ -299,67 +419,6 @@ export function App() {
           ceremony={state.lastCeremony}
           onClose={() => setSeenCeremonyYear(state.lastCeremony!.year)}
         />
-      )}
-
-      {/* 新手引导：欢迎弹窗（新档首次进入） */}
-      {state.tutorial === 0 && (
-        <Modal title="🎬 欢迎来到星光影业" onClose={() => dispatch({ type: 'finishTutorialIntro' })}>
-          <p>
-            你是一家新成立的电影公司 CEO，目标是拍出叫好又叫座的作品，打造属于自己的电影帝国，最终<b>上市</b>。
-          </p>
-          <p className="dim">
-            三条主线：<b>养成</b>（员工成长 / 签约编剧 / 写作学校 / 科技研发）→ <b>制作</b>（剧本 → 组队 →
-            拍摄 → 剪辑）→ <b>商业</b>（宣发 / 发行渠道 / 票房 / 口碑 / IP 系列化 / 上市）。
-          </p>
-          <p className="dim">
-            先按顶部的「🧭 新手任务」完成 5 步，拍出你的第一部电影。随时可以推进一周来观察世界变化。
-          </p>
-          <div className="btn-row">
-            <button className="btn-primary" onClick={() => dispatch({ type: 'finishTutorialIntro' })}>
-              开始征程 ▶
-            </button>
-          </div>
-        </Modal>
-      )}
-
-      {/* 新手引导：任务清单 */}
-      {tutorialOpen && (
-        <Modal title="🧭 新手任务" wide onClose={() => setTutorialOpen(false)}>
-          {TUTORIAL_STEPS.map((t, i) => {
-            const done = i < step
-            const current = i === step
-            return (
-              <div key={t.id} className={`tutorial-step${done ? ' tutorial-done' : ''}${current ? ' tutorial-current' : ''}`}>
-                <div className="tutorial-step-head">
-                  <span className="step-check">{done ? '✓' : t.id}</span>
-                  <span className="slot-title">{t.title}</span>
-                  {done ? (
-                    <span className="tag tag-pro">完成</span>
-                  ) : current ? (
-                    <span className="tag tag-required">进行中</span>
-                  ) : (
-                    <span className="tag">待完成</span>
-                  )}
-                </div>
-                <p className="dim">{t.hint}</p>
-                {current && (
-                  <button
-                    className="btn-primary"
-                    onClick={() => {
-                      goTo(t.page)
-                      setTutorialOpen(false)
-                    }}
-                  >
-                    前往{PAGE_ZH[t.page]} →
-                  </button>
-                )}
-              </div>
-            )
-          })}
-          {step >= 5 && (
-            <p className="msg">🎉 新手任务全部完成，放手经营你的电影帝国吧！</p>
-          )}
-        </Modal>
       )}
     </div>
   )

@@ -1,4 +1,4 @@
-import type { Channel, GameState, ProjectStage } from '../types'
+import type { GameState, ProjectStage } from '../types'
 import { createRng, clamp, randInt, round1 } from '../rng'
 import { uid, teamIds, pushNews } from './utils'
 import { advanceWeek as tickAdvance } from '../tick/advance'
@@ -17,8 +17,13 @@ import { TECH_CONFIG, TECH_LINES, techLevel } from '../config/tech'
 import { techBonuses } from '../rules/tech'
 import { ipLevel, refreshIpDerived, royaltyPerQuarter, sequelBonusFactor } from '../rules/ip'
 import { TIMING_CONFIG } from '../config/minigame'
+import { VFX_CONFIG } from '../config/minigame'
+import { BUDGET_CONFIG } from '../config/budget'
+import { AD_CONFIG, AD_SPONSOR_MAP } from '../config/ads'
+import { CHANNEL_CONFIG, TOTAL_CINEMAS, WEB_PLATFORMS } from '../config/channels'
+import { availableVfxTiers } from '../rules/scoring'
 import type { Action } from './actions'
-import type { IpAsset } from '../types'
+import type { IpAsset, SkillKey } from '../types'
 
 /**
  * 状态容器：纯函数 reduce(action, state) → state
@@ -78,11 +83,13 @@ export function reduce(state: GameState, action: Action): GameState {
     }
 
     case 'hireWorker': {
-      if (draft.company.cash < ECONOMY.hireWorkerSignFee) return state
       const idx = draft.world.candidates.findIndex((c) => c.id === action.candidateId)
       if (idx < 0) return state
       const w = draft.world.candidates[idx]
-      draft.company.cash -= ECONOMY.hireWorkerSignFee
+      // 作弊人才免费雇佣
+      const fee = w.cheat ? 0 : ECONOMY.hireWorkerSignFee
+      if (draft.company.cash < fee) return state
+      draft.company.cash -= fee
       draft.workers[w.id] = w
       draft.company.employeeIds.push(w.id)
       draft.world.candidates.splice(idx, 1)
@@ -91,14 +98,15 @@ export function reduce(state: GameState, action: Action): GameState {
     }
 
     case 'hireCandidates': {
-      // 批量雇佣：抽卡结果一键签约（逐人校验现金，一次新闻）
+      // 批量雇佣：抽卡结果一键签约（逐人校验现金，一次新闻）；作弊人才免费
       let hired = 0
       for (const id of action.candidateIds) {
         const idx = draft.world.candidates.findIndex((c) => c.id === id)
         if (idx < 0) continue
         const w = draft.world.candidates[idx]
-        if (draft.company.cash < ECONOMY.hireWorkerSignFee) continue
-        draft.company.cash = round1(draft.company.cash - ECONOMY.hireWorkerSignFee)
+        const fee = w.cheat ? 0 : ECONOMY.hireWorkerSignFee
+        if (draft.company.cash < fee) continue
+        draft.company.cash = round1(draft.company.cash - fee)
         draft.workers[w.id] = w
         draft.company.employeeIds.push(w.id)
         draft.world.candidates.splice(idx, 1)
@@ -203,11 +211,30 @@ export function reduce(state: GameState, action: Action): GameState {
       ) {
         return state
       }
-      const vfx = clamp(action.vfxPercent, 0, 100)
+      // 预算占比校验：单项 0–100，总和 ≤ 100
+      const alloc = {
+        story: clamp(action.budgetAlloc?.story ?? 0, 0, 100),
+        vfx: clamp(action.budgetAlloc?.vfx ?? 0, 0, 100),
+        acting: clamp(action.budgetAlloc?.acting ?? 0, 0, 100),
+        edit: clamp(action.budgetAlloc?.edit ?? 0, 0, 100),
+      }
+      if (alloc.story + alloc.vfx + alloc.acting + alloc.edit > BUDGET_CONFIG.totalCap) return state
+      // 特效档位：clamp 到技术员可解锁范围
+      const techSkill = draft.workers[action.team.technicianId ?? '']?.skills.vfx ?? 40
+      const maxLevel = availableVfxTiers(techSkill).length - 1
+      const vfxLevel = clamp(action.vfxLevel ?? 0, 0, maxLevel)
+      const tier = VFX_CONFIG.tiers[vfxLevel]
+      // 广告商校验：存在、去重、上限
+      const adSponsorIds = [...new Set(action.adSponsorIds ?? [])].filter((id) => AD_SPONSOR_MAP[id])
+      if (adSponsorIds.length > AD_CONFIG.maxSponsors) return state
       // 虚拟制片科技：降低 VFX 预算成本（GDD §5 科技树）
       const studioDiscount = 1 - techBonuses(draft).studio
+      const base = script.scale * ECONOMY.costPerStage
+      // 预算 = 基础 + VFX 投入（档位成本系数）× 虚拟制片折扣 + 其他侧重投入
       const budget =
-        script.scale * ECONOMY.costPerStage * (1 + (vfx / 100) * ECONOMY.vfxCostFactor * studioDiscount)
+        base +
+        base * (alloc.vfx / 100) * ECONOMY.vfxCostFactor * studioDiscount * tier.costMul +
+        base * ((alloc.story + alloc.acting + alloc.edit) / 100) * BUDGET_CONFIG.allocCostFactor
       const stage: ProjectStage = 'preparing'
       // 续作立项（GDD §3.8）：须与 IP 同类型；自带初始热度；项目名 = 系列名 + 部数
       let ipId: string | undefined
@@ -230,17 +257,27 @@ export function reduce(state: GameState, action: Action): GameState {
         team: action.team,
         totalStages: script.scale,
         shotStages: 0,
-        vfxPercent: vfx,
-        hasAd: action.hasAd,
+        budgetAlloc: alloc,
+        vfxLevel,
+        adSponsorIds,
         hype,
-        marketingBudget: 0,
         budget: round1(budget),
         spent: 0,
         editStyle: null,
         buffs: 0,
         apAdjust: 0,
         pendingEvents: [],
-        channels: [] as Channel[],
+        channel: null,
+        cinemaCount: 0,
+        webPlatforms: [],
+        webWeeks: 0,
+        dvdPrice: 0,
+        freeAdPrice: 0,
+        warmup: 0,
+        shotGameBonus: 0,
+        pendingShotGame: false,
+        editGameDone: false,
+        editGameBonus: 0,
         ipId,
         ipEntry,
       })
@@ -249,9 +286,13 @@ export function reduce(state: GameState, action: Action): GameState {
         const w = draft.workers[id]
         if (w) w.currentProjectId = projectId
       }
-      if (action.hasAd) {
-        draft.company.cash += ECONOMY.adDealIncome
-        pushNews(draft, `《${script.title}》接受植入广告，获得 ${ECONOMY.adDealIncome} 万元赞助。`)
+      if (adSponsorIds.length > 0) {
+        pushNews(
+          draft,
+          `《${script.title}》与 ${adSponsorIds.length} 家广告商达成植入合作（${adSponsorIds
+            .map((id) => AD_SPONSOR_MAP[id].name)
+            .join('、')}），达标后到账赞助费。`,
+        )
       }
       if (ipId) {
         const ip = draft.company.ips.find((x) => x.id === ipId)
@@ -276,7 +317,7 @@ export function reduce(state: GameState, action: Action): GameState {
 
     case 'chooseEditStyle': {
       const p = draft.projects.find((x) => x.id === action.projectId)
-      if (!p || p.stage !== 'editing') return state
+      if (!p || p.stage !== 'editing' || !p.editGameDone) return state
       const editorSkill = draft.workers[p.team.editorId ?? '']?.skills.edit ?? 40
       const buff = Math.max(0, Math.round((editorSkill - 40) / 10) + randInt(rng, 0, 3))
       p.editStyle = action.style
@@ -290,27 +331,51 @@ export function reduce(state: GameState, action: Action): GameState {
       break
     }
 
-    case 'setMarketingBudget': {
+    case 'setWarmup': {
+      // 筹备：投入预热成本（扣现金，MP 加成无上限）
       const p = draft.projects.find((x) => x.id === action.projectId)
-      if (!p) return state
-      p.marketingBudget = clamp(action.budget, 0, ECONOMY.marketingBudgetCap)
+      if (!p || p.stage !== 'preparing') return state
+      const amount = Math.max(0, Math.round(action.amount))
+      if (amount <= 0) return state
+      if (draft.company.cash < amount) return state
+      draft.company.cash = round1(draft.company.cash - amount)
+      p.warmup = round1(p.warmup + amount)
+      p.spent = round1(p.spent + amount)
+      pushNews(draft, `《${p.name}》筹备预热投入 ${amount} 万（累计 ${Math.round(p.warmup)} 万，MP 加成 +${Math.round(p.warmup / ECONOMY.warmupPerMp)}）。`)
       break
     }
 
-    case 'launchMarketing': {
+    case 'applyShotGame': {
+      // 拍摄小游戏（被动触发）：3 轮判定 → 完美越多 AP/MP 加成越高；全失败无效果
       const p = draft.projects.find((x) => x.id === action.projectId)
-      if (!p || p.stage !== 'marketing') return state
-      const cost = Math.min(p.marketingBudget, ECONOMY.marketingBudgetCap)
-      if (draft.company.cash < cost) return state
-      draft.company.cash -= cost
-      p.marketingBudget -= cost
-      const marketSkill = draft.workers[p.team.marketId ?? '']?.skills.market ?? 30
-      const advSkill = draft.workers[p.team.marketId ?? '']?.skills.advertise ?? 30
-      p.hype = clamp(
-        p.hype + cost / ECONOMY.costPerHypePoint + marketSkill * 0.15 + advSkill * 0.1,
-        0,
-        100,
-      )
+      if (!p || p.stage !== 'shooting' || !p.pendingShotGame) return state
+      const perfect = action.qualities.filter((q) => q === 'perfect').length
+      const good = action.qualities.filter((q) => q === 'good').length
+      const bonus = perfect * 2 + good * 1
+      p.shotGameBonus = round1(p.shotGameBonus + bonus)
+      p.pendingShotGame = false
+      if (bonus > 0) {
+        pushNews(draft, `《${p.name}》拍摄小游戏：${perfect} 完美 ${good} 不错，成片 AP/MP 加成 +${bonus}。`)
+      } else {
+        pushNews(draft, `《${p.name}》拍摄小游戏全部失误，无加成。`)
+      }
+      break
+    }
+
+    case 'applyEditGame': {
+      // 剪辑小游戏（强制完成才能推进）：3 轮判定 → 完美越多 AP/MP 加成越高
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'editing' || p.editGameDone) return state
+      const perfect = action.qualities.filter((q) => q === 'perfect').length
+      const good = action.qualities.filter((q) => q === 'good').length
+      const bonus = perfect * 2 + good * 1
+      p.editGameBonus = round1(p.editGameBonus + bonus)
+      p.editGameDone = true
+      if (bonus > 0) {
+        pushNews(draft, `《${p.name}》剪辑完成：${perfect} 完美 ${good} 不错，成片 AP/MP 加成 +${bonus}。`)
+      } else {
+        pushNews(draft, `《${p.name}》剪辑完成，节奏平平无加成。`)
+      }
       break
     }
 
@@ -328,10 +393,48 @@ export function reduce(state: GameState, action: Action): GameState {
       break
     }
 
-    case 'setChannels': {
+    case 'setChannel': {
+      // 宣发：单选发行渠道（流媒体已取消、发行商已取消）；选定渠道视为宣发投入，提升热度
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p || p.stage !== 'marketing') return state
-      p.channels = action.channels.filter((c, i, arr) => arr.indexOf(c) === i)
+      if (p.channel !== action.channel) {
+        p.channel = action.channel
+        p.hype = clamp(p.hype + 8, 0, 100)
+      }
+      break
+    }
+
+    case 'setCinemaCount': {
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'marketing' || p.channel !== 'cinema') return state
+      const prev = p.cinemaCount
+      p.cinemaCount = clamp(Math.round(action.count), 0, TOTAL_CINEMAS)
+      // 投放更多影院 → 热度小幅提升（宣发力度）
+      const delta = Math.floor((p.cinemaCount - prev) / 100)
+      if (delta > 0) p.hype = clamp(p.hype + delta, 0, 100)
+      break
+    }
+
+    case 'setWebConfig': {
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'marketing' || p.channel !== 'web') return state
+      const valid = WEB_PLATFORMS.filter((x) => action.platforms.includes(x))
+      p.webPlatforms = [...new Set(valid)]
+      p.webWeeks = clamp(Math.round(action.weeks), 1, 52)
+      break
+    }
+
+    case 'setDvdPrice': {
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'marketing' || p.channel !== 'dvd') return state
+      p.dvdPrice = clamp(Math.round(action.price), 1, CHANNEL_CONFIG.dvdPriceRange[1])
+      break
+    }
+
+    case 'setFreeAdPrice': {
+      const p = draft.projects.find((x) => x.id === action.projectId)
+      if (!p || p.stage !== 'marketing' || p.channel !== 'free') return state
+      p.freeAdPrice = clamp(Math.round(action.price), 1, CHANNEL_CONFIG.freeAdPriceRange[1])
       break
     }
 
@@ -344,23 +447,6 @@ export function reduce(state: GameState, action: Action): GameState {
       } else {
         delete p.targetRegion
       }
-      break
-    }
-
-    case 'selectPublisher': {
-      const p = draft.projects.find((x) => x.id === action.projectId)
-      if (!p || p.stage !== 'marketing' || p.publisherId) return state
-      const pub = draft.world.publishers.find((x) => x.id === action.publisherId)
-      if (!pub) return state
-      let prepay = Math.round(pub.prepayBase + pub.reputation * pub.prepayPerRep)
-      // 续作投资溢价：发行商更愿意为成熟 IP 系列预付（GDD §3.8）
-      if (p.ipId) {
-        const ip = draft.company.ips.find((x) => x.id === p.ipId)
-        if (ip) prepay = Math.round(prepay * (1 + ip.level * IP_CONFIG.publisherPrepayPerLevel))
-      }
-      draft.company.cash += prepay
-      p.publisherId = pub.id
-      pushNews(draft, `与发行商「${pub.name}」签约，获得预付款 ${prepay} 万元。`)
       break
     }
 
@@ -452,9 +538,22 @@ export function reduce(state: GameState, action: Action): GameState {
       break
     }
 
-    case 'finishTutorialIntro': {
-      // 新手引导：关闭欢迎弹窗后记录已看
-      draft.tutorial = 1
+    case 'cheatSpawnWorker': {
+      // 作弊：在招聘市场生成一个全属性 100 的免费人才（CA/PA 100，全部技能/精神/身体满）
+      const w = generateWorker(rng, action.role, 'pro')
+      w.id = uid(draft, 'wrk')
+      w.basic.pa = 100
+      w.basic.ca = 100
+      w.basic.fame = 100
+      w.basic.hype = 100
+      for (const k of Object.keys(w.skills) as SkillKey[]) w.skills[k] = 100
+      for (const k of Object.keys(w.mental) as SkillKey[]) w.mental[k as keyof typeof w.mental] = 100
+      for (const k of Object.keys(w.physical) as SkillKey[]) w.physical[k as keyof typeof w.physical] = 100
+      w.active.mood = 100
+      w.active.volume = 100
+      w.cheat = true
+      draft.world.candidates.push(w)
+      pushNews(draft, `⚡ 作弊模式：满属性${ROLES[action.role].nameZh}「${w.name}」免费进入招聘市场（CA/PA 100）。`)
       break
     }
 
@@ -482,18 +581,14 @@ export function reduce(state: GameState, action: Action): GameState {
     case 'release': {
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p || p.stage !== 'marketing') return state
+      if (!p.channel) return state
       const result = computeFilmResult(draft, p, rng)
-      // 渠道结算：票房 × 各渠道系数；发行商：预付款 + 后端分成
-      const channels: Channel[] = p.channels.length > 0 ? p.channels : ['cinema']
-      const baseRevenue = channelRevenue(p, result.boxOffice)
-      const publisher = p.publisherId
-        ? draft.world.publishers.find((x) => x.id === p.publisherId)
-        : undefined
-      const backEnd = publisher ? baseRevenue * (1 - publisher.shareRate) : baseRevenue
-      const prepayment = publisher
-        ? Math.round(publisher.prepayBase + publisher.reputation * publisher.prepayPerRep)
-        : 0
-      const revenue = backEnd + prepayment
+      // 渠道结算（单选渠道）：影院/网络/DVD/免费；发行商机制已取消
+      // 渠道驱动最终票房：影院数/时长/张数/播放量直接决定票房与片方分账
+      const channel = p.channel
+      const { boxOffice, revenue, channelCost, admissions, dvdUnits, freeViews } = channelRevenue(p, result.boxOffice)
+      // 渠道投放成本（影院家数 × 单价 / 网络平台与时长 / DVD 制作 / 免费平台费）
+      if (channelCost > 0) draft.company.cash -= round1(channelCost)
       draft.company.cash += round1(revenue)
       // 投资人分成：按片方收入比例扣除，直至回收完毕退出
       const investor = draft.company.investor
@@ -508,8 +603,40 @@ export function reduce(state: GameState, action: Action): GameState {
       }
       // 免费渠道：换口碑
       let repGain = result.reputationGain
-      if (channels.includes('free')) repGain = clamp(repGain + 2, -3, 6)
+      if (channel === 'free') repGain = clamp(repGain + 2, -3, 6)
       draft.company.reputation = clamp(draft.company.reputation + repGain, 0, 100)
+      // 广告赞助结算（GDD §3.3 植入广告扩展）：逐家校验「影评均分 ≥ 要求」且「演员最高 Fame ≥ 要求」
+      const maxActorFame = Math.max(
+        0,
+        ...p.team.actorIds.map((id) => draft.workers[id]?.basic.fame ?? 0),
+      )
+      const adSettlement = p.adSponsorIds.map((id) => {
+        const ad = AD_SPONSOR_MAP[id]
+        if (!ad) return null
+        const met = result.criticScore >= ad.minCriticScore && maxActorFame >= ad.requiredFame
+        return { id: ad.id, name: ad.name, fee: ad.sponsorFee, met }
+      }).filter((x): x is NonNullable<typeof x> => !!x)
+      const adIncome = adSettlement.reduce((s, a) => s + (a.met ? a.fee : 0), 0)
+      if (adIncome > 0) draft.company.cash += round1(adIncome)
+      const unmet = adSettlement.filter((a) => !a.met)
+      if (unmet.length > 0) {
+        pushNews(
+          draft,
+          `《${p.name}》未达广告商赞助要求（影评 ${result.criticScore.toFixed(1)} 分 / 演员 Fame ${maxActorFame}）：${unmet
+            .map((a) => a.name)
+            .join('、')} 赞助未到账。`,
+        )
+      }
+      if (adIncome > 0) {
+        pushNews(draft, `《${p.name}》植入广告赞助到账 ${adIncome} 万元。`)
+      }
+      // 高知名度广告商提升 IP 周边收入（累计 merchBonus，cap 100%）
+      const maxMerch = Math.max(0, ...p.adSponsorIds.map((id) => AD_SPONSOR_MAP[id]?.merchBonus ?? 0))
+      const applyMerch = (ip: IpAsset) => {
+        if (maxMerch > 0) {
+          ip.merchBonus = clamp(ip.merchBonus + maxMerch, 0, AD_CONFIG.merchBonusCap)
+        }
+      }
       // IP 售后与续作（GDD §3.8）：续作成长已有 IP；首作达标则沉淀新 IP
       let ipName: string | undefined
       let ipEntry: number | undefined
@@ -522,6 +649,7 @@ export function reduce(state: GameState, action: Action): GameState {
         sequelIp.films.push(p.id)
         const prevLevel = sequelIp.level
         refreshIpDerived(sequelIp)
+        applyMerch(sequelIp)
         if (sequelIp.level > prevLevel) {
           pushNews(
             draft,
@@ -549,9 +677,11 @@ export function reduce(state: GameState, action: Action): GameState {
           level: lv,
           royaltyPerQuarter: royaltyPerQuarter(lv),
           sequelBonus: sequelBonusFactor(lv),
+          merchBonus: 0,
           royaltyEarned: 0,
           films: [p.id],
         }
+        applyMerch(newIp)
         draft.company.ips.push(newIp)
         pushNews(
           draft,
@@ -563,12 +693,19 @@ export function reduce(state: GameState, action: Action): GameState {
       const settlements = applyProjectGrowth(draft, p, result)
       p.result = {
         ...result,
+        // 最终票房 = 渠道驱动后的票房（影院可放大数倍）
+        boxOffice: round1(boxOffice),
         revenue: round1(revenue),
-        channels,
-        publisherName: publisher?.name,
+        channel,
+        channels: [channel],
+        admissions,
+        dvdUnits,
+        freeViews,
         ipName,
         ipEntry,
         targetRegion: p.targetRegion,
+        adSettlement: adSettlement.length > 0 ? adSettlement : undefined,
+        adIncome: adIncome > 0 ? round1(adIncome) : undefined,
         settlement: settlements,
       }
       p.stage = 'released'
@@ -585,6 +722,27 @@ export function reduce(state: GameState, action: Action): GameState {
       pushNews(
         draft,
         `《${p.name}》口碑出炉：影评人平均 ${result.criticScore.toFixed(1)} 分，观众评分 ${(result.audienceScore ?? 0).toFixed(1)} 分。`,
+      )
+      break
+    }
+
+    case 'cancelProject': {
+      // 取消未上映项目：投入不退（定金/拍摄成本/预热沉没）、剧组人员释放回员工池、IP 不受影响
+      const idx = draft.projects.findIndex((x) => x.id === action.projectId)
+      if (idx < 0) return state
+      const p = draft.projects[idx]
+      if (p.stage === 'released') return state
+      for (const id of teamIds(p.team)) {
+        const w = draft.workers[id]
+        if (w) {
+          w.currentProjectId = null
+          w.idleWeeks = 0
+        }
+      }
+      draft.projects.splice(idx, 1)
+      pushNews(
+        draft,
+        `《${p.name}》未上映即被取消，已投入 ${Math.round(p.spent)} 万沉没，剧组人员已释放回员工池。`,
       )
       break
     }

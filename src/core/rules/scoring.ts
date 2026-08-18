@@ -1,11 +1,13 @@
-import type { Channel, CriticReview, FilmProject, FilmResult, FilmScores, FilmType, GameState, RoleId } from '../types'
+import type { CriticReview, FilmProject, FilmResult, FilmScores, FilmType, GameState, RoleId } from '../types'
 import { SCORE_WEIGHTS } from '../config/weights'
 import { ECONOMY } from '../config/economy'
-import { CHANNEL_INFO } from '../config/channels'
+import { CHANNEL_CONFIG, TOTAL_CINEMAS } from '../config/channels'
 import { WORLD_CONFIG } from '../config/world'
 import { CHEMISTRY } from '../config/company'
 import { IP_CONFIG } from '../config/ip'
 import { VFX_CONFIG } from '../config/minigame'
+import { AD_CONFIG } from '../config/ads'
+import { allocBonus } from '../config/budget'
 import { chemistryScoreFactor, goldenCombos } from './chemistry'
 import { techBonuses } from './tech'
 import { audienceFit, tolerancePenalty } from './audience'
@@ -55,15 +57,21 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
     directing: clamp(memberSkill(state, project.team.directorId, 'directing') * variance(), 0, 100),
   }
 
+  // 预算占比加成（GDD §3.3）：着重剧情/表演/剪辑按占比线性加成对应分项
+  const alloc = project.budgetAlloc ?? { story: 0, vfx: 0, acting: 0, edit: 0 }
+  scores.story = clamp(scores.story + allocBonus(alloc.story), 0, 100)
+  scores.acting = clamp(scores.acting + allocBonus(alloc.acting), 0, 100)
+  scores.edit = clamp(scores.edit + allocBonus(alloc.edit), 0, 100)
+
   // 科技树加成：渲染引擎抬升上限、动作捕捉增强类型系数、特效合成整体加成（GDD §5）
   const tech = techBonuses(state)
   // 市场事件加成：技术突破提升 VFX 分（GDD §6 Random Events）
   const eventVfx = eventVfxBonus(state)
   const vfxSkill = state.workers[project.team.technicianId ?? '']?.skills.vfx ?? 40
-  const tier = vfxTier(vfxSkill)
+  const tier = vfxTierAt(vfxSkill, project.vfxLevel ?? 0)
   const vfxCap = tier.max + tech.render
   const vfx = clamp(
-    (project.vfxPercent / 100) *
+    (alloc.vfx / 100) *
       (vfxSkill / 100) *
       vfxCap *
       vfxTypeFactor(script.type, tech.mocap) *
@@ -92,8 +100,14 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
     script.artPot * SCORE_WEIGHTS.ap.artPot +
     scores.directing * SCORE_WEIGHTS.ap.directing +
     scores.shooting * SCORE_WEIGHTS.ap.shooting
+  // 植入广告伤口碑：每家广告商 AP −apPenaltyPerAd（GDD §3.3 植入广告扩展）
+  const adCount = project.adSponsorIds?.length ?? 0
+  // 拍摄/剪辑小游戏加成（完美越多越高，直接加 AP/MP）
+  const gameBonus = (project.shotGameBonus ?? 0) + (project.editGameBonus ?? 0)
+  // 筹备预热：每 warmupPerMp 万投入 → MP +1（无上限）
+  const warmupMp = Math.floor((project.warmup ?? 0) / ECONOMY.warmupPerMp)
   const ap = clamp(
-    (project.hasAd ? apRaw - ECONOMY.adDealApPenalty : apRaw) * chemFactor,
+    (apRaw - adCount * AD_CONFIG.apPenaltyPerAd) * chemFactor + gameBonus,
     0,
     100,
   )
@@ -101,7 +115,9 @@ export function computeFilmResult(state: GameState, project: FilmProject, rng: R
     (script.marketPot * SCORE_WEIGHTS.mp.marketPot +
       actorSkill * SCORE_WEIGHTS.mp.acting +
       project.hype * SCORE_WEIGHTS.mp.hype) *
-      chemFactor,
+      chemFactor +
+      warmupMp +
+      gameBonus,
     0,
     100,
   )
@@ -163,10 +179,24 @@ export function competitionPenalty(state: GameState, week: number): number {
   )
 }
 
-/** 特效等级：按 VFX 技能取最高档 */
-export function vfxTier(vfxSkill: number): { minSkill: number; label: string; max: number } {
-  const valid = VFX_CONFIG.tiers.filter((t) => vfxSkill >= t.minSkill)
-  return valid[valid.length - 1]
+/** 特效档位：按 VFX 技能取最高可解锁档（vfxTierAt 的上限） */
+export function vfxTier(vfxSkill: number): { minSkill: number; label: string; max: number; costMul: number } {
+  return vfxTierAt(vfxSkill, availableVfxTiers(vfxSkill).length - 1)
+}
+
+/** 指定档位下标下的特效档（越界 clamp 到合法区间） */
+export function vfxTierAt(
+  vfxSkill: number,
+  level: number,
+): { minSkill: number; label: string; max: number; costMul: number } {
+  const tiers = VFX_CONFIG.tiers
+  const idx = clamp(Math.floor(level), 0, availableVfxTiers(vfxSkill).length - 1)
+  return tiers[idx]
+}
+
+/** 技能可解锁的特效档位列表（按 minSkill 过滤） */
+export function availableVfxTiers(vfxSkill: number): { minSkill: number; label: string; max: number; costMul: number }[] {
+  return VFX_CONFIG.tiers.filter((t) => vfxSkill >= t.minSkill)
 }
 
 /** 类型特效加成系数；mocap 为动作捕捉科技增量（动作/战争类在基础 ×1.2 上叠加） */
@@ -178,10 +208,77 @@ export function vfxTypeFactor(type: FilmType, mocap = 0): number {
   return base
 }
 
-/** 渠道分账收入：票房 × Σ(所选渠道 factor)；未选渠道时默认仅影院 */
-export function channelRevenue(project: FilmProject, boxOffice: number): number {
-  const channels: Channel[] = project.channels.length > 0 ? project.channels : ['cinema']
-  return channels.reduce((s, ch) => s + boxOffice * CHANNEL_INFO[ch].factor, 0)
+/**
+ * 渠道结算（单选渠道，GDD §3.6 四渠道；流媒体与发行商已取消）
+ * 返回 { boxOffice: 最终票房（万，由渠道驱动）, revenue: 片方分账收入（万）, channelCost: 投放成本（万）, 渠道指标 }
+ * 渠道对票房的权重：影院 > 网络 > DVD > 免费
+ * - 影院：覆盖影院数 → 观影人次 → 票房放大（全国铺满可达数倍增幅）；观影人次 = 票房 ÷ 平均票价
+ * - 网络：播放时长越长票房越高（平台数与时长共同加成）
+ * - DVD：卖出张数 × 单价即票房（单价越高总票房越高，单价越低张数越多）
+ * - 免费：播放量 × 广告单价即票房（广告收入）
+ */
+export function channelRevenue(
+  project: FilmProject,
+  gross: number,
+): {
+  boxOffice: number
+  revenue: number
+  channelCost: number
+  /** 影院：观影人次（万人次） */
+  admissions?: number
+  /** DVD：卖出张数（万张） */
+  dvdUnits?: number
+  /** 免费：播放量（万次） */
+  freeViews?: number
+} {
+  const ch = project.channel ?? 'cinema'
+  const cfg = CHANNEL_CONFIG
+
+  switch (ch) {
+    case 'cinema': {
+      const count = Math.min(project.cinemaCount || cfg.cinemaDefaultCount, TOTAL_CINEMAS)
+      const cover = Math.min(1, count / TOTAL_CINEMAS)
+      // 影院权重最高：覆盖越广票房放大越多（0.8 → 4.0 倍）
+      const mul = cfg.cinemaBaseMul + cover * (cfg.cinemaMaxMul - cfg.cinemaBaseMul)
+      const boxOffice = gross * mul
+      const admissions = boxOffice / cfg.cinemaAvgTicket
+      const revenue = boxOffice * ECONOMY.cinemaShare
+      const channelCost = count * cfg.cinemaCostPerUnit
+      return { boxOffice, revenue, channelCost, admissions }
+    }
+    case 'web': {
+      const platforms = project.webPlatforms?.length > 0 ? project.webPlatforms.length : 1
+      const weeks = project.webWeeks || cfg.webDefaultWeeks
+      // 网络：播放时长是主要驱动，平台数小幅加成
+      const weeksEff = Math.min(weeks, cfg.webWeeksCap + 1)
+      const mul =
+        cfg.webBaseMul *
+        (1 + (platforms - 1) * cfg.webBonusPerPlatform) *
+        (1 + (weeksEff - 1) * cfg.webBonusPerWeek)
+      const boxOffice = gross * mul
+      const revenue = boxOffice * cfg.webShare
+      const channelCost = platforms * cfg.webCostPerPlatform + weeks * cfg.webCostPerWeek
+      return { boxOffice, revenue, channelCost }
+    }
+    case 'dvd': {
+      const price = project.dvdPrice || cfg.dvdRefPrice
+      // DVD：卖出的钱就是票房；单价越高总票房越高（高价走质），低于网络权重
+      const mul = cfg.dvdBaseMul * Math.pow(price / cfg.dvdRefPrice, cfg.dvdPricePower)
+      const boxOffice = gross * mul
+      const dvdUnits = Math.max(0, boxOffice / price)
+      const revenue = boxOffice * cfg.dvdShare
+      const channelCost = cfg.dvdSetupCost
+      return { boxOffice, revenue, channelCost, dvdUnits }
+    }
+    case 'free': {
+      const price = project.freeAdPrice || 30
+      // 免费：广告收入就是票房；播放量 × 广告单价（权重最低）
+      const views = gross * cfg.freeViewFactor * (1 + (project.hype ?? 0) * cfg.freeViewHypePer)
+      const boxOffice = views * price
+      const revenue = boxOffice * cfg.freeShare
+      return { boxOffice, revenue, channelCost: 0, freeViews: views }
+    }
+  }
 }
 
 /** 逐影评人评分（10 分制一位小数 + 文字评语）：以 AP/10 为基础，按类型偏好加减分 + 小幅波动 */

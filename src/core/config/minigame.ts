@@ -16,11 +16,11 @@ export const TIMING_CONFIG = {
 
 /** VFX 系统（GDD §3.3 VFX Setting）：技能分级特效 + 类型加成 */
 export const VFX_CONFIG = {
-  /** 特效等级：按技术员 VFX 技能分级，决定 VFX 分上限 */
+  /** 特效档位：按技术员 VFX 技能解锁，玩家在可解锁档位中选择；档位越高 VFX 分上限越高、成本系数越大 */
   tiers: [
-    { minSkill: 0, label: '基础特效', max: 15 },
-    { minSkill: 50, label: '标准特效', max: 20 },
-    { minSkill: 75, label: '顶级特效', max: 26 },
+    { minSkill: 0, label: '基础特效', max: 15, costMul: 1.0 },
+    { minSkill: 50, label: '标准特效', max: 20, costMul: 1.2 },
+    { minSkill: 75, label: '顶级特效', max: 26, costMul: 1.5 },
   ],
   /** 类型加成：动作/战争特效吃香，文戏类型加成弱 */
   typeFactor: {

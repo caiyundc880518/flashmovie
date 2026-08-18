@@ -98,19 +98,26 @@ describe('写作学校与投资人', () => {
         editorId: 'test-editor',
         marketId: 'test-market',
       },
-      vfxPercent: 0,
-      hasAd: false,
+      budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 },
+      vfxLevel: 0,
+      adSponsorIds: [],
     })
     const pid = s.projects[0].id
     s = reduce(s, { type: 'startShooting', projectId: pid })
-    for (let i = 0; i < 24 && s.projects[0].stage === 'shooting'; i++) {
+    for (let i = 0; i < 30 && s.projects[0].stage === 'shooting'; i++) {
       s = reduce(s, { type: 'advanceWeek' })
       for (const ev of [...s.projects[0].pendingEvents]) {
         s = reduce(s, { type: 'resolveEvent', projectId: pid, eventId: ev.id, optionIndex: 0 })
       }
+      if (s.projects[0].pendingShotGame) {
+        s = reduce(s, { type: 'applyShotGame', projectId: pid, qualities: ['perfect', 'perfect', 'perfect'] })
+      }
     }
+    s = reduce(s, { type: 'applyEditGame', projectId: pid, qualities: ['perfect', 'perfect', 'perfect'] })
     s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
     const cashMid = s.company.cash
+    s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
+    s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
     s = reduce(s, { type: 'release', projectId: pid })
     const r = s.projects[0].result!
     const investorPaid = r.revenue! * inv.share

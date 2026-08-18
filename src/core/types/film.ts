@@ -1,4 +1,5 @@
 import type { RoleId, SkillKey } from './worker'
+import type { BudgetAlloc } from '../config/budget'
 
 /** 剧组职位分配（V1 最小集：导演/演员/摄影/剪辑/市场 必配，制片/编剧可选，技术/助理暂缓） */
 export interface TeamAssignments {
@@ -13,11 +14,14 @@ export interface TeamAssignments {
   assistantId?: string
 }
 
-/** 项目阶段状态机：preparing → shooting → editing → marketing → released */
+/** 项目阶段状态机：preparing(筹备) → shooting(拍摄) → editing(剪辑) → marketing(宣发) → released(上映完成) */
 export type ProjectStage = 'preparing' | 'shooting' | 'editing' | 'marketing' | 'released'
 
-/** 发行渠道（GDD §3.6 五渠道） */
-export type Channel = 'cinema' | 'web' | 'dvd' | 'streaming' | 'free'
+/** 小游戏单轮判定（perfect 完美 / good 不错 / miss 失误） */
+export type TimingQuality = 'perfect' | 'good' | 'miss'
+
+/** 发行渠道（GDD §3.6 四渠道：影院/网络/DVD/免费；流媒体已取消） */
+export type Channel = 'cinema' | 'web' | 'dvd' | 'free'
 
 /** 电影项目 */
 export interface FilmProject {
@@ -30,30 +34,48 @@ export interface FilmProject {
   totalStages: number
   /** 已拍摄场次数 */
   shotStages: number
-  /** VFX 预算占全片比例 0–100 */
-  vfxPercent: number
-  /** 是否接受植入广告 */
-  hasAd: boolean
+  /** 预算占比分配（剧情/VFX/表演/剪辑，总和 ≤ 100） */
+  budgetAlloc: BudgetAlloc
+  /** 特效档位下标（VFX_CONFIG.tiers，受技术员技能限制） */
+  vfxLevel: number
+  /** 已签约植入广告商 id 列表（结算时逐家校验要求） */
+  adSponsorIds: string[]
   /** 上映前热度 0–100 */
   hype: number
-  /** 宣发预算（千元） */
-  marketingBudget: number
-  /** 预算总额（千元） */
+  /** 筹备阶段预热成本投入（万）：投得越多对 MP 加成越多，无上限 */
+  warmup: number
+  /** 预算总额（万） */
   budget: number
-  /** 已花费（千元） */
+  /** 已花费（万） */
   spent: number
   /** 剪辑取向：market 市场向 / art 艺术向 */
   editStyle: 'market' | 'art' | null
   /** 剪辑/拍摄小游戏累计 Buff（±） */
   buffs: number
+  /** 拍摄小游戏累计 AP/MP 加成（每次结算后累加，完美越多越高） */
+  shotGameBonus: number
+  /** 拍摄中是否有待玩的小游戏（被动触发，必须完成才能继续推进） */
+  pendingShotGame: boolean
+  /** 剪辑小游戏是否已完成（必须完成才能推进） */
+  editGameDone: boolean
+  /** 剪辑小游戏 AP/MP 加成 */
+  editGameBonus: number
   /** 随机事件累计 AP 修正（±） */
   apAdjust: number
   /** 拍摄中随机事件队列（tick 生成，UI 逐个处理） */
   pendingEvents: ProjectEvent[]
-  /** 发行渠道（空 = 上映时默认影院） */
-  channels: Channel[]
-  /** 已签约发行商 id */
-  publisherId?: string
+  /** 发行渠道（单选；未选择 = 尚未配置宣发） */
+  channel: Channel | null
+  /** 影院：投放影院数（游戏内总 5178 家） */
+  cinemaCount: number
+  /** 网络：投放平台列表 */
+  webPlatforms: string[]
+  /** 网络：投放时长（周） */
+  webWeeks: number
+  /** DVD：单价（元/张） */
+  dvdPrice: number
+  /** 免费：广告单价（元/千次播放） */
+  freeAdPrice: number
   /** 所属 IP 资产 id（续作立项时写入，GDD §3.8） */
   ipId?: string
   /** 本片在系列中的部数（首作 1，续作 2+） */
@@ -135,6 +157,25 @@ export interface CriticReview {
   text?: string
 }
 
+/** 单条广告赞助结算明细 */
+export interface AdSettlement {
+  id: string
+  name: string
+  fee: number
+  /** 是否满足要求（影评均分 + 演员 Fame）到账 */
+  met: boolean
+}
+
+/** 单条获奖记录（TMA，跨届累计；个人奖带获奖者，最佳影片无个人得主） */
+export interface FilmAward {
+  /** 奖项类别（最佳影片/最佳导演/最佳演员/最佳摄影/最佳剪辑/最佳特效） */
+  category: string
+  /** 获奖者姓名（个人奖）；最佳影片缺省 */
+  workerName?: string
+  /** 获奖年份（TMA 评选年度） */
+  year: number
+}
+
 /** 电影结算结果 */
 export interface FilmResult {
   /** 片名（展示用） */
@@ -158,11 +199,19 @@ export interface FilmResult {
   /** 上映周 */
   week: number
   year: number
-  /** 片方总收入（万）：渠道分账 + 发行商预付款（旧档可能缺省） */
+  /** 片方总收入（万）：渠道分账（旧档可能缺省） */
   revenue?: number
-  /** 发行渠道（旧档可能缺省） */
+  /** 发行渠道（旧档为数组；新档用 channel 单选） */
   channels?: Channel[]
-  /** 发行商名（旧档可能缺省） */
+  /** 发行渠道（单选，新档记录） */
+  channel?: Channel
+  /** 影院：投放影院数（万） */
+  admissions?: number
+  /** DVD：卖出张数（万张） */
+  dvdUnits?: number
+  /** 免费：播放量（万次） */
+  freeViews?: number
+  /** 发行商名（旧档可能缺省；发行商机制已取消） */
   publisherName?: string
   /** 所属 IP 系列名（续作或新沉淀 IP，旧档可能缺省） */
   ipName?: string
@@ -170,6 +219,14 @@ export interface FilmResult {
   ipEntry?: number
   /** 主攻地区（旧档可能缺省） */
   targetRegion?: string
+  /** 广告赞助结算明细（旧档可能缺省） */
+  adSettlement?: AdSettlement[]
+  /** 广告赞助实际到账合计（万，旧档可能缺省） */
+  adIncome?: number
+  /** 累计获奖数（TMA 各届累加，旧档可能缺省） */
+  awardCount?: number
+  /** 获奖名单（TMA 各届累计，旧档可能缺省） */
+  awards?: FilmAward[]
   /** 成员成长结算明细（旧档可能缺省） */
   settlement?: WorkerSettlement[]
 }

@@ -1,5 +1,5 @@
 import { useGameStore } from '../store/gameStore'
-import { STAGE_ZH, fmtWan } from '../format'
+import { STAGE_ZH, fmtScore10, fmtWan, scoreColor10 } from '../format'
 import { PosterCard } from '../components/PosterCard'
 
 export function ProjectsScreen({ onOpenProject }: { onOpenProject: (id: string) => void }) {
@@ -17,28 +17,46 @@ export function ProjectsScreen({ onOpenProject }: { onOpenProject: (id: string) 
             还没有项目。去「剧本市场」买一个剧本，再到「组队立项」组建剧组，就能开拍你的第一部电影了。
           </p>
         )}
-        <div className="project-list">
+        <div className="proj-grid">
           {projects.map((p) => {
             const script = state.scripts[p.scriptId]
+            // 系列电影标识：项目属于某个 IP（或旧档结果记录系列名）
+            const isSeries = !!p.ipId || !!p.result?.ipName
+            const awards = p.result?.awardCount ?? 0
             return (
-              <div key={p.id} className="project-row clickable" onClick={() => onOpenProject(p.id)}>
-                <PosterCard title={p.name} type={script?.type ?? 'drama'}>
-                  <div>
-                    阶段：<b>{STAGE_ZH[p.stage]}</b>
-                  </div>
+              <div key={p.id} className="proj-card clickable" onClick={() => onOpenProject(p.id)}>
+                <PosterCard
+                  title={p.name}
+                  type={script?.type ?? 'drama'}
+                  corner={<span className="stage-badge">{STAGE_ZH[p.stage]}</span>}
+                  typeInFooter
+                  titleBadge={isSeries ? <span className="ip-badge">IP</span> : undefined}
+                >
                   {p.stage === 'preparing' && <div>等待开拍</div>}
                   {p.stage === 'shooting' && <div>场次 {p.shotStages}/{p.totalStages}</div>}
                   {p.stage === 'editing' && <div>等待剪辑决策</div>}
                   {p.stage === 'marketing' && <div>Hype {Math.round(p.hype)}</div>}
                   {p.stage === 'released' && p.result && (
-                    <div>
-                      票房 {fmtWan(p.result.boxOffice)} · AP {p.result.ap} / MP {p.result.mp}
-                      {p.result.ipName && p.result.ipEntry && (
-                        <div className="dim">
-                          系列「{p.result.ipName}」第 {p.result.ipEntry} 部
+                    <>
+                      <div className="attr-line">
+                        票房 <b>{fmtWan(p.result.boxOffice)}</b>
+                      </div>
+                      <div className="attr-line">
+                        影评{' '}
+                        <b style={{ color: scoreColor10(p.result.criticScore) }}>
+                          {fmtScore10(p.result.criticScore)}
+                        </b>{' '}
+                        · 观众{' '}
+                        <b style={{ color: scoreColor10(p.result.audienceScore ?? 0) }}>
+                          {fmtScore10(p.result.audienceScore ?? 0)}
+                        </b>
+                      </div>
+                      {awards > 0 && (
+                        <div className="attr-line award-line">
+                          🏆 ×{awards}
                         </div>
                       )}
-                    </div>
+                    </>
                   )}
                   {p.stage !== 'released' && (
                     <div className="btn-row">

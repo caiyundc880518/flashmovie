@@ -51,17 +51,27 @@ function makeProjectState(seed = 9, technician = true): GameState {
     },
     totalStages: script.scale,
     shotStages: script.scale,
-    vfxPercent: 100,
-    hasAd: false,
+    budgetAlloc: { story: 0, vfx: 100, acting: 0, edit: 0 },
+    vfxLevel: 0,
+    adSponsorIds: [],
     hype: 60,
-    marketingBudget: 0,
     budget: 1000,
     spent: 0,
     editStyle: 'market',
     buffs: 0,
     apAdjust: 0,
     pendingEvents: [],
-    channels: ['cinema'],
+    channel: 'cinema',
+    cinemaCount: 50,
+    webPlatforms: [],
+    webWeeks: 0,
+    dvdPrice: 0,
+    freeAdPrice: 0,
+    warmup: 0,
+    shotGameBonus: 0,
+    pendingShotGame: false,
+    editGameDone: true,
+    editGameBonus: 0,
   }
   s.projects.push(p)
   return s
@@ -148,8 +158,8 @@ describe('科技树（VFX Tech）', () => {
     const b = mk()
     b.s.company.tech.studio = 200 // Lv.2 → 成本 −20%
     const team = { directorId: 'd', actorIds: ['a'], shooterId: 's', editorId: 'e', marketId: 'm' }
-    const r1 = reduce(a.s, { type: 'startProject', scriptId: a.scriptId, team, vfxPercent: 100, hasAd: false })
-    const r2 = reduce(b.s, { type: 'startProject', scriptId: b.scriptId, team, vfxPercent: 100, hasAd: false })
+    const r1 = reduce(a.s, { type: 'startProject', scriptId: a.scriptId, team, budgetAlloc: { story: 0, vfx: 100, acting: 0, edit: 0 }, vfxLevel: 0, adSponsorIds: [] })
+    const r2 = reduce(b.s, { type: 'startProject', scriptId: b.scriptId, team, budgetAlloc: { story: 0, vfx: 100, acting: 0, edit: 0 }, vfxLevel: 0, adSponsorIds: [] })
     expect(r2.projects[0].budget).toBeLessThan(r1.projects[0].budget)
     // 折扣比例 ≈ 0.5 × 0.2 相对原预算
     const orig = r1.projects[0].budget

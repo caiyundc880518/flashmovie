@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
+import type { TimingQuality } from '../../core/types'
 import { TIMING_CONFIG } from '../../core/config/minigame'
 import { Modal } from './Modal'
 
-export type TimingQuality = 'perfect' | 'good' | 'miss'
+export type { TimingQuality }
 
 const QUALITY_ZH: Record<TimingQuality, string> = {
   perfect: '完美！',
@@ -20,6 +21,7 @@ export function TimingMinigame({
   actionLabel,
   rounds = TIMING_CONFIG.rounds,
   onResult,
+  onFinish,
   onClose,
 }: {
   title: string
@@ -27,6 +29,8 @@ export function TimingMinigame({
   actionLabel: string
   rounds?: number
   onResult: (q: TimingQuality) => void
+  /** 全部轮次完成时回调（携带每轮判定结果） */
+  onFinish?: (qualities: TimingQuality[]) => void
   onClose: () => void
 }) {
   const [round, setRound] = useState(1)
@@ -54,9 +58,11 @@ export function TimingMinigame({
     const q: TimingQuality =
       dist < TIMING_CONFIG.perfectZone ? 'perfect' : dist < TIMING_CONFIG.goodZone ? 'good' : 'miss'
     onResult(q)
-    setResults((rs) => [...rs, q])
+    const next = [...results, q]
+    setResults(next)
     if (round >= rounds) {
       cancelAnimationFrame(rafRef.current)
+      onFinish?.(next)
       onClose()
     } else {
       setRound((r) => r + 1)

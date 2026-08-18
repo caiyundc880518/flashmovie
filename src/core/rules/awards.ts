@@ -127,6 +127,15 @@ export function applyAwardEffects(state: GameState, ceremony: YearAwards): void 
         worker.awards.push({ week: state.calendar.week, award: w.category, projectName: w.filmName })
       }
     }
+    // 累计该影片的获奖数 + 获奖名单（项目卡片展示 🏆×N，详情页展示获奖 TAB）
+    const film = state.company.history.find((h) => h.name === w.filmName)
+    if (film) {
+      film.awardCount = (film.awardCount ?? 0) + 1
+      film.awards = [
+        ...(film.awards ?? []),
+        { category: w.category, workerName: w.workerName, year: state.calendar.year },
+      ]
+    }
     pushAwardNews(state, w)
   }
 }

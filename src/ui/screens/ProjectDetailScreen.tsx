@@ -1,19 +1,19 @@
 import { useState } from 'react'
 import type {
-  Channel,
   CriticReview,
   FilmProject,
   GameState,
   ProjectEvent,
+  ProjectStage,
   WorkerSettlement,
 } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { createRng } from '../../core/rng'
-import { computeFilmResult, vfxTier, vfxTypeFactor } from '../../core/rules/scoring'
+import { computeFilmResult, vfxTierAt, vfxTypeFactor, channelRevenue } from '../../core/rules/scoring'
 import { goldenCombos, teamChemistry } from '../../core/rules/chemistry'
 import { audienceFit, regionMarkets } from '../../core/rules/audience'
 import { ECONOMY } from '../../core/config/economy'
-import { CHANNEL_INFO, CHANNEL_ORDER } from '../../core/config/channels'
+import { CHANNEL_CONFIG, CHANNEL_INFO, CHANNEL_ORDER, TOTAL_CINEMAS, WEB_PLATFORMS } from '../../core/config/channels'
 import { ROLE_ZH, SKILL_ZH, STAGE_ZH, TYPE_ZH, fmtScore10, fmtWan, scoreColor10, signedDelta } from '../format'
 import { PosterCard } from '../components/PosterCard'
 import { Bar } from '../components/Bar'
@@ -21,6 +21,8 @@ import { MoneyText } from '../components/MoneyText'
 import { Modal } from '../components/Modal'
 import { DataTable, type Column } from '../components/DataTable'
 import { TimingMinigame } from '../components/TimingMinigame'
+import { Tabs } from '../components/Tabs'
+import { ReviewFlipModal } from '../components/ReviewFlipModal'
 
 /** 剪辑/宣发阶段的成片预测（用固定种子 rng 给出确定性估算） */
 function estimate(state: GameState, p: FilmProject) {
@@ -55,11 +57,18 @@ function EventBlock({
 export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; onBack: () => void }) {
   const state = useGameStore((s) => s.state)
   const dispatch = useGameStore((s) => s.dispatch)
-  const [budgetInput, setBudgetInput] = useState('100')
-  const [pubSel, setPubSel] = useState('')
+  const [warmupInput, setWarmupInput] = useState('')
   const [shotGame, setShotGame] = useState(false)
   const [editGame, setEditGame] = useState(false)
   const [settlement, setSettlement] = useState<WorkerSettlement[] | null>(null)
+  // 取消未上映项目的二次确认弹窗
+  const [cancelOpen, setCancelOpen] = useState(false)
+  // 上映后的影评/观众口碑翻牌弹窗
+  const [flipReview, setFlipReview] = useState<{
+    projectName: string
+    reviews: CriticReview[]
+    audience?: { score: number; text?: string }
+  } | null>(null)
 
   if (!state) return null
   const p = state.projects.find((x) => x.id === projectId)
@@ -68,14 +77,9 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
 
   const preview = p.stage === 'editing' || p.stage === 'marketing' ? estimate(state, p) : null
 
-  return (
-    <div className="screen">
-      <div className="panel">
-        <button className="btn-ghost" onClick={onBack}>
-          ← 返回公司
-        </button>
-      </div>
-
+  // 基本信息 TAB：海报信息 + 剧组 + 各阶段操作（开拍/拍摄/剪辑/宣发）
+  const infoTab = (
+    <>
       <div className="grid-2">
         <section className="panel">
           {script && (
@@ -84,7 +88,11 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
               <div className="attr-line">
                 预算 <MoneyText value={p.budget} /> · 已花 <MoneyText value={p.spent} />
               </div>
-              <div className="attr-line">VFX {p.vfxPercent}%{p.hasAd ? ' · 含植入广告' : ''}</div>
+              <div className="attr-line">
+                预算侧重：剧情 {p.budgetAlloc?.story ?? 0}% · VFX {p.budgetAlloc?.vfx ?? 0}% · 表演{' '}
+                {p.budgetAlloc?.acting ?? 0}% · 剪辑 {p.budgetAlloc?.edit ?? 0}%
+                {(p.adSponsorIds?.length ?? 0) > 0 ? ` · 含 ${p.adSponsorIds.length} 家植入广告` : ''}
+              </div>
               {p.ipId && (() => {
                 const ip = state.company.ips.find((x) => x.id === p.ipId)
                 return ip ? (
@@ -96,13 +104,13 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
               })()}
               <div className="attr-line">
                 特效等级：
-                <b>{vfxTier(state.workers[p.team.technicianId ?? '']?.skills.vfx ?? 40).label}</b>
+                <b>{vfxTierAt(state.workers[p.team.technicianId ?? '']?.skills.vfx ?? 40, p.vfxLevel ?? 0).label}</b>
                 {script && (
-                  <span className="dim">（{TYPE_ZH[script.type]} ×{vfxTypeFactor(script.type)}）</span>
+                  <span className="dim">（{TYPE_ZH[script.type]} ×{vfxTypeFactor(script.type).toFixed(2)}）</span>
                 )}
               </div>
-              <div className="attr-line">Buff {p.buffs > 0 ? `+${p.buffs}` : p.buffs}</div>
-              <Bar label="Hype" value={p.hype} color="var(--gold)" />
+              <Bar label="热度" value={p.hype} color="var(--gold)" />
+              {script?.desc && <p className="plot-desc">{script.desc}</p>}
             </PosterCard>
           )}
         </section>
@@ -128,296 +136,543 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
           </div>
         </section>
       </div>
+    </>
+  )
 
-      {p.stage === 'preparing' && (
-        <section className="panel">
-          <h2>筹备完成</h2>
-          <p>剧组已就绪，可以开拍了。</p>
-          <button className="btn-primary" onClick={() => dispatch({ type: 'startShooting', projectId })}>
-            开拍 ▶（定金 {fmtWan(p.budget * 0.1)}）
-          </button>
-        </section>
-      )}
-
-      {p.stage === 'shooting' && (
-        <section className="panel">
-          <h2>拍摄中</h2>
-          <Bar label={`拍摄进度 ${p.shotStages}/${p.totalStages} 场`} value={p.shotStages} max={p.totalStages} color="var(--ok)" />
-          <div className="btn-row">
-            <button className="btn-primary" onClick={() => setShotGame(true)}>
-              🎬 拍摄运镜挑战（小游戏）
-            </button>
+  // 上映结算 TAB：released 后的完整结算
+  const settleTab = p.stage === 'released' && p.result ? (
+    <section className="panel">
+      <h2>上映结算</h2>
+      <div className="grid-2">
+        <div className="score-preview">
+          <Bar label="故事" value={p.result.scores.story} />
+          <Bar label="音乐" value={p.result.scores.music} />
+          <Bar label="剪辑" value={p.result.scores.edit} />
+          <Bar label="表演" value={p.result.scores.acting} />
+          <Bar label="摄影" value={p.result.scores.shooting} />
+          <Bar label="导演" value={p.result.scores.directing} />
+          <Bar label="VFX" value={p.result.vfx} max={15} />
+          <Bar label="特色" value={p.result.specific} max={10} />
+        </div>
+        <div>
+          <div className="stat-row">
+            <span className="stat-label">AP（艺术分）</span>
+            <b>{p.result.ap}</b>
+            <span className="stat-label">MP（市场分）</span>
+            <b>{p.result.mp}</b>
           </div>
-          <p className="dim">小游戏表现影响成片拍摄分与最终评分。</p>
-          {p.pendingEvents.length > 0 && (
-            <div className="event-list">
-              {p.pendingEvents.map((ev) => (
-                <EventBlock
-                  key={ev.id}
-                  ev={ev}
-                  projectId={projectId}
-                  onResolve={(pid, eid, idx) => dispatch({ type: 'resolveEvent', projectId: pid, eventId: eid, optionIndex: idx })}
-                />
-              ))}
+          <div className="stat-row">
+            <span className="stat-label">影评口碑</span>
+            <b>{fmtScore10(p.result.criticScore)} / 10</b>
+            <span className="stat-label">观众口碑</span>
+            <b>{fmtScore10(p.result.audienceScore ?? 0)} / 10</b>
+            <span className="stat-label">声誉变化</span>
+            <span className={p.result.reputationGain >= 0 ? 'good' : 'bad'}>
+              {p.result.reputationGain >= 0 ? '+' : ''}
+              {p.result.reputationGain}
+            </span>
+          </div>
+          <div className="stat-row">
+            <span className="stat-label">票房</span>
+            <MoneyText value={p.result.boxOffice} />
+          </div>
+          <div className="stat-row">
+            <span className="stat-label">发行渠道</span>
+            <span>
+              {(p.result.channels ?? ['cinema']).map((c) => CHANNEL_INFO[c].label).join(' / ')}
+            </span>
+          </div>
+          {/* 渠道效果明细：影院/网络/DVD/免费 */}
+          {p.result.channel && (
+            <div className="channel-effect">
+              <h3>宣发渠道效果</h3>
+              {p.result.channel === 'cinema' && (
+                <p>
+                  投放影院 <b>{p.cinemaCount || CHANNEL_CONFIG.cinemaDefaultCount} 家</b>
+                  （全国共 {TOTAL_CINEMAS} 家） · 观影人次
+                  <b style={{ color: 'var(--gold)' }}>{fmtWan(p.result.admissions ?? 0)}人次</b>
+                </p>
+              )}
+              {p.result.channel === 'web' && (
+                <p>
+                  上架平台{' '}
+                  <b>{p.webPlatforms.length > 0 ? p.webPlatforms.join('、') : '—'}</b> · 投放时长
+                  <b style={{ color: 'var(--gold)' }}>{p.webWeeks || CHANNEL_CONFIG.webDefaultWeeks} 周</b>
+                </p>
+              )}
+              {p.result.channel === 'dvd' && (
+                <p>
+                  单价 <b>{p.dvdPrice || CHANNEL_CONFIG.dvdRefPrice} 元/张</b> · 卖出
+                  <b style={{ color: 'var(--gold)' }}>{fmtWan(p.result.dvdUnits ?? 0)}张</b>
+                </p>
+              )}
+              {p.result.channel === 'free' && (
+                <p>
+                  广告单价 <b>{p.freeAdPrice || 30} 元/千次</b> · 播放量
+                  <b style={{ color: 'var(--gold)' }}>{fmtWan(p.result.freeViews ?? 0)}次</b> · 广告收入
+                  <b style={{ color: 'var(--gold)' }}>{fmtWan(p.result.revenue ?? 0)}</b>
+                </p>
+              )}
             </div>
           )}
-        </section>
-      )}
-
-      {p.stage === 'editing' && preview && (
-        <section className="panel">
-          <h2>剪辑与成片预览</h2>
-          <div className="score-preview">
-            <Bar label="故事" value={preview.scores.story} />
-            <Bar label="音乐" value={preview.scores.music} />
-            <Bar label="剪辑" value={preview.scores.edit} />
-            <Bar label="表演" value={preview.scores.acting} />
-            <Bar label="摄影" value={preview.scores.shooting} />
-            <Bar label="导演" value={preview.scores.directing} />
-            <Bar label="VFX" value={preview.vfx} max={15} />
-            <Bar label="特色" value={preview.specific} max={10} />
+          {p.result.publisherName && (
+            <div className="stat-row">
+              <span className="stat-label">发行商</span>
+              <span>{p.result.publisherName}</span>
+            </div>
+          )}
+          {p.result.targetRegion && (
+            <div className="stat-row">
+              <span className="stat-label">主攻地区</span>
+              <span>{p.result.targetRegion}</span>
+            </div>
+          )}
+          <div className="stat-row">
+            <span className="stat-label">片方总收入</span>
+            <MoneyText value={p.result.revenue ?? p.result.boxOffice * ECONOMY.cinemaShare} />
           </div>
-          <div className="attr-line">
-            预测 AP <b>{preview.ap}</b> · MP <b>{preview.mp}</b>
-          </div>
-          <div className="btn-row">
-            <button className="btn-primary" onClick={() => setEditGame(true)}>
-              ✂ 剪辑节奏挑战（小游戏）
-            </button>
-          </div>
-          <div className="btn-row">
-            <button onClick={() => dispatch({ type: 'chooseEditStyle', projectId, style: 'market' })}>
-              市场向剪辑（更卖座）
-            </button>
-            <button onClick={() => dispatch({ type: 'chooseEditStyle', projectId, style: 'art' })}>
-              艺术向剪辑（冲奖）
-            </button>
-          </div>
-        </section>
-      )}
-
-      {p.stage === 'marketing' && (
-        <section className="panel">
-          <h2>宣发与上映</h2>
-          <div className="config-row">
-            <label className="config-label">宣发预算</label>
-            <input
-              type="number"
-              value={budgetInput}
-              min={0}
-              max={ECONOMY.marketingBudgetCap}
-              onChange={(e) => setBudgetInput(e.target.value)}
-            />
-            <button onClick={() => dispatch({ type: 'setMarketingBudget', projectId, budget: Number(budgetInput) || 0 })}>
-              设定
-            </button>
-            <button onClick={() => dispatch({ type: 'launchMarketing', projectId })}>投放宣发</button>
-          </div>
-          {p.marketingBudget > 0 && <p className="dim">待投放预算 {fmtWan(p.marketingBudget)}</p>}
-
-          <h3>主攻地区（集中宣发）</h3>
-          <div className="slot-row">
-            <span className="slot-label">重点市场</span>
-            <select
-              value={p.targetRegion ?? ''}
-              onChange={(e) =>
-                dispatch({ type: 'setTargetRegion', projectId, region: e.target.value || undefined })
-              }
-            >
-              <option value="">全国通发（按全部观众契合）</option>
-              {regionMarkets(state).map((r) => {
-                const top = (Object.keys(r.focus) as (keyof typeof r.focus)[])
-                  .map((t) => ({ t, v: r.focus[t] }))
-                  .sort((a, b) => b.v - a.v)[0]
-                return (
-                  <option key={r.region} value={r.region}>
-                    {r.region}（占 {Math.round(r.size * 100)}% · 偏好{TYPE_ZH[top.t]}）
-                  </option>
-                )
-              })}
-            </select>
-          </div>
-          {script && (
+          {p.result.adSettlement && p.result.adSettlement.length > 0 && (
+            <div className="stat-row">
+              <span className="stat-label">植入广告</span>
+              <span>
+                {p.result.adSettlement.map((a) => (
+                  <span key={a.id} className={a.met ? 'ok' : 'warn'}>
+                    {a.name} {a.met ? `+${fmtWan(a.fee)}` : '未达标'}
+                    {'　'}
+                  </span>
+                ))}
+                {p.result.adIncome ? (
+                  <b style={{ color: 'var(--gold)' }}>共到账 {fmtWan(p.result.adIncome)}</b>
+                ) : (
+                  <span className="warn">全部未到账</span>
+                )}
+              </span>
+            </div>
+          )}
+          <h3>成员成长结算</h3>
+          {p.result.settlement ? (
             <p className="dim">
-              观众契合：全国 ×{audienceFit(state, script.type).toFixed(2)}
-              {p.targetRegion && (
+              每位成员的参与角色、表现评分与全部属性变化已入账，点击查看明细。
+            </p>
+          ) : null}
+          {p.result.settlement ? (
+            <button className="btn-primary" onClick={() => setSettlement(p.result!.settlement!)}>
+              📊 查看全员属性变化
+            </button>
+          ) : (
+            <ul className="career-list">
+              {p.result.groupPerformance.map((g) => (
+                <li key={g.workerId}>
+                  {state.workers[g.workerId]?.name ?? '未知'}（{ROLE_ZH[g.role]}） · 表现{' '}
+                  {Math.round(g.performance)}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
+    </section>
+  ) : (
+    <section className="panel">
+      <p className="dim empty-hint">影片上映后才能查看结算数据。</p>
+    </section>
+  )
+
+  // 影评 TAB：剪辑/宣发显示预测，上映后显示真实评分
+  const reviewsTab = (
+    <section className="panel">
+      <h2>影评人</h2>
+      {p.stage === 'released' && p.result ? (
+        <CriticReviews
+          reviews={p.result.reviews}
+          average={p.result.criticScore}
+          title="上映后评分"
+          audience={{ score: p.result.audienceScore ?? 0, text: p.result.audienceText }}
+        />
+      ) : preview ? (
+        <CriticReviews reviews={preview.reviews} title="影评预测" />
+      ) : (
+        <p className="dim empty-hint">进入剪辑阶段后即可预览影评预测。</p>
+      )}
+    </section>
+  )
+
+  // 获奖 TAB：该片获得的所有奖项 + 参与者获得的奖项（TMA 各届累计）
+  const awardsTab = (
+    <section className="panel">
+      <h2>获奖记录</h2>
+      <p className="dim">TMA 颁奖典礼的获奖记录：本片获得的奖项，以及本片所有参与者获得的奖项（跨届累计）。</p>
+      {p.stage === 'released' && p.result ? (
+        p.result.awards && p.result.awards.length > 0 ? (
+          <div className="award-list">
+            {p.result.awards.map((a, i) => (
+              <div key={i} className="award-item">
+                <span className="award-icon">🏆</span>
+                <span className="award-cat">{a.category}</span>
+                {a.workerName && <span className="award-winner">· {a.workerName}</span>}
+                <span className="dim">（{a.year} 年 TMA）</span>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="dim empty-hint">这部影片尚未获得任何奖项。</p>
+        )
+      ) : (
+        <p className="dim empty-hint">影片上映并参加 TMA 颁奖后才能查看获奖记录。</p>
+      )}
+    </section>
+  )
+
+  // 项目流程步骤条：①筹备 → ②拍摄 → ③剪辑 → ④宣发 → ⑤上映完成
+  const FLOW_STEPS: Array<{ key: ProjectStage; label: string }> = [
+    { key: 'preparing', label: '① 筹备' },
+    { key: 'shooting', label: '② 拍摄' },
+    { key: 'editing', label: '③ 剪辑' },
+    { key: 'marketing', label: '④ 宣发' },
+    { key: 'released', label: '⑤ 上映完成' },
+  ]
+  const stageIndex = FLOW_STEPS.findIndex((s) => s.key === p.stage)
+
+  return (
+    <div className="screen">
+      <button className="back-mini" onClick={onBack} title="返回上一页">
+        ← 返回
+      </button>
+
+      {/* 多步骤流程条：走到上映完成（阶段 5）后详情页正式生成 */}
+      <div className="flow-steps">
+        {FLOW_STEPS.map((s, i) => (
+          <div
+            key={s.key}
+            className={`flow-step${i === stageIndex ? ' flow-step-current' : ''}${i < stageIndex ? ' flow-step-done' : ''}`}
+          >
+            {s.label}
+          </div>
+        ))}
+      </div>
+
+      {p.stage === 'released' ? (
+        <Tabs
+          tabs={[
+            { key: 'info', label: '基本信息', content: infoTab },
+            { key: 'settle', label: '上映结算', content: settleTab },
+            { key: 'reviews', label: '影评', content: reviewsTab },
+            { key: 'awards', label: '获奖', content: awardsTab },
+          ]}
+        />
+      ) : (
+        // 上映完成前：流程聚焦当前阶段操作（详情页正式内容在上映后生成）
+        <div className="flow-stage-body">
+          {p.stage === 'preparing' && (
+            <section className="panel">
+              <h2>① 筹备期</h2>
+              <p className="dim">
+                剧组已就绪。可投入<b>预热成本</b>为影片造势：投入越多，上映结算 MP 加成越多（每{' '}
+                {ECONOMY.warmupPerMp} 万 +1 MP，无上限）。
+              </p>
+              <div className="config-row">
+                <label className="config-label">预热投入（万）</label>
+                <input
+                  type="number"
+                  value={warmupInput}
+                  min={0}
+                  onChange={(e) => setWarmupInput(e.target.value)}
+                />
+                <button
+                  onClick={() => {
+                    const amount = Number(warmupInput) || 0
+                    if (amount <= 0) return
+                    dispatch({ type: 'setWarmup', projectId, amount })
+                    setWarmupInput('')
+                  }}
+                >
+                  投入
+                </button>
+              </div>
+              {p.warmup > 0 && (
+                <p className="dim">
+                  已投入 <b style={{ color: 'var(--gold)' }}>{fmtWan(p.warmup)}</b>，当前 MP 加成
+                  <b style={{ color: 'var(--gold)' }}> +{Math.floor(p.warmup / ECONOMY.warmupPerMp)}</b>
+                </p>
+              )}
+              <div className="btn-row">
+                <button className="btn-primary" onClick={() => dispatch({ type: 'startShooting', projectId })}>
+                  开拍 ▶（定金 {fmtWan(p.budget * 0.1)}）
+                </button>
+              </div>
+            </section>
+          )}
+          {p.stage === 'shooting' && (
+            <section className="panel">
+              <h2>② 拍摄中</h2>
+              <Bar
+                label={`拍摄进度 ${p.shotStages}/${p.totalStages} 场`}
+                value={p.shotStages}
+                max={p.totalStages}
+                color="var(--ok)"
+              />
+              <p className="dim">
+                某些场次会触发<b>运镜挑战小游戏</b>（被动触发，必须完成才能继续推进）：三次全完美大幅提升
+                AP/MP，全部失误无加成。
+              </p>
+              {p.pendingShotGame && (
+                <p className="msg">🎬 本场需要完成运镜挑战——点击「推进一周」开始小游戏。</p>
+              )}
+              {p.pendingEvents.length > 0 && (
+                <div className="event-list">
+                  {p.pendingEvents.map((ev) => (
+                    <EventBlock
+                      key={ev.id}
+                      ev={ev}
+                      projectId={projectId}
+                      onResolve={(pid, eid, idx) => dispatch({ type: 'resolveEvent', projectId: pid, eventId: eid, optionIndex: idx })}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+          {p.stage === 'editing' && preview && (
+            <section className="panel">
+              <h2>③ 剪辑与成片预览</h2>
+              <p className="dim">
+                剪辑必须完成<b>节奏挑战小游戏</b>才能继续推进：三次全完美大幅提升 AP/MP，全部失误无加成。
+              </p>
+              <div className="score-preview">
+                <Bar label="故事" value={preview.scores.story} />
+                <Bar label="音乐" value={preview.scores.music} />
+                <Bar label="剪辑" value={preview.scores.edit} />
+                <Bar label="表演" value={preview.scores.acting} />
+                <Bar label="摄影" value={preview.scores.shooting} />
+                <Bar label="导演" value={preview.scores.directing} />
+                <Bar label="VFX" value={preview.vfx} max={15} />
+                <Bar label="特色" value={preview.specific} max={10} />
+              </div>
+              <div className="attr-line">
+                预测 AP <b>{preview.ap}</b> · MP <b>{preview.mp}</b>
+              </div>
+              {!p.editGameDone ? (
+                <p className="msg">✂ 点击「推进一周」完成剪辑小游戏后，才能选择剪辑取向。</p>
+              ) : (
+                <div className="btn-row">
+                  <button onClick={() => dispatch({ type: 'chooseEditStyle', projectId, style: 'market' })}>
+                    市场向剪辑（更卖座）
+                  </button>
+                  <button onClick={() => dispatch({ type: 'chooseEditStyle', projectId, style: 'art' })}>
+                    艺术向剪辑（冲奖）
+                  </button>
+                </div>
+              )}
+            </section>
+          )}
+          {p.stage === 'marketing' && (
+            <section className="panel">
+              <h2>④ 宣发与上映</h2>
+              <h3>发行渠道（单选一种）</h3>
+              <div className="channel-row">
+                {CHANNEL_ORDER.map((ch) => (
+                  <label key={ch} className="config-label">
+                    <input
+                      type="radio"
+                      name="channel"
+                      checked={p.channel === ch}
+                      onChange={() => dispatch({ type: 'setChannel', projectId, channel: ch })}
+                    />
+                    {CHANNEL_INFO[ch].label}
+                  </label>
+                ))}
+              </div>
+              <p className="dim">{p.channel ? CHANNEL_INFO[p.channel].desc : '请选择一种发行渠道。'}</p>
+              {p.channel === 'cinema' && (
+                <div className="config-row">
+                  <label className="config-label">
+                    投放影院数（共 {TOTAL_CINEMAS} 家，单价 {CHANNEL_CONFIG.cinemaCostPerUnit} 万/家）
+                  </label>
+                  <input
+                    type="number"
+                    value={p.cinemaCount || ''}
+                    min={0}
+                    max={TOTAL_CINEMAS}
+                    placeholder="50"
+                    onChange={(e) => dispatch({ type: 'setCinemaCount', projectId, count: Number(e.target.value) || 0 })}
+                  />
+                </div>
+              )}
+              {p.channel === 'web' && (
                 <>
-                  {' '}
-                  → 主攻「{p.targetRegion}」×{audienceFit(state, script.type, p.targetRegion).toFixed(2)}
+                  <div className="channel-row">
+                    {WEB_PLATFORMS.map((pl) => {
+                      const on = p.webPlatforms.includes(pl)
+                      return (
+                        <label key={pl} className="config-label">
+                          <input
+                            type="checkbox"
+                            checked={on}
+                            onChange={() => {
+                              const next = on ? p.webPlatforms.filter((x) => x !== pl) : [...p.webPlatforms, pl]
+                              dispatch({ type: 'setWebConfig', projectId, platforms: next, weeks: p.webWeeks || 4 })
+                            }}
+                          />
+                          {pl}
+                        </label>
+                      )
+                    })}
+                  </div>
+                  <div className="config-row">
+                    <label className="config-label">投放时长（周）</label>
+                    <input
+                      type="number"
+                      value={p.webWeeks || 4}
+                      min={1}
+                      max={52}
+                      onChange={(e) =>
+                        dispatch({ type: 'setWebConfig', projectId, platforms: p.webPlatforms, weeks: Number(e.target.value) || 4 })
+                      }
+                    />
+                  </div>
                 </>
               )}
-              {p.targetRegion && audienceFit(state, script.type, p.targetRegion) < audienceFit(state, script.type) && (
-                <span className="warn">（当地不偏好此类型，收益下降）</span>
-              )}
-            </p>
-          )}
-
-          <h3>发行渠道（片方所得 = 票房 × 渠道比例）</h3>
-          <div className="channel-row">
-            {CHANNEL_ORDER.map((ch) => {
-              const cur: Channel[] = p.channels.length > 0 ? p.channels : ['cinema']
-              const on = cur.includes(ch)
-              return (
-                <label key={ch} className="config-label">
+              {p.channel === 'dvd' && (
+                <div className="config-row">
+                  <label className="config-label">DVD 单价（元/张）</label>
                   <input
-                    type="checkbox"
-                    checked={on}
-                    onChange={() => {
-                      const next = on ? cur.filter((c) => c !== ch) : [...cur, ch]
-                      dispatch({ type: 'setChannels', projectId, channels: next })
-                    }}
+                    type="number"
+                    value={p.dvdPrice || ''}
+                    min={1}
+                    max={CHANNEL_CONFIG.dvdPriceRange[1]}
+                    placeholder="20"
+                    onChange={(e) => dispatch({ type: 'setDvdPrice', projectId, price: Number(e.target.value) || 0 })}
                   />
-                  {CHANNEL_INFO[ch].label}（{Math.round(CHANNEL_INFO[ch].factor * 100)}%）
-                </label>
-              )
-            })}
-          </div>
-
-          <h3>发行方式</h3>
-          {p.publisherId ? (
-            <p className="dim">
-              已与发行商签约，预付款已到账；后端分成将在上映结算时扣除。
-            </p>
-          ) : (
-            <div className="slot-row">
-              <span className="slot-label">发行商</span>
-              <select value={pubSel} onChange={(e) => setPubSel(e.target.value)}>
-                <option value="">自发行（拿全部份额）</option>
-                {state.world.publishers.map((pb) => (
-                  <option key={pb.id} value={pb.id}>
-                    {pb.name}（预付款 {Math.round(pb.prepayBase + pb.reputation * pb.prepayPerRep)}万 · 后端分成{' '}
-                    {Math.round(pb.shareRate * 100)}%）
-                  </option>
-                ))}
-              </select>
-              {pubSel && (
-                <button
-                  onClick={() =>
-                    dispatch({ type: 'selectPublisher', projectId, publisherId: pubSel })
+                </div>
+              )}
+              {p.channel === 'free' && (
+                <div className="config-row">
+                  <label className="config-label">广告单价（元/千次播放）</label>
+                  <input
+                    type="number"
+                    value={p.freeAdPrice || ''}
+                    min={1}
+                    max={CHANNEL_CONFIG.freeAdPriceRange[1]}
+                    placeholder="30"
+                    onChange={(e) => dispatch({ type: 'setFreeAdPrice', projectId, price: Number(e.target.value) || 0 })}
+                  />
+                </div>
+              )}
+              <h3>主攻地区（集中宣发）</h3>
+              <div className="slot-row">
+                <span className="slot-label">重点市场</span>
+                <select
+                  value={p.targetRegion ?? ''}
+                  onChange={(e) =>
+                    dispatch({ type: 'setTargetRegion', projectId, region: e.target.value || undefined })
                   }
                 >
-                  签约
-                </button>
+                  <option value="">全国通发（按全部观众契合）</option>
+                  {regionMarkets(state).map((r) => {
+                    const top = (Object.keys(r.focus) as (keyof typeof r.focus)[])
+                      .map((t) => ({ t, v: r.focus[t] }))
+                      .sort((a, b) => b.v - a.v)[0]
+                    return (
+                      <option key={r.region} value={r.region}>
+                        {r.region}（占 {Math.round(r.size * 100)}% · 偏好{TYPE_ZH[top.t]}）
+                      </option>
+                    )
+                  })}
+                </select>
+              </div>
+              {script && (
+                <p className="dim">
+                  观众契合：全国 ×{audienceFit(state, script.type).toFixed(2)}
+                  {p.targetRegion && (
+                    <>
+                      {' '}
+                      → 主攻「{p.targetRegion}」×{audienceFit(state, script.type, p.targetRegion).toFixed(2)}
+                    </>
+                  )}
+                  {p.targetRegion && audienceFit(state, script.type, p.targetRegion) < audienceFit(state, script.type) && (
+                    <span className="warn">（当地不偏好此类型，收益下降）</span>
+                  )}
+                </p>
               )}
-            </div>
+              {/* 预计渠道结算：实时反映渠道选择对票房的影响 */}
+              {preview && p.channel && (() => {
+                const est = channelRevenue(p, preview.boxOffice)
+                return (
+                  <div className="channel-effect channel-preview">
+                    <h3>预计渠道结算</h3>
+                    <p>
+                      预计票房 <b style={{ color: 'var(--gold)' }}>{fmtWan(est.boxOffice)}</b> · 片方分账{' '}
+                      <b>{fmtWan(est.revenue)}</b> · 投放成本 <b>{fmtWan(est.channelCost)}</b>
+                      {est.admissions !== undefined && (
+                        <>
+                          {' '}
+                          · 观影人次 <b>{fmtWan(est.admissions)}人次</b>
+                        </>
+                      )}
+                      {est.dvdUnits !== undefined && (
+                        <>
+                          {' '}
+                          · 卖出 <b>{fmtWan(est.dvdUnits)}张</b>
+                        </>
+                      )}
+                      {est.freeViews !== undefined && (
+                        <>
+                          {' '}
+                          · 播放量 <b>{fmtWan(est.freeViews)}次</b>
+                        </>
+                      )}
+                    </p>
+                    <p className="dim">
+                      影院权重最高（影院数越多票房放大越大）＞ 网络（时长驱动）＞ DVD ＞ 免费。
+                    </p>
+                  </div>
+                )
+              })()}
+              <div className="btn-row">
+                <button
+                  className="btn-primary"
+                  disabled={!p.channel}
+                  onClick={() => {
+                    if (!window.confirm(`确认上映《${p.name}》？`)) return
+                    dispatch({ type: 'release', projectId })
+                    const latest = useGameStore.getState().state
+                    const r = latest?.projects.find((x) => x.id === projectId)?.result
+                    if (r) {
+                      setFlipReview({
+                        projectName: r.name,
+                        reviews: r.reviews,
+                        audience: r.audienceScore !== undefined
+                          ? { score: r.audienceScore, text: r.audienceText }
+                          : undefined,
+                      })
+                    }
+                  }}
+                >
+                  🎞 上映
+                </button>
+              </div>
+            </section>
           )}
-
-          <div className="btn-row">
-            <button
-              className="btn-primary"
-              onClick={() => {
-                if (!window.confirm(`确认上映《${p.name}》？`)) return
-                dispatch({ type: 'release', projectId })
-                // 上映后读取结算结果，弹出成员成长结算
-                const latest = useGameStore.getState().state
-                const r = latest?.projects.find((x) => x.id === projectId)?.result
-                if (r?.settlement) setSettlement(r.settlement)
-              }}
-            >
-              🎞 上映
+          <div className="flow-cancel">
+            <button className="btn-danger" onClick={() => setCancelOpen(true)}>
+              🗑 取消项目
             </button>
           </div>
-        </section>
+        </div>
       )}
 
-      {p.stage === 'released' && p.result && (
-        <section className="panel">
-          <h2>上映结算</h2>
-          <div className="grid-2">
-            <div className="score-preview">
-              <Bar label="故事" value={p.result.scores.story} />
-              <Bar label="音乐" value={p.result.scores.music} />
-              <Bar label="剪辑" value={p.result.scores.edit} />
-              <Bar label="表演" value={p.result.scores.acting} />
-              <Bar label="摄影" value={p.result.scores.shooting} />
-              <Bar label="导演" value={p.result.scores.directing} />
-              <Bar label="VFX" value={p.result.vfx} max={15} />
-              <Bar label="特色" value={p.result.specific} max={10} />
-            </div>
-            <div>
-              <div className="stat-row">
-                <span className="stat-label">AP（艺术分）</span>
-                <b>{p.result.ap}</b>
-                <span className="stat-label">MP（市场分）</span>
-                <b>{p.result.mp}</b>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">影评口碑</span>
-                <b>{fmtScore10(p.result.criticScore)} / 10</b>
-                <span className="stat-label">观众口碑</span>
-                <b>{fmtScore10(p.result.audienceScore ?? 0)} / 10</b>
-                <span className="stat-label">声誉变化</span>
-                <span className={p.result.reputationGain >= 0 ? 'good' : 'bad'}>
-                  {p.result.reputationGain >= 0 ? '+' : ''}
-                  {p.result.reputationGain}
-                </span>
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">票房</span>
-                <MoneyText value={p.result.boxOffice} />
-              </div>
-              <div className="stat-row">
-                <span className="stat-label">发行渠道</span>
-                <span>
-                  {(p.result.channels ?? ['cinema']).map((c) => CHANNEL_INFO[c].label).join(' / ')}
-                </span>
-              </div>
-              {p.result.publisherName && (
-                <div className="stat-row">
-                  <span className="stat-label">发行商</span>
-                  <span>{p.result.publisherName}</span>
-                </div>
-              )}
-              {p.result.targetRegion && (
-                <div className="stat-row">
-                  <span className="stat-label">主攻地区</span>
-                  <span>{p.result.targetRegion}</span>
-                </div>
-              )}
-              <div className="stat-row">
-                <span className="stat-label">片方总收入</span>
-                <MoneyText value={p.result.revenue ?? p.result.boxOffice * ECONOMY.cinemaShare} />
-              </div>
-              <h3>成员成长结算</h3>
-              {p.result.settlement ? (
-                <p className="dim">
-                  每位成员的参与角色、表现评分与全部属性变化已入账，点击查看明细。
-                </p>
-              ) : null}
-              {p.result.settlement ? (
-                <button className="btn-primary" onClick={() => setSettlement(p.result!.settlement!)}>
-                  📊 查看全员属性变化
-                </button>
-              ) : (
-                <ul className="career-list">
-                  {p.result.groupPerformance.map((g) => (
-                    <li key={g.workerId}>
-                      {state.workers[g.workerId]?.name ?? '未知'}（{ROLE_ZH[g.role]}） · 表现{' '}
-                      {Math.round(g.performance)}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          </div>
-        </section>
-      )}
-
-      {/* 影评人区：剪辑/宣发显示预测，上映后显示真实评分 */}
-      {p.stage !== 'preparing' && p.stage !== 'shooting' && (
-        <section className="panel">
-          <h2>影评人</h2>
-          {p.stage === 'released' && p.result ? (
-            <CriticReviews
-              reviews={p.result.reviews}
-              average={p.result.criticScore}
-              title="上映后评分"
-              audience={{ score: p.result.audienceScore ?? 0, text: p.result.audienceText }}
-            />
-          ) : preview ? (
-            <CriticReviews reviews={preview.reviews} title="影评预测" />
-          ) : null}
-        </section>
+      {flipReview && (
+        <ReviewFlipModal
+          projectName={flipReview.projectName}
+          reviews={flipReview.reviews}
+          audience={flipReview.audience}
+          onClose={() => {
+            setFlipReview(null)
+            // 翻牌弹窗关闭后，若本次上映有成员成长结算则弹出
+            const r = useGameStore.getState().state?.projects.find((x) => x.id === projectId)?.result
+            if (r?.settlement) setSettlement(r.settlement)
+          }}
+        />
       )}
 
       {settlement && (
@@ -434,21 +689,51 @@ export function ProjectDetailScreen({ projectId, onBack }: { projectId: string; 
         </Modal>
       )}
 
+      {cancelOpen && (
+        <Modal title={`🗑 取消《${p.name}》`} onClose={() => setCancelOpen(false)}>
+          <p className="dim">
+            当前处于「{STAGE_ZH[p.stage]}」阶段。取消后项目将被移除，<b>无法恢复</b>。
+          </p>
+          <p className="warn">
+            已投入 <b style={{ color: 'var(--danger)' }}>{fmtWan(p.spent)}</b>
+            （含定金、拍摄成本与预热）<b>不退还</b>。
+          </p>
+          <p className="dim">
+            剧组人员将释放回员工池，可重新组建剧组；所属 IP 系列不受影响。
+          </p>
+          <div className="btn-row">
+            <button
+              className="btn-danger"
+              onClick={() => {
+                dispatch({ type: 'cancelProject', projectId })
+                setCancelOpen(false)
+                onBack()
+              }}
+            >
+              确认取消
+            </button>
+            <button onClick={() => setCancelOpen(false)}>再想想</button>
+          </div>
+        </Modal>
+      )}
+
       {shotGame && (
         <TimingMinigame
           title="🎬 拍摄运镜挑战"
-          desc="标记循环移动，在金色亮带处点击「运镜」。共 3 轮，判定影响成片拍摄分。"
+          desc="标记循环移动，在金色亮带处点击「运镜」。共 3 轮，判定影响成片 AP/MP。"
           actionLabel="运镜"
-          onResult={(q) => dispatch({ type: 'applyShotBuff', projectId, quality: q })}
+          onResult={() => {}}
+          onFinish={(qs) => dispatch({ type: 'applyShotGame', projectId, qualities: qs })}
           onClose={() => setShotGame(false)}
         />
       )}
       {editGame && (
         <TimingMinigame
           title="✂ 剪辑节奏挑战"
-          desc="在节奏点处点击「剪」，保留精彩镜头。共 3 轮，判定影响剪辑 Buff。"
+          desc="在节奏点处点击「剪」，保留精彩镜头。共 3 轮，判定影响成片 AP/MP。"
           actionLabel="剪！"
-          onResult={(q) => dispatch({ type: 'applyEditBuff', projectId, quality: q })}
+          onResult={() => {}}
+          onFinish={(qs) => dispatch({ type: 'applyEditGame', projectId, qualities: qs })}
           onClose={() => setEditGame(false)}
         />
       )}

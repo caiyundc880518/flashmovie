@@ -8,7 +8,13 @@ function ipScore(ip: IpAsset): string {
   return scoreColor10(ip.bestCriticScore)
 }
 
-export function IpsScreen({ onSequel }: { onSequel: (ipId: string) => void }) {
+export function IpsScreen({
+  onSequel,
+  onOpenDetail,
+}: {
+  onSequel: (ipId: string) => void
+  onOpenDetail: (ipId: string) => void
+}) {
   const state = useGameStore((s) => s.state)
   if (!state) return null
 
@@ -21,6 +27,7 @@ export function IpsScreen({ onSequel }: { onSequel: (ipId: string) => void }) {
         <p className="dim">
           高票房 + 高口碑的影片会自动沉淀为 IP：每季度按等级结算衍生授权收入（周边/画廊/授权），
           续作获得票房加成与发行商预付款溢价。续作须与 IP 同类型，可从「组队立项」立项。
+          <b> 点击卡片可查看该 IP 下的全部系列影片。</b>
         </p>
         {ips.length === 0 ? (
           <p className="dim empty-hint">
@@ -29,7 +36,11 @@ export function IpsScreen({ onSequel }: { onSequel: (ipId: string) => void }) {
         ) : (
           <div className="ip-grid">
             {ips.map((ip) => (
-              <div key={ip.id} className="ip-card">
+              <div
+                key={ip.id}
+                className="ip-card clickable"
+                onClick={() => onOpenDetail(ip.id)}
+              >
                 <div className="ip-card-head">
                   <span className="table-name">{ip.name}</span>
                   <span className="ip-tags">
@@ -59,7 +70,12 @@ export function IpsScreen({ onSequel }: { onSequel: (ipId: string) => void }) {
                 <div className="ip-card-royalty">
                   <div>
                     <span className="dim">季度授权</span>
-                    <b>{fmtWan(ip.royaltyPerQuarter)}/季</b>
+                    <b>
+                      {fmtWan(ip.royaltyPerQuarter)}/季
+                      {ip.merchBonus > 0 && (
+                        <span className="ok"> 周边+{ip.merchBonus}%</span>
+                      )}
+                    </b>
                   </div>
                   <div>
                     <span className="dim">授权累计</span>
@@ -68,9 +84,27 @@ export function IpsScreen({ onSequel }: { onSequel: (ipId: string) => void }) {
                 </div>
                 <div className="ip-footer">
                   <span className="ip-bonus">续作票房 +{Math.round((ip.sequelBonus - 1) * 100)}%</span>
-                  <button className="btn-primary" onClick={() => onSequel(ip.id)}>
-                    立项续作 →
-                  </button>
+                  <div className="btn-row">
+                    <button
+                      className="btn-view btn-icon"
+                      title="查看系列影片"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onOpenDetail(ip.id)
+                      }}
+                    >
+                      🎞️
+                    </button>
+                    <button
+                      className="btn-sequel"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onSequel(ip.id)
+                      }}
+                    >
+                      立项续作 →
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}

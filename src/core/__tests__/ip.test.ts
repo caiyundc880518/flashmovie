@@ -48,17 +48,27 @@ function makeStrongState(seed = 42, weak = false): GameState {
     },
     totalStages: script.scale,
     shotStages: script.scale,
-    vfxPercent: 0,
-    hasAd: false,
+    budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 },
+    vfxLevel: 0,
+    adSponsorIds: [],
     hype: weak ? 0 : 100,
-    marketingBudget: 0,
     budget: 1000,
     spent: 0,
     editStyle: 'market',
-    buffs: weak ? -20 : 20,
+    buffs: 0,
     apAdjust: 0,
     pendingEvents: [],
-    channels: ['cinema'],
+    channel: 'cinema',
+    cinemaCount: 50,
+    webPlatforms: [],
+    webWeeks: 0,
+    dvdPrice: 0,
+    freeAdPrice: 0,
+    warmup: 0,
+    shotGameBonus: 0,
+    pendingShotGame: false,
+    editGameDone: true,
+    editGameBonus: 0,
   }
   s.projects.push(p)
   return s
@@ -79,6 +89,7 @@ function pushIp(s: GameState, over: Partial<IpAsset> = {}): IpAsset {
     level: 1,
     royaltyPerQuarter: 12,
     sequelBonus: 1.05,
+    merchBonus: 0,
     royaltyEarned: 0,
     films: [],
     ...over,
@@ -178,7 +189,7 @@ describe('IP 售后与续作', () => {
     }
 
     // 匹配类型 → 立项成功，进入项目列表
-    let ok = reduce(s, { type: 'startProject', scriptId: script.id, team, vfxPercent: 0, hasAd: false, ipId: ip.id })
+    let ok = reduce(s, { type: 'startProject', scriptId: script.id, team, budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 }, vfxLevel: 0, adSponsorIds: [], ipId: ip.id })
     expect(ok.projects.length).toBe(1)
     const proj = ok.projects[0]
     expect(proj.ipId).toBe(ip.id)
@@ -190,7 +201,7 @@ describe('IP 售后与续作', () => {
     // 类型不匹配 → 拒绝（状态引用不变）
     script.type = 'comedy'
     const before = s.projects.length
-    const rejected = reduce(s, { type: 'startProject', scriptId: script.id, team, vfxPercent: 0, hasAd: false, ipId: ip.id })
+    const rejected = reduce(s, { type: 'startProject', scriptId: script.id, team, budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 }, vfxLevel: 0, adSponsorIds: [], ipId: ip.id })
     expect(rejected).toBe(s)
     expect(rejected.projects.length).toBe(before)
   })
@@ -221,17 +232,14 @@ describe('IP 售后与续作', () => {
     expect(s.company.ips[0].royaltyEarned).toBe(36)
   })
 
-  it('续作向发行商争取预付款溢价', () => {
+  it('续作向发行商争取预付款溢价（发行商机制保留历史数据）', () => {
+    // 发行商签约机制已取消：验证续作票房加成仍在结算中体现
     let s = makeStrongState(29)
     pushIp(s, { level: 2 })
     s.projects[0].ipId = 'ip-test'
     s.projects[0].ipEntry = 2
-    const pub = s.world.publishers[0]
-    const basePrepay = Math.round(pub.prepayBase + pub.reputation * pub.prepayPerRep)
-    const cashBefore = s.company.cash
-    s = reduce(s, { type: 'selectPublisher', projectId: 'prj-test', publisherId: pub.id })
-    const gained = s.company.cash - cashBefore
-    expect(gained).toBe(Math.round(basePrepay * (1 + 2 * IP_CONFIG.publisherPrepayPerLevel)))
-    expect(gained).toBeGreaterThan(basePrepay)
+    s = reduce(s, { type: 'release', projectId: 'prj-test' })
+    expect(s.projects[0].result?.ipName).toBe('《测试系列》')
+    expect(s.projects[0].result?.ipEntry).toBe(2)
   })
 })

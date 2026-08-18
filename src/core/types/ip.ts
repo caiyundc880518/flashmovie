@@ -28,6 +28,8 @@ export interface IpAsset {
   royaltyPerQuarter: number
   /** 续作票房加成（×，1 + level × 每级加成） */
   sequelBonus: number
+  /** 周边收入加成 %（由高知名度广告商累计，提升季度授权收入） */
+  merchBonus: number
   /** 衍生授权累计收入（万） */
   royaltyEarned: number
   /** 构成系列的项目 id（首作 + 续作） */

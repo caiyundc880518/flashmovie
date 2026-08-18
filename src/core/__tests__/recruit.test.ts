@@ -175,4 +175,27 @@ describe('招聘抽卡（单演员计价，1 抽 / 10 连）', () => {
     const roles = new Set(s.world.candidates.map((c) => c.role))
     expect(roles.size).toBeGreaterThan(1)
   })
+
+  it('作弊生成：满属性人才免费进入招聘市场，雇佣免费', () => {
+    let s = createInitialState(500)
+    s.company.cash = 100
+    const before = s.world.candidates.length
+    s = reduce(s, { type: 'cheatSpawnWorker', role: 'director' })
+    expect(s.world.candidates.length).toBe(before + 1)
+    const w = s.world.candidates[s.world.candidates.length - 1]
+    expect(w.role).toBe('director')
+    expect(w.cheat).toBe(true)
+    expect(w.basic.ca).toBe(100)
+    expect(w.basic.pa).toBe(100)
+    // 全部技能/精神/身体 100
+    for (const k of Object.keys(w.skills)) expect(w.skills[k as keyof typeof w.skills]).toBe(100)
+    // 现金不变（免费生成）
+    expect(s.company.cash).toBe(100)
+    // 免费雇佣：现金不变
+    const cashBeforeHire = s.company.cash
+    s = reduce(s, { type: 'hireWorker', candidateId: w.id })
+    expect(s.company.employeeIds).toContain(w.id)
+    expect(s.company.cash).toBe(cashBeforeHire)
+    expect(s.world.candidates).toHaveLength(before)
+  })
 })

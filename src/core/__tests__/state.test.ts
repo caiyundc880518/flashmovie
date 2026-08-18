@@ -139,8 +139,9 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
         editorId: 'test-editor',
         marketId: 'test-market',
       },
-      vfxPercent: 20,
-      hasAd: false,
+      budgetAlloc: { story: 0, vfx: 20, acting: 0, edit: 0 },
+      vfxLevel: 0,
+      adSponsorIds: [],
     })
     expect(s.projects).toHaveLength(1)
     const pid = s.projects[0].id
@@ -149,22 +150,26 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
     s = reduce(s, { type: 'startShooting', projectId: pid })
     expect(s.projects[0].stage).toBe('shooting')
 
-    // 推进至剪辑（处理沿途随机事件）
-    for (let i = 0; i < 24 && s.projects[0].stage === 'shooting'; i++) {
+    // 推进至剪辑（处理沿途随机事件与被动小游戏）
+    for (let i = 0; i < 30 && s.projects[0].stage === 'shooting'; i++) {
       s = reduce(s, { type: 'advanceWeek' })
       for (const ev of [...s.projects[0].pendingEvents]) {
         s = reduce(s, { type: 'resolveEvent', projectId: pid, eventId: ev.id, optionIndex: 0 })
       }
+      if (s.projects[0].pendingShotGame) {
+        s = reduce(s, { type: 'applyShotGame', projectId: pid, qualities: ['perfect', 'perfect', 'perfect'] })
+      }
     }
     expect(s.projects[0].stage).toBe('editing')
 
-    // 剪辑取向
+    // 剪辑：先完成小游戏，再选取向
+    s = reduce(s, { type: 'applyEditGame', projectId: pid, qualities: ['perfect', 'perfect', 'perfect'] })
     s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
     expect(s.projects[0].stage).toBe('marketing')
 
     // 宣发 + 上映
-    s = reduce(s, { type: 'setMarketingBudget', projectId: pid, budget: 100 })
-    s = reduce(s, { type: 'launchMarketing', projectId: pid })
+    s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
+    s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
     s = reduce(s, { type: 'release', projectId: pid })
 
     const p = s.projects[0]
@@ -191,8 +196,9 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
         editorId: 'test-editor',
         marketId: 'test-market',
       },
-      vfxPercent: 0,
-      hasAd: false,
+      budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 },
+      vfxLevel: 0,
+      adSponsorIds: [],
     })
     const pid = s.projects[0].id
     s = reduce(s, { type: 'startShooting', projectId: pid })
@@ -217,8 +223,9 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
         editorId: 'test-editor',
         marketId: 'test-market',
       },
-      vfxPercent: 0,
-      hasAd: false,
+      budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 },
+      vfxLevel: 0,
+      adSponsorIds: [],
     })
     const pid = s.projects[0].id
     s = reduce(s, { type: 'startShooting', projectId: pid })
@@ -238,10 +245,10 @@ describe('完整电影闭环（立项→拍摄→剪辑→宣发→上映）', (
       editorId: 'test-editor',
       marketId: 'test-market',
     }
-    s = reduce(s, { type: 'startProject', scriptId, team, vfxPercent: 0, hasAd: false })
+    s = reduce(s, { type: 'startProject', scriptId, team, budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 }, vfxLevel: 0, adSponsorIds: [] })
     expect(s.projects).toHaveLength(1)
     // 第二次立项同一剧本 → 拒绝
-    s = reduce(s, { type: 'startProject', scriptId, team, vfxPercent: 0, hasAd: false })
+    s = reduce(s, { type: 'startProject', scriptId, team, budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 }, vfxLevel: 0, adSponsorIds: [] })
     expect(s.projects).toHaveLength(1)
   })
 })
@@ -254,7 +261,7 @@ const RELEASE_TEAM = {
   marketId: 'test-market',
 }
 
-describe('发行渠道与发行商', () => {
+describe('发行渠道（单选四渠道）', () => {
   /** 走完 立项→开拍→剪辑→宣发阶段，返回 marketing 阶段状态 */
   function setupFilm(seed: number) {
     let s = buildReadyState(seed)
@@ -264,60 +271,48 @@ describe('发行渠道与发行商', () => {
       type: 'startProject',
       scriptId,
       team: RELEASE_TEAM,
-      vfxPercent: 0,
-      hasAd: false,
+      budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 },
+      vfxLevel: 0,
+      adSponsorIds: [],
     })
     const pid = s.projects[0].id
     s = reduce(s, { type: 'startShooting', projectId: pid })
-    for (let i = 0; i < 24 && s.projects[0].stage === 'shooting'; i++) {
+    for (let i = 0; i < 30 && s.projects[0].stage === 'shooting'; i++) {
       s = reduce(s, { type: 'advanceWeek' })
       for (const ev of [...s.projects[0].pendingEvents]) {
         s = reduce(s, { type: 'resolveEvent', projectId: pid, eventId: ev.id, optionIndex: 0 })
       }
+      if (s.projects[0].pendingShotGame) {
+        s = reduce(s, { type: 'applyShotGame', projectId: pid, qualities: ['perfect', 'perfect', 'perfect'] })
+      }
     }
+    s = reduce(s, { type: 'applyEditGame', projectId: pid, qualities: ['perfect', 'perfect', 'perfect'] })
     s = reduce(s, { type: 'chooseEditStyle', projectId: pid, style: 'market' })
     return { s, pid }
   }
 
-  it('多渠道结算：收入 = 票房 × 渠道系数之和', () => {
+  it('影院渠道：投放影院越多收入越高，成本按家数计', () => {
     let { s, pid } = setupFilm(21)
-    s = reduce(s, { type: 'setChannels', projectId: pid, channels: ['cinema', 'streaming'] })
+    s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
+    s = reduce(s, { type: 'setCinemaCount', projectId: pid, count: 100 })
     s = reduce(s, { type: 'release', projectId: pid })
     const r = s.projects[0].result!
-    expect(r.channels).toEqual(['cinema', 'streaming'])
-    expect(Math.abs(r.revenue! - r.boxOffice * 0.75)).toBeLessThan(1)
-  })
-
-  it('发行商签约：预付款入账，结算按后端分成扣减', () => {
-    let { s, pid } = setupFilm(22)
-    const pub = s.world.publishers[0]
-    const prepay = Math.round(pub.prepayBase + pub.reputation * pub.prepayPerRep)
-    const cashBefore = s.company.cash
-    s = reduce(s, { type: 'selectPublisher', projectId: pid, publisherId: pub.id })
-    expect(s.company.cash).toBe(cashBefore + prepay)
-    s = reduce(s, { type: 'release', projectId: pid })
-    const r = s.projects[0].result!
-    expect(r.publisherName).toBe(pub.name)
-    const backEnd = r.boxOffice * 0.45 * (1 - pub.shareRate)
-    expect(Math.abs(r.revenue! - (prepay + backEnd))).toBeLessThan(1)
-  })
-
-  it('免费渠道：收入为 0（换口碑）', () => {
-    let { s, pid } = setupFilm(23)
-    s = reduce(s, { type: 'setChannels', projectId: pid, channels: ['free'] })
-    s = reduce(s, { type: 'release', projectId: pid })
-    const r = s.projects[0].result!
-    expect(r.channels).toEqual(['free'])
-    expect(r.revenue).toBe(0)
+    expect(r.channel).toBe('cinema')
+    expect(r.revenue!).toBeGreaterThan(0)
+    // 成本 = 100 家 × 0.2 万
+    const p = s.projects[0]
+    expect(p.spent).toBeGreaterThanOrEqual(100 * 0.2)
   })
 
   it('宣发阶段之外不能改渠道', () => {
     let { s, pid } = setupFilm(24)
-    // 已上映后改渠道 → 拒绝
-    s = reduce(s, { type: 'setChannels', projectId: pid, channels: ['cinema'] })
+    s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'cinema' })
     s = reduce(s, { type: 'release', projectId: pid })
     const r = s.projects[0].result!
-    s = reduce(s, { type: 'setChannels', projectId: pid, channels: ['dvd'] })
-    expect(s.projects[0].result!.channels).toEqual(r.channels ?? ['cinema'])
+    // 已上映后改渠道 → 拒绝
+    s = reduce(s, { type: 'setChannel', projectId: pid, channel: 'dvd' })
+    expect(s.projects[0].result!.channel).toBe('cinema')
+    expect(s.projects[0].result!.channels).toEqual(['cinema'])
+    void r
   })
 })

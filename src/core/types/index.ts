@@ -45,6 +45,9 @@ export type {
   CriticReview,
   Channel,
   WorkerSettlement,
+  AdSettlement,
+  FilmAward,
+  TimingQuality,
 } from './film'
 export type {
   Company,

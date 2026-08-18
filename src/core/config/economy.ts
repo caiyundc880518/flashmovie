@@ -29,19 +29,13 @@ export const ECONOMY = {
 
   /** 制作成本：每场次基础成本（万） */
   costPerStage: 12,
-  /** VFX：预算加成 = vfxPercent/100 × vfxCostFactor */
+  /** VFX：预算加成 = vfx占比/100 × vfxCostFactor × 特效档位成本系数 */
   vfxCostFactor: 0.5,
-  /** 植入广告：一次性收入（万），代价 AP-10 */
-  adDealIncome: 80,
-  adDealApPenalty: 10,
+  /** 筹备预热：每投入多少万 → MP +1（无上限，投得越多加成越多） */
+  warmupPerMp: 50,
   /** 签约编剧签约费 / 雇佣员工签约费（万） */
   hireWriterSignFee: 50,
   hireWorkerSignFee: 20,
-
-  /** 宣发：每点 Hype 成本（万） */
-  costPerHypePoint: 2,
-  /** 宣发预算上限（万/片） */
-  marketingBudgetCap: 500,
 
   /** 影院分账（片方所得比例，自发行） */
   cinemaShare: 0.45,

@@ -1,5 +1,6 @@
 import type {
   AudienceGroup,
+  Channel,
   Competitor,
   Critic,
   FilmProject,
@@ -34,6 +35,10 @@ import { SAVE_VERSION } from './schema'
  * v8：世界新增 activeEvents（市场事件，GDD §6 Random Events）。
  * v9：公司新增 public（IPO 上市状态，GDD §3.1；可选字段，无数据迁移）。
  * v10：GameState 新增 scriptDrafts（编剧抽卡委托，签约编剧三档卡池）。
+ * v11：项目新增 budgetAlloc/vfxLevel/adSponsorIds（预算占比+特效档位+植入广告商），
+ *       IP 新增 merchBonus（周边收入加成）。
+ * v12：项目大修：渠道改单选（cinema/web/dvd/free，流媒体/发行商取消），
+ *       新增 warmup（筹备预热）、shotGameBonus/pendingShotGame/editGameDone/editGameBonus（强制小游戏）。
  */
 export function migrateSave(raw: unknown): GameState {
   if (!raw || typeof raw !== 'object') {
@@ -54,6 +59,8 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 7) state = migrateV7toV8(state)
   if (state.version === 8) state = migrateV8toV9(state)
   if (state.version === 9) state = migrateV9toV10(state)
+  if (state.version === 10) state = migrateV10toV11(state)
+  if (state.version === 11) state = migrateV11toV12(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
   return state
@@ -72,8 +79,11 @@ function migrateV2toV3(s: GameState): GameState {
   const world = s.world as World & { publishers?: Publisher[] }
   world.publishers = world.publishers ?? []
   for (const p of s.projects) {
-    const project = p as FilmProject & { channels?: FilmProject['channels'] }
-    if (!Array.isArray(project.channels)) project.channels = []
+    const project = p as FilmProject & { channels?: unknown[] }
+    if (!Array.isArray(project.channels)) {
+      // 早期无渠道字段的项目：默认影院
+      project.channel = 'cinema'
+    }
   }
   return { ...s, version: 3 }
 }
@@ -126,6 +136,58 @@ function migrateV9toV10(s: GameState): GameState {
   const g = s as GameState & { scriptDrafts?: ScriptDraft[] }
   if (!Array.isArray(g.scriptDrafts)) g.scriptDrafts = []
   return { ...g, version: 10 }
+}
+
+/** v10 → v11：项目补预算占比/特效档位/广告商；IP 补周边加成 */
+function migrateV10toV11(s: GameState): GameState {
+  for (const p of s.projects) {
+    const project = p as FilmProject & { vfxPercent?: number; hasAd?: boolean }
+    if (!project.budgetAlloc) {
+      const oldVfx = typeof project.vfxPercent === 'number' ? project.vfxPercent : 0
+      project.budgetAlloc = { story: 0, vfx: oldVfx, acting: 0, edit: 0 }
+    }
+    if (typeof project.vfxLevel !== 'number') project.vfxLevel = 0
+    if (!Array.isArray(project.adSponsorIds)) {
+      project.adSponsorIds = project.hasAd ? ['ad_tea'] : []
+    }
+    delete project.vfxPercent
+    delete project.hasAd
+  }
+  for (const ip of s.company.ips) {
+    if (typeof ip.merchBonus !== 'number') ip.merchBonus = 0
+  }
+  return { ...s, version: 11 }
+}
+
+/** v11 → v12：项目渠道改单选 + 预热/小游戏字段；流媒体与发行商取消 */
+function migrateV11toV12(s: GameState): GameState {
+  for (const p of s.projects) {
+    const project = p as FilmProject & {
+      channels?: Channel[]
+      publisherId?: string
+      marketingBudget?: number
+    }
+    // 渠道：多选数组 → 单选（旧档首个有效渠道；streaming 映射为 web）
+    if (typeof project.channel !== 'string') {
+      const old = project.channels ?? []
+      const first = (old as string[]).find((c) => c !== 'streaming') ?? (old as string[])[0]
+      project.channel = (first === 'streaming' ? 'web' : (first as Channel)) ?? 'cinema'
+    }
+    if (typeof project.cinemaCount !== 'number') project.cinemaCount = 0
+    if (!Array.isArray(project.webPlatforms)) project.webPlatforms = []
+    if (typeof project.webWeeks !== 'number') project.webWeeks = 0
+    if (typeof project.dvdPrice !== 'number') project.dvdPrice = 0
+    if (typeof project.freeAdPrice !== 'number') project.freeAdPrice = 0
+    if (typeof project.warmup !== 'number') project.warmup = 0
+    if (typeof project.shotGameBonus !== 'number') project.shotGameBonus = 0
+    if (typeof project.pendingShotGame !== 'boolean') project.pendingShotGame = false
+    if (typeof project.editGameDone !== 'boolean') project.editGameDone = project.stage !== 'editing'
+    if (typeof project.editGameBonus !== 'number') project.editGameBonus = 0
+    delete project.channels
+    delete project.publisherId
+    delete project.marketingBudget
+  }
+  return { ...s, version: 12 }
 }
 
 /** 世界实体为空时，用存档种子派生确定性生成 */

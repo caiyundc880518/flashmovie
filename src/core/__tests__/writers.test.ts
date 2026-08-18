@@ -101,12 +101,12 @@ describe('签约编剧抽卡（三档委托创作）', () => {
     void script
   })
 
-  it('v9 旧档迁移：scriptDrafts 补为空数组', () => {
+  it('v10 旧档迁移：scriptDrafts 补为空数组', () => {
     const s = createInitialState(37)
     s.version = 9
     delete (s as { scriptDrafts?: unknown }).scriptDrafts
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(10)
+    expect(migrated.version).toBe(12)
     expect(migrated.scriptDrafts).toEqual([])
   })
 })

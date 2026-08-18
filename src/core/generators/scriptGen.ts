@@ -45,6 +45,8 @@ export function generateScript(
     id: '',
     title,
     type,
+    // 剧情简介由属性派生（不消耗 rng，保证种子序列稳定可复现）
+    desc: SCRIPT_POOL.plots[type][(storyPoint + marketPot) % SCRIPT_POOL.plots[type].length],
     storyPoint,
     artPot,
     marketPot,
@@ -96,6 +98,8 @@ export function generateTierScript(rng: Rng, cfg: WriterPoolConfig): Script {
     id: '',
     title,
     type,
+    // 剧情简介由属性派生（不消耗 rng，保证种子序列稳定可复现）
+    desc: SCRIPT_POOL.plots[type][(storyPoint + marketPot) % SCRIPT_POOL.plots[type].length],
     storyPoint,
     artPot,
     marketPot,

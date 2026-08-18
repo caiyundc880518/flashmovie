@@ -126,4 +126,6 @@ export interface Worker {
   awards: AwardEntry[]
   /** 累计经验（成长用） */
   experience: number
+  /** 作弊生成标记：全属性 100、免费雇佣（仅测试/体验用） */
+  cheat?: boolean
 }

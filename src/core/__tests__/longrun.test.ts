@@ -97,31 +97,32 @@ function simulateRun(seed: number, maxWeeks = 260, opts: SimOptions = {}): RunRe
         for (const ev of [...p.pendingEvents]) {
           s = reduce(s, { type: 'resolveEvent', projectId: p.id, eventId: ev.id, optionIndex: pickEventOption(ev) })
         }
-        if (s.projects.some((x) => x.id === p.id && x.stage === 'shooting')) {
-          s = reduce(s, { type: 'applyShotBuff', projectId: p.id, quality: weak ? 'good' : 'perfect' })
+        if (s.projects.some((x) => x.id === p.id && x.stage === 'shooting' && x.pendingShotGame)) {
+          s = reduce(s, {
+            type: 'applyShotGame',
+            projectId: p.id,
+            qualities: weak ? ['good', 'good', 'good'] : ['perfect', 'perfect', 'perfect'],
+          })
         }
       }
-      if (s.projects.some((x) => x.id === p.id && x.stage === 'editing')) {
+      if (s.projects.some((x) => x.id === p.id && x.stage === 'editing' && !x.editGameDone)) {
+        s = reduce(s, {
+          type: 'applyEditGame',
+          projectId: p.id,
+          qualities: weak ? ['good', 'good', 'good'] : ['perfect', 'perfect', 'perfect'],
+        })
+      }
+      if (s.projects.some((x) => x.id === p.id && x.stage === 'editing' && x.editGameDone)) {
         s = reduce(s, { type: 'chooseEditStyle', projectId: p.id, style: 'market' })
       }
       if (s.projects.some((x) => x.id === p.id && x.stage === 'marketing')) {
         const mp = s.projects.find((x) => x.id === p.id)!
-        const budget = weak ? 60 : 120
-        if (mp.hype < 60 && s.company.cash > budget + 20) {
-          s = reduce(s, { type: 'setMarketingBudget', projectId: p.id, budget })
-          if (s.company.cash > 20) s = reduce(s, { type: 'launchMarketing', projectId: p.id })
+        if (!mp.channel) {
+          s = reduce(s, { type: 'setChannel', projectId: p.id, channel: 'cinema' })
+          s = reduce(s, { type: 'setCinemaCount', projectId: p.id, count: weak ? 300 : 800 })
         }
-        if (mp.channels.length === 0) {
-          s = reduce(
-            s,
-            { type: 'setChannels', projectId: p.id, channels: weak ? ['cinema', 'web'] : ['cinema', 'web', 'streaming'] },
-          )
-        }
-        if (!mp.publisherId && !weak && s.world.publishers.length > 0) {
-          s = reduce(s, { type: 'selectPublisher', projectId: p.id, publisherId: s.world.publishers[0].id })
-        }
-        const hypeNeed = weak ? 30 : 45
-        if (mp.hype >= hypeNeed) {
+        // 渠道已配置即可上映（宣发即渠道投入）
+        if (mp.channel) {
           s = reduce(s, { type: 'release', projectId: p.id })
         }
       }
@@ -209,8 +210,9 @@ function simulateRun(seed: number, maxWeeks = 260, opts: SimOptions = {}): RunRe
             marketId: market.id,
             technicianId: tech?.id,
           },
-          vfxPercent: vfx,
-          hasAd: s.company.cash < (weak ? 500 : 800),
+          budgetAlloc: { story: 0, vfx: vfx, acting: 0, edit: 0 },
+          vfxLevel: 0,
+          adSponsorIds: [],
         })
       }
     }
