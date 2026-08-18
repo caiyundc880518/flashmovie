@@ -134,16 +134,21 @@ gross_n = gross_{n-1} × decayRate × hold_n   // hold 由反馈环给出
 
 ### 5.3 口碑/MP 反馈环
 
+实现采用「**向影评评分回归 + 票房表现扰动**」破除"hold 与口碑互锁"的循环（纯表现驱动会因 overshoot=hold 而永远中性）：
+
 ```
+// 每周结算后更新（仅首轮；再发行用 final 值固定，hold=1）
 expected_n = gross_{n-1} × decayRate
-overshoot = gross_n / expected_n                 // >1 = 超预期
-Δ口碑 = clamp((overshoot - 1) × 2, -1.0, +1.0)
-currentAudience = clamp(currentAudience + Δ口碑, 0, 10)
-currentMp = clamp(currentMp + Δ口碑 × 6, 0, 100)
-hold = clamp(1 + 0.4 × ((currentAudience − 初始口碑) + (currentMp − 初始MP)/8), 0.7, 1.3)
+hold = clamp(1 + 0.4 × ((curAud − 初始口碑) + (curMp − 初始MP)/8), 0.85, 1.3)
+gross_n = expected_n × hold
+drift = 0.1 × (影评评分 − curAud)            // 口碑向固定影评回归
+perf  = (gross_n − expected_n)/expected_n × 0.8  // 票房表现扰动
+nextAud = clamp(curAud + drift + perf, 0, 10)
+nextMp  = clamp(curMp + (nextAud − curAud) × 6, 0, 100)
 ```
 
-首轮下片时锁定 `finalMp / finalAudience`。
+- 好片：口碑被影评抬升 + 超预期 → hold>1 → 跌得慢、总票房超预期；烂片反向更快崩盘（hold 下限 0.85，避免过度惩罚）。
+- 首轮下片时锁定 `finalMp / finalAudience`。
 
 ### 5.4 每周指标换算（复用现有 channelRevenue 换算）
 
