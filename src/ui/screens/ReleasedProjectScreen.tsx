@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import type { Channel, CriticReview, GameState, WorkerSettlement } from '../../core/types'
+import type { Channel, CriticReview, FilmRun, GameState, WorkerSettlement } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { vfxTierAt, vfxTypeFactor } from '../../core/rules/scoring'
 import { lowerChannelsOf } from '../../core/tick/distribution'
@@ -11,10 +11,14 @@ import { Bar } from '../components/Bar'
 import { MoneyText } from '../components/MoneyText'
 import { Modal } from '../components/Modal'
 import { DataTable, type Column } from '../components/DataTable'
+import { Tabs } from '../components/Tabs'
+import { LineChart } from '../components/LineChart'
 
 /**
- * 已上映电影独立详情页：电影档案（海报 / 放映动态 / 评分 / 影评 / 获奖 / 票房）+ 上映结算区块。
- * 含发行生命周期：待映预售 / 放映中（下片按钮）/ 已下片可再发行 / 彻底完结。
+ * 已上映电影独立详情页（4-TAB）：
+ * TAB1 电影信息（基础信息/上映档案/成片评分/剧组）
+ * TAB2 电影上映（上映状态 + 上映结算卡(档案第一行/结算第二行) + 长尾收益曲线，按首轮/再发行子 TAB）
+ * TAB3 影评与观众口碑 · TAB4 获奖记录
  */
 export function ReleasedProjectScreen({
   projectId,
@@ -25,9 +29,7 @@ export function ReleasedProjectScreen({
 }) {
   const state = useGameStore((s) => s.state)
   const dispatch = useGameStore((s) => s.dispatch)
-  // 成员成长结算明细弹窗
   const [settlement, setSettlement] = useState<WorkerSettlement[] | null>(null)
-  // 再发行渠道选择
   const [rereleaseCh, setRereleaseCh] = useState<Channel | ''>('')
 
   if (!state) return null
@@ -41,17 +43,154 @@ export function ReleasedProjectScreen({
   const channelLabel = ch ? CHANNEL_INFO[ch].label : null
   const rs = p.run
   const curRun = rs?.runs.find((x) => x.id === rs.currentRunId)
-  // 最近的（含已结束）一段 run，用于判断剩余渠道
   const lastRun = rs ? rs.runs[rs.runs.length - 1] : undefined
   const lowerCh = lastRun ? lowerChannelsOf(lastRun.channel) : []
 
-  return (
-    <div className="screen">
-      <button className="back-mini" onClick={onBack} title="返回上一页">
-        ← 返回
-      </button>
+  /** 上映档案：五大数字 + 发行信息（TAB1 与 TAB2 结算卡第一行复用） */
+  const archiveStats = (
+    <>
+      <div className="film-stats">
+        <div className="film-stat">
+          <b className="money">{fmtWan(r.boxOffice)}</b>
+          <span>总票房</span>
+        </div>
+        <div className="film-stat">
+          <b className="money">{fmtWan(r.revenue ?? r.boxOffice * ECONOMY.cinemaShare)}</b>
+          <span>片方分账</span>
+        </div>
+        <div className="film-stat">
+          <b style={{ color: scoreColor10(r.criticScore) }}>{fmtScore10(r.criticScore)}</b>
+          <span>影评均分</span>
+        </div>
+        <div className="film-stat">
+          <b style={{ color: scoreColor10(r.audienceScore ?? 0) }}>{fmtScore10(r.audienceScore ?? 0)}</b>
+          <span>观众口碑</span>
+        </div>
+        <div className="film-stat">
+          <b className={r.awardCount ? 'money' : undefined}>{r.awardCount ?? 0}</b>
+          <span>🏆 获奖</span>
+        </div>
+      </div>
+      <div className="film-hero-meta">
+        <div className="stat-row">
+          <span className="stat-label">发行渠道</span>
+          <span>{channelLabel ?? '—'}</span>
+        </div>
+        {r.publisherName && (
+          <div className="stat-row">
+            <span className="stat-label">发行商</span>
+            <span>{r.publisherName}</span>
+          </div>
+        )}
+        {r.targetRegion && (
+          <div className="stat-row">
+            <span className="stat-label">主攻地区</span>
+            <span>{r.targetRegion}</span>
+          </div>
+        )}
+        <div className="stat-row">
+          <span className="stat-label">声誉变化</span>
+          <span className={r.reputationGain >= 0 ? 'good' : 'bad'}>
+            {r.reputationGain >= 0 ? '+' : ''}
+            {r.reputationGain}
+          </span>
+        </div>
+      </div>
+    </>
+  )
 
-      {/* ===== 发行状态横幅：待映预售 / 放映中(下片) / 已下片(再发行) / 完结 ===== */}
+  /** TAB1 电影信息：海报/基础信息 + 上映档案 + 成片评分 + 剧组 */
+  const infoTab = (
+    <>
+      <section className="panel">
+        <div className="film-hero">
+          <div className="film-hero-poster">
+            {script && (
+              <PosterCard
+                title={p.name}
+                type={script.type}
+                corner={<span className="stage-badge">已上映</span>}
+                typeInFooter
+                titleBadge={ip ? <span className="ip-badge">IP</span> : undefined}
+              >
+                <div className="attr-line">
+                  类型：{TYPE_ZH[script.type]} · 上映于 第{r.year}年 第{r.week}周
+                </div>
+                <div className="attr-line">
+                  预算 <MoneyText value={p.budget} /> · 总投入 <MoneyText value={p.spent} />
+                </div>
+                <div className="attr-line">
+                  预算侧重：剧情 {p.budgetAlloc?.story ?? 0}% · VFX {p.budgetAlloc?.vfx ?? 0}% · 表演{' '}
+                  {p.budgetAlloc?.acting ?? 0}% · 剪辑 {p.budgetAlloc?.edit ?? 0}%
+                  {(p.adSponsorIds?.length ?? 0) > 0 ? ` · 含 ${p.adSponsorIds.length} 家植入广告` : ''}
+                </div>
+                {ip && (
+                  <div className="attr-line">
+                    系列续作：<span className="tag tag-gold">Lv.{ip.level}</span> 第 {p.ipEntry ?? '?'} 部 · 票房加成
+                    +{Math.round((ip.sequelBonus - 1) * 100)}%
+                  </div>
+                )}
+                <div className="attr-line">
+                  特效等级：
+                  <b>
+                    {vfxTierAt(state.workers[p.team.technicianId ?? '']?.skills.vfx ?? 40, p.vfxLevel ?? 0).label}
+                  </b>
+                  {script && (
+                    <span className="dim">（{TYPE_ZH[script.type]} ×{vfxTypeFactor(script.type).toFixed(2)}）</span>
+                  )}
+                </div>
+                <Bar label="热度" value={p.hype} color="var(--gold)" />
+                {script?.desc && <p className="plot-desc">{script.desc}</p>}
+              </PosterCard>
+            )}
+          </div>
+
+          <div className="film-hero-main">
+            <h2>上映档案</h2>
+            {archiveStats}
+          </div>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>成片评分</h2>
+        <div className="grid-2">
+          <div className="score-preview">
+            <Bar label="故事" value={r.scores.story} />
+            <Bar label="音乐" value={r.scores.music} />
+            <Bar label="剪辑" value={r.scores.edit} />
+            <Bar label="表演" value={r.scores.acting} />
+          </div>
+          <div className="score-preview">
+            <Bar label="摄影" value={r.scores.shooting} />
+            <Bar label="导演" value={r.scores.directing} />
+            <Bar label="VFX" value={r.vfx} max={15} />
+            <Bar label="特色" value={r.specific} max={10} />
+          </div>
+        </div>
+        <div className="attr-line" style={{ marginTop: 10 }}>
+          综合 AP <b className="ca-cell">{r.ap}</b> · MP <b className="ca-cell">{r.mp}</b>
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>剧组</h2>
+        {p.team.directorId && <TeamLine state={state} id={p.team.directorId} label="导演" />}
+        {p.team.producerId && <TeamLine state={state} id={p.team.producerId} label="制片" />}
+        {p.team.actorIds.map((id, i) => (
+          <TeamLine key={id} state={state} id={id} label={`演员${i + 1}`} />
+        ))}
+        {p.team.shooterId && <TeamLine state={state} id={p.team.shooterId} label="摄影" />}
+        {p.team.editorId && <TeamLine state={state} id={p.team.editorId} label="剪辑" />}
+        {p.team.marketId && <TeamLine state={state} id={p.team.marketId} label="市场" />}
+      </section>
+    </>
+  )
+
+  /** TAB2 电影上映：上映状态 + 上映结算卡 + 长尾收益曲线 */
+  const releaseTab = (
+    <>
+      {/* 上映状态横幅 */}
       {rs && (
         <section className="panel run-status">
           {rs.status === 'presale' && (
@@ -129,315 +268,167 @@ export function ReleasedProjectScreen({
         </section>
       )}
 
-      {/* ===== ① 上映档案：海报 + 关键数据 ===== */}
-      <section className="panel">
-        <div className="film-hero">
-          <div className="film-hero-poster">
-            {script && (
-              <PosterCard
-                title={p.name}
-                type={script.type}
-                corner={<span className="stage-badge">已上映</span>}
-                typeInFooter
-                titleBadge={ip ? <span className="ip-badge">IP</span> : undefined}
-              >
-                <div className="attr-line">
-                  类型：{TYPE_ZH[script.type]} · 上映于 第{r.year}年 第{r.week}周
-                </div>
-                <div className="attr-line">
-                  预算 <MoneyText value={p.budget} /> · 总投入 <MoneyText value={p.spent} />
-                </div>
-                <div className="attr-line">
-                  预算侧重：剧情 {p.budgetAlloc?.story ?? 0}% · VFX {p.budgetAlloc?.vfx ?? 0}% · 表演{' '}
-                  {p.budgetAlloc?.acting ?? 0}% · 剪辑 {p.budgetAlloc?.edit ?? 0}%
-                  {(p.adSponsorIds?.length ?? 0) > 0 ? ` · 含 ${p.adSponsorIds.length} 家植入广告` : ''}
-                </div>
-                {ip && (
-                  <div className="attr-line">
-                    系列续作：<span className="tag tag-gold">Lv.{ip.level}</span> 第 {p.ipEntry ?? '?'} 部 · 票房加成
-                    +{Math.round((ip.sequelBonus - 1) * 100)}%
-                  </div>
-                )}
-                <div className="attr-line">
-                  特效等级：
-                  <b>
-                    {vfxTierAt(state.workers[p.team.technicianId ?? '']?.skills.vfx ?? 40, p.vfxLevel ?? 0).label}
-                  </b>
-                  {script && (
-                    <span className="dim">（{TYPE_ZH[script.type]} ×{vfxTypeFactor(script.type).toFixed(2)}）</span>
-                  )}
-                </div>
-                <Bar label="热度" value={p.hype} color="var(--gold)" />
-                {script?.desc && <p className="plot-desc">{script.desc}</p>}
-              </PosterCard>
-            )}
-          </div>
-
-          <div className="film-hero-main">
-            <h2>上映档案</h2>
-            <div className="film-stats">
-              <div className="film-stat">
-                <b className="money">{fmtWan(r.boxOffice)}</b>
-                <span>总票房</span>
-              </div>
-              <div className="film-stat">
-                <b className="money">{fmtWan(r.revenue ?? r.boxOffice * ECONOMY.cinemaShare)}</b>
-                <span>片方分账</span>
-              </div>
-              <div className="film-stat">
-                <b style={{ color: scoreColor10(r.criticScore) }}>{fmtScore10(r.criticScore)}</b>
-                <span>影评均分</span>
-              </div>
-              <div className="film-stat">
-                <b style={{ color: scoreColor10(r.audienceScore ?? 0) }}>{fmtScore10(r.audienceScore ?? 0)}</b>
-                <span>观众口碑</span>
-              </div>
-              <div className="film-stat">
-                <b className={r.awardCount ? 'money' : undefined}>{r.awardCount ?? 0}</b>
-                <span>🏆 获奖</span>
-              </div>
-            </div>
-            <div className="film-hero-meta">
-              <div className="stat-row">
-                <span className="stat-label">发行渠道</span>
-                <span>{channelLabel ?? '—'}</span>
-              </div>
-              {r.publisherName && (
-                <div className="stat-row">
-                  <span className="stat-label">发行商</span>
-                  <span>{r.publisherName}</span>
-                </div>
-              )}
-              {r.targetRegion && (
-                <div className="stat-row">
-                  <span className="stat-label">主攻地区</span>
-                  <span>{r.targetRegion}</span>
-                </div>
-              )}
-              <div className="stat-row">
-                <span className="stat-label">声誉变化</span>
-                <span className={r.reputationGain >= 0 ? 'good' : 'bad'}>
-                  {r.reputationGain >= 0 ? '+' : ''}
-                  {r.reputationGain}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ===== 放映动态：每段放映的逐周票房曲线 ===== */}
-      {rs && rs.runs.length > 0 && (
-        <section className="panel">
-          <h2>🎬 放映动态</h2>
-          {rs.runs.map((run, ri) => {
-            const maxBox = Math.max(1, ...run.weekly.map((w) => w.boxOffice))
-            const sum = run.weekly.reduce((a, w) => a + w.boxOffice, 0)
-            const sumRev = run.weekly.reduce((a, w) => a + w.revenue, 0)
-            return (
-              <div key={run.id} className="run-block">
-                <div className="run-block-head">
-                  <span className="tag tag-gold">
-                    {run.isFirst ? '首轮' : '再发行'} · {CHANNEL_INFO[run.channel].label}
-                  </span>
-                  <span className="dim">
-                    {run.weekly.length} 周 · 累计票房 <b>{fmtWan(sum)}</b> · 分账 {fmtWan(sumRev)}
-                    {run.status === 'running' ? ' · 放映中' : ` · ${run.endWeek ? `第 ${run.endWeek} 周下片` : '已下片'}`}
-                  </span>
-                </div>
-                {run.weekly.length === 0 ? (
-                  <p className="dim empty-hint">尚未产生票房。</p>
-                ) : (
-                  <div className="run-weekly">
-                    {run.weekly.map((w, i) => (
-                      <div key={i} className="run-week-row">
-                        <span className="run-week-n">W{i + 1}</span>
-                        <div className="run-week-bar">
-                          <i style={{ width: `${Math.max(2, (w.boxOffice / maxBox) * 100)}%` }} />
-                        </div>
-                        <span className="run-week-val">{fmtWan(w.boxOffice)}</span>
-                        <span className="run-week-meta">
-                          {w.admissions !== undefined
-                            ? `${fmtWan(w.admissions)}人次`
-                            : w.traffic !== undefined
-                              ? `${fmtWan(w.traffic)}次播放`
-                              : w.units !== undefined
-                                ? `${fmtWan(w.units)}张`
-                                : ''}
-                          · 口碑 {w.audience.toFixed(1)} · MP {w.mp}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {ri < rs.runs.length - 1 && <div className="run-divider" />}
-              </div>
-            )
-          })}
-        </section>
-      )}
-
-      {/* ===== ② 成片评分 ===== */}
-      <section className="panel">
-        <h2>成片评分</h2>
-        <div className="grid-2">
-          <div className="score-preview">
-            <Bar label="故事" value={r.scores.story} />
-            <Bar label="音乐" value={r.scores.music} />
-            <Bar label="剪辑" value={r.scores.edit} />
-            <Bar label="表演" value={r.scores.acting} />
-          </div>
-          <div className="score-preview">
-            <Bar label="摄影" value={r.scores.shooting} />
-            <Bar label="导演" value={r.scores.directing} />
-            <Bar label="VFX" value={r.vfx} max={15} />
-            <Bar label="特色" value={r.specific} max={10} />
-          </div>
-        </div>
-        <div className="attr-line" style={{ marginTop: 10 }}>
-          综合 AP <b className="ca-cell">{r.ap}</b> · MP <b className="ca-cell">{r.mp}</b>
-        </div>
-      </section>
-
-      {/* ===== ③ 剧组 ===== */}
-      <section className="panel">
-        <h2>剧组</h2>
-        {p.team.directorId && <TeamLine state={state} id={p.team.directorId} label="导演" />}
-        {p.team.producerId && <TeamLine state={state} id={p.team.producerId} label="制片" />}
-        {p.team.actorIds.map((id, i) => (
-          <TeamLine key={id} state={state} id={id} label={`演员${i + 1}`} />
-        ))}
-        {p.team.shooterId && <TeamLine state={state} id={p.team.shooterId} label="摄影" />}
-        {p.team.editorId && <TeamLine state={state} id={p.team.editorId} label="剪辑" />}
-        {p.team.marketId && <TeamLine state={state} id={p.team.marketId} label="市场" />}
-      </section>
-
-      {/* ===== ④ 上映结算（保留区块，日后并入长尾收益管理） ===== */}
+      {/* 上映结算卡：第一行 = 上映档案内容，第二行 = 结算明细 */}
       <section className="panel">
         <h2>上映结算</h2>
-        <div className="grid-2">
-          <div>
-            {r.channel && (
-              <div className="channel-effect" style={{ marginTop: 0 }}>
-                <h3>宣发渠道效果</h3>
-                {r.channel === 'cinema' && (
-                  <p>
-                    投放影院 <b>{p.cinemaCount || CHANNEL_CONFIG.cinemaDefaultCount} 家</b>
-                    （全国共 {TOTAL_CINEMAS} 家） · 观影人次
-                    <b style={{ color: 'var(--gold)' }}>{fmtWan(r.admissions ?? 0)}人次</b>
-                  </p>
-                )}
-                {r.channel === 'web' && (
-                  <p>
-                    上架平台 <b>{p.webPlatforms.length > 0 ? p.webPlatforms.join('、') : '—'}</b> · 投放时长
-                    <b style={{ color: 'var(--gold)' }}>{p.webWeeks || CHANNEL_CONFIG.webDefaultWeeks} 周</b>
-                  </p>
-                )}
-                {r.channel === 'dvd' && (
-                  <p>
-                    单价 <b>{p.dvdPrice || CHANNEL_CONFIG.dvdRefPrice} 元/张</b> · 卖出
-                    <b style={{ color: 'var(--gold)' }}>{fmtWan(r.dvdUnits ?? 0)}张</b>
-                  </p>
-                )}
-                {r.channel === 'free' && (
-                  <p>
-                    广告单价 <b>{p.freeAdPrice || 30} 元/千次</b> · 播放量
-                    <b style={{ color: 'var(--gold)' }}>{fmtWan(r.freeViews ?? 0)}次</b> · 广告收入
-                    <b style={{ color: 'var(--gold)' }}>{fmtWan(r.revenue ?? 0)}</b>
-                  </p>
-                )}
-              </div>
-            )}
-            {r.adSettlement && r.adSettlement.length > 0 && (
-              <div className="stat-row">
-                <span className="stat-label">植入广告</span>
-                <span>
-                  {r.adSettlement.map((a) => (
-                    <span key={a.id} className={a.met ? 'ok' : 'warn'}>
-                      {a.name} {a.met ? `+${fmtWan(a.fee)}` : '未达标'}
-                      {'　'}
-                    </span>
-                  ))}
-                  {r.adIncome ? (
-                    <b style={{ color: 'var(--gold)' }}>共到账 {fmtWan(r.adIncome)}</b>
-                  ) : (
-                    <span className="warn">全部未到账</span>
+        <div className="settle-head">{archiveStats}</div>
+        <div className="settle-body">
+          <div className="grid-2">
+            <div>
+              {r.channel && (
+                <div className="channel-effect" style={{ marginTop: 0 }}>
+                  <h3>宣发渠道效果</h3>
+                  {r.channel === 'cinema' && (
+                    <p>
+                      投放影院 <b>{p.cinemaCount || CHANNEL_CONFIG.cinemaDefaultCount} 家</b>
+                      （全国共 {TOTAL_CINEMAS} 家） · 观影人次
+                      <b style={{ color: 'var(--gold)' }}>{fmtWan(r.admissions ?? 0)}人次</b>
+                    </p>
                   )}
-                </span>
-              </div>
-            )}
-            <div className="stat-row">
-              <span className="stat-label">片方总收入</span>
-              <MoneyText value={r.revenue ?? r.boxOffice * ECONOMY.cinemaShare} />
-            </div>
-          </div>
-          <div>
-            <h3>成员成长结算</h3>
-            {r.settlement ? (
-              <>
-                <p className="dim">
-                  每位成员的参与角色、表现评分与全部属性变化已入账，点击查看明细。
-                </p>
-                <div className="btn-row">
-                  <button className="btn-primary" onClick={() => setSettlement(r.settlement!)}>
-                    📊 查看全员属性变化
-                  </button>
+                  {r.channel === 'web' && (
+                    <p>
+                      上架平台 <b>{p.webPlatforms.length > 0 ? p.webPlatforms.join('、') : '—'}</b> · 投放时长
+                      <b style={{ color: 'var(--gold)' }}>{p.webWeeks || CHANNEL_CONFIG.webDefaultWeeks} 周</b>
+                    </p>
+                  )}
+                  {r.channel === 'dvd' && (
+                    <p>
+                      单价 <b>{p.dvdPrice || CHANNEL_CONFIG.dvdRefPrice} 元/张</b> · 卖出
+                      <b style={{ color: 'var(--gold)' }}>{fmtWan(r.dvdUnits ?? 0)}张</b>
+                    </p>
+                  )}
+                  {r.channel === 'free' && (
+                    <p>
+                      广告单价 <b>{p.freeAdPrice || 30} 元/千次</b> · 播放量
+                      <b style={{ color: 'var(--gold)' }}>{fmtWan(r.freeViews ?? 0)}次</b> · 广告收入
+                      <b style={{ color: 'var(--gold)' }}>{fmtWan(r.revenue ?? 0)}</b>
+                    </p>
+                  )}
                 </div>
-              </>
-            ) : (
-              <ul className="career-list">
-                {r.groupPerformance.map((g) => (
-                  <li key={g.workerId}>
-                    {state.workers[g.workerId]?.name ?? '未知'}（{ROLE_ZH[g.role]}） · 表现{' '}
-                    {Math.round(g.performance)}
-                  </li>
-                ))}
-              </ul>
-            )}
+              )}
+              {r.adSettlement && r.adSettlement.length > 0 && (
+                <div className="stat-row">
+                  <span className="stat-label">植入广告</span>
+                  <span>
+                    {r.adSettlement.map((a) => (
+                      <span key={a.id} className={a.met ? 'ok' : 'warn'}>
+                        {a.name} {a.met ? `+${fmtWan(a.fee)}` : '未达标'}
+                        {'　'}
+                      </span>
+                    ))}
+                    {r.adIncome ? (
+                      <b style={{ color: 'var(--gold)' }}>共到账 {fmtWan(r.adIncome)}</b>
+                    ) : (
+                      <span className="warn">全部未到账</span>
+                    )}
+                  </span>
+                </div>
+              )}
+              <div className="stat-row">
+                <span className="stat-label">片方总收入</span>
+                <MoneyText value={r.revenue ?? r.boxOffice * ECONOMY.cinemaShare} />
+              </div>
+            </div>
+            <div>
+              <h3>成员成长结算</h3>
+              {r.settlement ? (
+                <>
+                  <p className="dim">
+                    每位成员的参与角色、表现评分与全部属性变化已入账，点击查看明细。
+                  </p>
+                  <div className="btn-row">
+                    <button className="btn-primary" onClick={() => setSettlement(r.settlement!)}>
+                      📊 查看全员属性变化
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <ul className="career-list">
+                  {r.groupPerformance.map((g) => (
+                    <li key={g.workerId}>
+                      {state.workers[g.workerId]?.name ?? '未知'}（{ROLE_ZH[g.role]}） · 表现{' '}
+                      {Math.round(g.performance)}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* ===== ⑤ 影评与观众口碑 ===== */}
-      <section className="panel">
-        <h2>影评与观众口碑</h2>
-        {r.reviews && r.reviews.length > 0 ? (
-          <CriticReviews
-            reviews={r.reviews}
-            average={r.criticScore}
-            title="上映后评分"
-            audience={
-              r.audienceScore !== undefined
-                ? { score: r.audienceScore, text: r.audienceText }
-                : undefined
-            }
+      {/* 长尾收益走势：首轮/再发行 子 TAB，每个用曲线图 */}
+      {rs && rs.runs.length > 0 && (
+        <section className="panel">
+          <h2>长尾收益走势</h2>
+          <p className="dim">X 轴为 WEEK（第几周），Y 轴为当周数值；首轮与每段再发行分开查看。</p>
+          <Tabs
+            tabs={rs.runs.map((run, i) => ({
+              key: run.id,
+              label: run.isFirst ? '首轮' : `再发行 ${i}`,
+              content: <RunCharts run={run} />,
+            }))}
           />
-        ) : (
-          <p className="dim empty-hint">这部影片没有收到影评人评分。</p>
-        )}
-      </section>
+        </section>
+      )}
+    </>
+  )
 
-      {/* ===== ⑥ 获奖记录 ===== */}
-      <section className="panel">
-        <h2>获奖记录</h2>
-        <p className="dim">
-          TMA 颁奖典礼的获奖记录：本片获得的奖项，以及本片所有参与者获得的奖项（跨届累计）。
-        </p>
-        {r.awards && r.awards.length > 0 ? (
-          <div className="award-list">
-            {r.awards.map((a, i) => (
-              <div key={i} className="award-item">
-                <span className="award-icon">🏆</span>
-                <span className="award-cat">{a.category}</span>
-                {a.workerName && <span className="award-winner">· {a.workerName}</span>}
-                <span className="dim">（{a.year} 年 TMA）</span>
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="dim empty-hint">这部影片尚未获得任何奖项。</p>
-        )}
-      </section>
+  /** TAB3 影评与观众口碑 */
+  const reviewsTab = (
+    <section className="panel">
+      <h2>影评与观众口碑</h2>
+      {r.reviews && r.reviews.length > 0 ? (
+        <CriticReviews
+          reviews={r.reviews}
+          average={r.criticScore}
+          title="上映后评分"
+          audience={r.audienceScore !== undefined ? { score: r.audienceScore, text: r.audienceText } : undefined}
+        />
+      ) : (
+        <p className="dim empty-hint">这部影片没有收到影评人评分。</p>
+      )}
+    </section>
+  )
+
+  /** TAB4 获奖记录 */
+  const awardsTab = (
+    <section className="panel">
+      <h2>获奖记录</h2>
+      <p className="dim">
+        TMA 颁奖典礼的获奖记录：本片获得的奖项，以及本片所有参与者获得的奖项（跨届累计）。
+      </p>
+      {r.awards && r.awards.length > 0 ? (
+        <div className="award-list">
+          {r.awards.map((a, i) => (
+            <div key={i} className="award-item">
+              <span className="award-icon">🏆</span>
+              <span className="award-cat">{a.category}</span>
+              {a.workerName && <span className="award-winner">· {a.workerName}</span>}
+              <span className="dim">（{a.year} 年 TMA）</span>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <p className="dim empty-hint">这部影片尚未获得任何奖项。</p>
+      )}
+    </section>
+  )
+
+  return (
+    <div className="screen">
+      <button className="back-mini" onClick={onBack} title="返回上一页">
+        ← 返回
+      </button>
+
+      <Tabs
+        tabs={[
+          { key: 'info', label: '电影信息', content: infoTab },
+          { key: 'release', label: '电影上映', content: releaseTab },
+          { key: 'reviews', label: '影评与观众口碑', content: reviewsTab },
+          { key: 'awards', label: '获奖记录', content: awardsTab },
+        ]}
+      />
 
       {settlement && (
         <Modal title="📊 上映结算 · 成员成长明细" xwide onClose={() => setSettlement(null)}>
@@ -452,6 +443,55 @@ export function ReleasedProjectScreen({
           />
         </Modal>
       )}
+    </div>
+  )
+}
+
+/** 单段放映的曲线图（票房/分账/渠道指标/口碑/MP） */
+function RunCharts({ run }: { run: FilmRun }) {
+  const box = run.weekly.map((w) => w.boxOffice)
+  const rev = run.weekly.map((w) => w.revenue)
+  const metric = run.weekly.map((w) => w.admissions ?? w.traffic ?? w.units ?? 0)
+  const aud = run.weekly.map((w) => w.audience)
+  const mp = run.weekly.map((w) => w.mp)
+  const sum = run.weekly.reduce((a, w) => a + w.boxOffice, 0)
+  const sumRev = run.weekly.reduce((a, w) => a + w.revenue, 0)
+  const metricLabel =
+    run.channel === 'cinema' ? '观影人次（万）' : run.channel === 'web' || run.channel === 'free' ? '播放量（万次）' : '销量（万张）'
+  const metricColor =
+    run.channel === 'cinema' ? '#e05555' : run.channel === 'web' ? '#8a5cff' : run.channel === 'dvd' ? '#f5a623' : '#4c8bf5'
+
+  return (
+    <div className="run-charts">
+      <div className="run-charts-head">
+        <span className="tag tag-gold">{CHANNEL_INFO[run.channel].label}档</span>
+        <span className="dim">
+          {run.weekly.length} 周 · 累计票房 <b>{fmtWan(sum)}</b> · 分账 {fmtWan(sumRev)}
+          {run.status === 'running' ? ' · 放映中' : ` · ${run.endWeek ? `第 ${run.endWeek} 周下片` : '已下片'}`}
+        </span>
+      </div>
+      <div className="lt-charts">
+        <div className="lt-chart">
+          <h4>每周票房（万）</h4>
+          <LineChart series={[{ name: '票房', color: 'var(--gold)', values: box }]} format={(v) => fmtWan(v)} />
+        </div>
+        <div className="lt-chart">
+          <h4>每周片方分账（万）</h4>
+          <LineChart series={[{ name: '分账', color: 'var(--ok)', values: rev }]} format={(v) => fmtWan(v)} />
+        </div>
+        <div className="lt-chart">
+          <h4>每周{metricLabel}</h4>
+          <LineChart series={[{ name: metricLabel, color: metricColor, values: metric }]} />
+        </div>
+        <div className="lt-chart">
+          <h4>观众口碑（0~10）</h4>
+          <LineChart series={[{ name: '口碑', color: '#f5a623', values: aud }]} yMin={0} yMax={10} format={(v) => v.toFixed(1)} />
+        </div>
+        <div className="lt-chart">
+          <h4>MP（0~100）</h4>
+          <LineChart series={[{ name: 'MP', color: '#4c8bf5', values: mp }]} yMin={0} yMax={100} format={(v) => String(Math.round(v))} />
+        </div>
+      </div>
     </div>
   )
 }
@@ -522,7 +562,7 @@ function CriticReviews({
   )
 }
 
-/** 上映结算表列（依赖 state 取员工名）；App 弹窗与详情页共用 */
+/** 上映结算表列（依赖 state 取员工名） */
 export function settlementColumns(state: GameState): Column<WorkerSettlement>[] {
   const delta = (v: number) => <span className={v >= 0 ? 'good' : 'bad'}>{signedDelta(v)}</span>
   return [

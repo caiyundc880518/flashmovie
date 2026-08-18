@@ -2521,3 +2521,83 @@ input[type='range'] {
     grid-template-columns: 1fr;
   }
 }
+
+/* ===== 曲线图（LineChart） ===== */
+.line-chart {
+  width: 100%;
+}
+.line-chart svg {
+  width: 100%;
+  display: block;
+}
+.lc-grid {
+  stroke: rgba(255, 255, 255, 0.08);
+  stroke-width: 1;
+  stroke-dasharray: 3 4;
+}
+.lc-ylab,
+.lc-xlab {
+  fill: var(--text-dim);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+.lc-legend {
+  display: flex;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-top: 6px;
+}
+.lc-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  color: var(--text-dim);
+}
+.lc-legend-item i {
+  width: 14px;
+  height: 3px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* ===== 上映结算卡：档案第一行 + 结算第二行 ===== */
+.settle-head {
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--border);
+  margin-bottom: 14px;
+}
+.settle-body {
+  padding-top: 4px;
+}
+
+/* ===== 长尾收益走势：子 TAB 曲线图 ===== */
+.run-charts {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding-top: 6px;
+}
+.run-charts-head {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.lt-charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 14px;
+}
+.lt-chart {
+  background: var(--panel-2, #131c2e);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px 14px;
+}
+.lt-chart h4 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+}
