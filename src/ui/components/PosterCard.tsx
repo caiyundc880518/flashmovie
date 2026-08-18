@@ -38,19 +38,25 @@ export function PosterCard({
       <div className="poster-head" style={{ background: color }}>
         {typeInHead ? (
           <div className="poster-head-row">
-            <span className="poster-head-type">{TYPE_ZH[type]}</span>
-            {corner && <span className="poster-head-corner">{corner}</span>}
+            <span className="poster-title">
+              {title}
+              {titleBadge && <span className="poster-title-badge">{titleBadge}</span>}
+            </span>
+            <span className="poster-head-badges">
+              <span className="poster-head-type">{TYPE_ZH[type]}</span>
+              {corner && <span className="poster-head-corner">{corner}</span>}
+            </span>
           </div>
         ) : (
           <>
             {!typeInFooter && <span className="poster-type">{TYPE_ZH[type]}</span>}
+            <span className="poster-title">
+              {title}
+              {titleBadge && <span className="poster-title-badge">{titleBadge}</span>}
+            </span>
             {corner && <span className="poster-corner">{corner}</span>}
           </>
         )}
-        <span className="poster-title">
-          {title}
-          {titleBadge && <span className="poster-title-badge">{titleBadge}</span>}
-        </span>
       </div>
       <div className="poster-body">{children}</div>
       {typeInFooter && !typeInHead && (

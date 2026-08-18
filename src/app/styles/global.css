@@ -2043,12 +2043,20 @@ input[type='range'] {
   white-space: nowrap;
 }
 
-/* ===== 海报头部徽章行（详情大卡：左侧类型 + 右侧阶段） ===== */
+/* ===== 海报头部徽章行（详情大卡：左侧标题 + 右侧 [类型][阶段] 并排） ===== */
 .poster-head-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
+}
+.poster-head-badges {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 8px;
+  flex-shrink: 0;
+  flex-wrap: wrap;
 }
 .poster-head-type {
   display: inline-block;
