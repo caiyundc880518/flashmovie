@@ -258,8 +258,10 @@ export function ReleasedProjectScreen({
         <div className="settle-body">
           {r.channel && (
             <div className="channel-effect" style={{ marginTop: 0 }}>
-              <h3>宣发渠道效果</h3>
-              <div className="channel-effect-row">
+              <div className="effect-split">
+                <div className="effect-col">
+                  <h3>宣发渠道效果</h3>
+                  <div className="channel-effect-row">
                 {r.channel === 'cinema' && (
                   <>
                     <div className="channel-stat">
@@ -313,31 +315,36 @@ export function ReleasedProjectScreen({
                     </div>
                   </>
                 )}
-              </div>
-              {r.adSettlement && r.adSettlement.length > 0 && (
-                <>
-                  <h4 className="ad-settle-title">植入广告</h4>
-                  <div className="channel-effect-row ad-settle-row-cards">
-                    {r.adSettlement.map((a) => (
-                      <div key={a.id} className="channel-stat">
-                        <span>{a.name}</span>
-                        <b className={a.met ? 'money' : 'ad-fail'}>{a.met ? `+${fmtWan(a.fee)}` : '未达标'}</b>
-                      </div>
-                    ))}
-                    {r.adIncome ? (
-                      <div className="channel-stat">
-                        <span>广告到账合计</span>
-                        <b className="money">{fmtWan(r.adIncome)}</b>
-                      </div>
-                    ) : (
-                      <div className="channel-stat">
-                        <span>广告到账合计</span>
-                        <b className="ad-fail">全部未到账</b>
-                      </div>
-                    )}
                   </div>
-                </>
-              )}
+                </div>
+                {r.adSettlement && r.adSettlement.length > 0 && (
+                  <>
+                    <div className="effect-divider" />
+                    <div className="effect-col">
+                      <h3>植入广告</h3>
+                      <div className="channel-effect-row">
+                        {r.adSettlement.map((a) => (
+                          <div key={a.id} className="channel-stat">
+                            <span>{a.name}</span>
+                            <b className={a.met ? 'money' : 'ad-fail'}>{a.met ? `+${fmtWan(a.fee)}` : '未达标'}</b>
+                          </div>
+                        ))}
+                        {r.adIncome ? (
+                          <div className="channel-stat">
+                            <span>广告到账合计</span>
+                            <b className="money">{fmtWan(r.adIncome)}</b>
+                          </div>
+                        ) : (
+                          <div className="channel-stat">
+                            <span>广告到账合计</span>
+                            <b className="ad-fail">全部未到账</b>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
         </div>

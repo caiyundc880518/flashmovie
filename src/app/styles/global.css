@@ -691,17 +691,33 @@ select {
   color: var(--text-dim);
   letter-spacing: 0.5px;
 }
-/* 植入广告（并入宣发渠道效果卡片，与小卡片同款统计卡） */
-.ad-settle-title {
-  margin: 14px 0 0;
-  padding-top: 12px;
-  border-top: 1px dashed var(--border);
-  font-size: 12px;
-  letter-spacing: 1px;
-  color: var(--gold);
+/* 宣发渠道效果 + 植入广告：左右并排，中间浅虚线分隔 */
+.effect-split {
+  display: flex;
+  align-items: stretch;
+  gap: 18px;
 }
-.ad-settle-row-cards {
-  margin-top: 10px;
+.effect-col {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.effect-divider {
+  flex-shrink: 0;
+  border-left: 1px dashed rgba(143, 160, 189, 0.4);
+}
+@media (max-width: 900px) {
+  .effect-split {
+    flex-direction: column;
+  }
+  .effect-divider {
+    border-left: none;
+    border-top: 1px dashed rgba(143, 160, 189, 0.4);
+    height: 0;
+    width: auto;
+    align-self: stretch;
+  }
 }
 .ad-fail {
   color: var(--danger);
