@@ -2626,7 +2626,14 @@ input[type='range'] {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-left: auto;
+}
+/* 已上映详情页运行状态区：再发行设置独占一整行 */
+.run-status .rr-box {
+  width: 100%;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2, #131c2e);
 }
 .rr-line {
   display: flex;
@@ -2648,7 +2655,6 @@ input[type='range'] {
 }
 .lt-row .rr-box {
   flex: 1 1 100%;
-  margin-left: 0;
   margin-top: 4px;
 }
 .lt-row .rr-line .slot-label {

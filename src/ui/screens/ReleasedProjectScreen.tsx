@@ -209,18 +209,16 @@ export function ReleasedProjectScreen({
           )}
           {rs.status === 'idle' && (
             <>
-              <div className="run-status-head">
-                <span className="tag run-status-tag">⏸ 已下片 · 可再发行</span>
-                {lowerCh.length > 0 && (
-                  <RereleaseBox
-                    lower={lowerCh}
-                    buttonText="下周开映 ▶"
-                    onRerelease={(channel, config) =>
-                      dispatch({ type: 'rerelease', projectId: p.id, channel, config })
-                    }
-                  />
-                )}
-              </div>
+              <span className="tag run-status-tag">⏸ 已下片 · 可再发行</span>
+              {lowerCh.length > 0 && (
+                <RereleaseBox
+                  lower={lowerCh}
+                  buttonText="下周开映 ▶"
+                  onRerelease={(channel, config) =>
+                    dispatch({ type: 'rerelease', projectId: p.id, channel, config })
+                  }
+                />
+              )}
               <p className="dim">
                 再发行不定档不预售，选更低档渠道下周直接开映；收益按当前最终口碑/MP 结算，不再触发成长。
               </p>
