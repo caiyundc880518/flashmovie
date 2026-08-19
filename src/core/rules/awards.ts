@@ -1,4 +1,4 @@
-import type { AwardWinner, FilmResult, GameState, YearAwards } from '../types'
+import type { AwardWinner, FilmAward, FilmResult, GameState, YearAwards } from '../types'
 import { TMA_CONFIG } from '../config/company'
 import { clamp } from '../rng'
 
@@ -128,13 +128,21 @@ export function applyAwardEffects(state: GameState, ceremony: YearAwards): void 
       }
     }
     // 累计该影片的获奖数 + 获奖名单（项目卡片展示 🏆×N，详情页展示获奖 TAB）
+    const awardEntry: FilmAward = {
+      category: w.category,
+      workerName: w.workerName,
+      year: state.calendar.year,
+    }
     const film = state.company.history.find((h) => h.name === w.filmName)
     if (film) {
       film.awardCount = (film.awardCount ?? 0) + 1
-      film.awards = [
-        ...(film.awards ?? []),
-        { category: w.category, workerName: w.workerName, year: state.calendar.year },
-      ]
+      film.awards = [...(film.awards ?? []), awardEntry]
+    }
+    // 同步到项目实时 result（历史是下片时的浅克隆快照，不更新项目详情页/卡片读的 p.result）
+    const proj = state.projects.find((p) => p.stage === 'released' && p.result?.name === w.filmName)
+    if (proj?.result) {
+      proj.result.awardCount = (proj.result.awardCount ?? 0) + 1
+      proj.result.awards = [...(proj.result.awards ?? []), awardEntry]
     }
     pushAwardNews(state, w)
   }

@@ -131,6 +131,62 @@ describe('TMA 颁奖', () => {
     expect(vfxAward!.year).toBe(s.calendar.year)
   })
 
+  it('颁奖同步写回项目实时 result：详情页获奖 TAB / 项目卡片 🏆 徽标可见', () => {
+    // 模拟真实流程：released 项目 + 其 result 的浅克隆进 history（finalizeFirstRun 的做法）
+    const s = createInitialState(50)
+    const result = makeOurFilm('《获奖片》', {
+      scores: { story: 60, music: 50, edit: 90, acting: 50, shooting: 90, directing: 50 },
+      vfx: 20,
+      groupPerformance: [
+        { workerId: 'w-x', role: 'shooter', performance: 90 },
+        { workerId: 'w-y', role: 'editor', performance: 90 },
+        { workerId: 'w-z', role: 'technician', performance: 90 },
+      ],
+    })
+    const proj = {
+      id: 'prj-a',
+      name: '《获奖片》',
+      scriptId: 'scr-a',
+      stage: 'released' as const,
+      team: { directorId: 'w-d', actorIds: [] as string[] },
+      totalStages: 1,
+      shotStages: 1,
+      budgetAlloc: { story: 0, vfx: 0, acting: 0, edit: 0 },
+      vfxLevel: 0,
+      adSponsorIds: [],
+      hype: 50,
+      budget: 100,
+      spent: 100,
+      editStyle: 'market' as const,
+      buffs: 0,
+      apAdjust: 0,
+      pendingEvents: [],
+      channel: 'cinema' as const,
+      cinemaCount: 100,
+      webPlatforms: [],
+      webWeeks: 0,
+      dvdPrice: 0,
+      freeAdPrice: 0,
+      warmup: 0,
+      shotGameBonus: 0,
+      pendingShotGame: false,
+      editGameDone: true,
+      editGameBonus: 0,
+      result,
+    } as any
+    s.projects.push(proj)
+    s.company.history.push({ ...result })
+    const ceremony = computeYearAwards(s, 1)
+    applyAwardEffects(s, ceremony)
+    // 项目详情页/卡片读取的 p.result 应有获奖记录
+    expect(proj.result!.awards?.length).toBeGreaterThanOrEqual(1)
+    expect(proj.result!.awardCount).toBeGreaterThanOrEqual(1)
+    // 与历史快照保持一致
+    const hist = s.company.history.find((h) => h.name === '《获奖片》')!
+    expect(hist.awardCount).toBe(proj.result!.awardCount)
+    expect(hist.awards!.length).toBe(proj.result!.awards!.length)
+  })
+
   it('跨年集成：推进一整年产生颁奖典礼', () => {
     let s = createInitialState(43)
     s.company.cash = 10000
