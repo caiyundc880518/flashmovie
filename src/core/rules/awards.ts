@@ -124,14 +124,18 @@ export function applyAwardEffects(state: GameState, ceremony: YearAwards): void 
       const worker = state.workers[w.workerId]
       if (worker) {
         worker.basic.fame = clamp(worker.basic.fame + TMA_CONFIG.workerFameGain, 0, 100)
-        worker.awards.push({ week: state.calendar.week, award: w.category, projectName: w.filmName })
+        worker.awards.push({
+          year: ceremony.year,
+          award: w.category,
+          projectName: w.filmName,
+        })
       }
     }
     // 累计该影片的获奖数 + 获奖名单（项目卡片展示 🏆×N，详情页展示获奖 TAB）
     const awardEntry: FilmAward = {
       category: w.category,
       workerName: w.workerName,
-      year: state.calendar.year,
+      year: ceremony.year,
     }
     const film = state.company.history.find((h) => h.name === w.filmName)
     if (film) {

@@ -99,7 +99,8 @@ export interface CareerEntry {
 }
 
 export interface AwardEntry {
-  week: number
+  /** 获奖所属年份（TMA 结算年份 = 影片上映年份） */
+  year: number
   award: string
   projectName: string
 }

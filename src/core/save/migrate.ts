@@ -65,6 +65,7 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 10) state = migrateV10toV11(state)
   if (state.version === 11) state = migrateV11toV12(state)
   if (state.version === 12) state = migrateV12toV13(state)
+  if (state.version === 13) state = migrateV13toV14(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
   return state
@@ -226,6 +227,19 @@ function migrateV12toV13(s: GameState): GameState {
     if (!Array.isArray(ip.deals)) ip.deals = []
   }
   return { ...s, version: 13 }
+}
+
+/** v13 → v14：员工获奖履历 week→year（TMA 颁奖恒在第1周举行，旧档 week 恒为 1，年份按 1 兜底） */
+function migrateV13toV14(s: GameState): GameState {
+  for (const w of Object.values(s.workers)) {
+    if (!Array.isArray(w.awards)) continue
+    w.awards = w.awards.map((a) => ({
+      year: (a as { week?: number }).week ?? 1,
+      award: a.award,
+      projectName: a.projectName,
+    }))
+  }
+  return { ...s, version: 14 }
 }
 
 /** 世界实体为空时，用存档种子派生确定性生成 */function ensureWorldPopulated(s: GameState): GameState {

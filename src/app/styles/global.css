@@ -1538,6 +1538,19 @@ input[type='range'] {
   border-bottom-color: var(--gold);
   background: transparent;
 }
+/* 可横向滚动的 TAB 栏：超宽时滚动，隐藏滚动条 */
+.tab-head-scroll {
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.tab-head-scroll::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+.tab-head-scroll .tab-btn {
+  flex-shrink: 0;
+}
 .tab-body {
   display: flex;
   flex-direction: column;

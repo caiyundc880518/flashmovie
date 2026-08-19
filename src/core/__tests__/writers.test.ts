@@ -106,7 +106,7 @@ describe('签约编剧抽卡（三档委托创作）', () => {
     s.version = 9
     delete (s as { scriptDrafts?: unknown }).scriptDrafts
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(13)
+    expect(migrated.version).toBe(14)
     expect(migrated.scriptDrafts).toEqual([])
   })
 })

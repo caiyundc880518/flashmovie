@@ -96,6 +96,7 @@ describe('TMA 颁奖', () => {
     )
     expect(s.workers['w-dir'].awards.length).toBeGreaterThan(0)
     expect(s.workers['w-dir'].awards[0].award).toBe('最佳导演')
+    expect(s.workers['w-dir'].awards[0].year).toBe(ceremony.year)
     // 我方获 5 个个人奖 + 声誉加成
     expect(s.company.reputation).toBeGreaterThan(repBefore)
   })
@@ -128,7 +129,7 @@ describe('TMA 颁奖', () => {
     const vfxAward = film!.awards!.find((a) => a.category === '最佳特效')
     expect(vfxAward).toBeDefined()
     expect(vfxAward!.workerName).toBe(techName)
-    expect(vfxAward!.year).toBe(s.calendar.year)
+    expect(vfxAward!.year).toBe(ceremony.year)
   })
 
   it('颁奖同步写回项目实时 result：详情页获奖 TAB / 项目卡片 🏆 徽标可见', () => {

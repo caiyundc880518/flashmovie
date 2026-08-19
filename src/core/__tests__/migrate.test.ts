@@ -14,7 +14,7 @@ describe('存档迁移', () => {
   it('接受最新 v11 存档（恒等迁移）', () => {
     const s = createInitialState(1)
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(13)
+    expect(migrated.version).toBe(14)
     expect(migrated.company.name).toBe('星光影业')
     expect(migrated.company.ips).toEqual([])
     expect(migrated.company.tech).toEqual({})
@@ -33,7 +33,7 @@ describe('存档迁移', () => {
     delete (s.world as { audience?: unknown }).audience
     delete (s.world as { activeEvents?: unknown }).activeEvents
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(13)
+    expect(migrated.version).toBe(14)
     expect(migrated.company.tech).toEqual({})
     expect(migrated.world.audience.length).toBeGreaterThan(0)
     expect(migrated.world.activeEvents).toEqual([])
@@ -87,12 +87,49 @@ describe('存档迁移', () => {
     }
     s.company.ips = [ip as never]
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(13)
+    expect(migrated.version).toBe(14)
     const p = migrated.projects[0]
     expect(p.budgetAlloc).toEqual({ story: 0, vfx: 40, acting: 0, edit: 0 })
     expect(p.vfxLevel).toBe(0)
     expect(p.adSponsorIds).toEqual(['ad_tea'])
     expect(migrated.company.ips[0].merchBonus).toBe(0)
+  })
+
+  it('v13 存档迁移到 v14：员工获奖履历 week→year（旧档 week 恒为 1，年份按 1 兜底）', () => {
+    const s = createInitialState(5)
+    s.version = 13
+    s.workers['w1'] = {
+      ...(createInitialState(6).workers['w1'] ?? {
+        id: 'w1',
+        name: '测试',
+        role: 'director' as const,
+        gender: 'male' as const,
+        age: 30,
+        basic: { pa: 1, ca: 1, fame: 1, hype: 1 },
+        mental: { intelligence: 1, focus: 1, gift: 1, dedication: 1, leader: 1, adaptability: 1, versatility: 1 },
+        physical: { strong: 1, agility: 1, initiative: 1, disease: 1, charisma: 1, sexy: 1 },
+        active: { mood: 1, volume: 1 },
+        skills: { acting: 1, directing: 1, shooting: 1, editing: 1, marketing: 1, tech: 1, advertising: 1, vfx: 1 },
+        salary: 1,
+        currentProjectId: null,
+        idleWeeks: 0,
+        career: [],
+        experience: 0,
+      }),
+      awards: ([
+        { week: 1, award: '最佳导演', projectName: '《旧片》' },
+        { week: 1, award: '最佳摄影', projectName: '《旧片2》' },
+      ] as unknown) as import('../../core/types').AwardEntry[],
+    }
+    const migrated = migrateSave(s)
+    expect(migrated.version).toBe(14)
+    const awards = migrated.workers['w1'].awards
+    expect(awards).toHaveLength(2)
+    expect(awards[0].year).toBe(1)
+    expect(awards[0].award).toBe('最佳导演')
+    expect(awards[0].projectName).toBe('《旧片》')
+    expect(awards[1].year).toBe(1)
+    expect((awards[0] as unknown as Record<string, unknown>).week).toBeUndefined()
   })
 
   it('v11 存档迁移到 v12：渠道改单选、流媒体映射 web、发行商/宣发预算移除', () => {
@@ -124,7 +161,7 @@ describe('存档迁移', () => {
     }
     s.projects = [project as never]
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(13)
+    expect(migrated.version).toBe(14)
     const p = migrated.projects[0]
     expect(p.channel).toBe('cinema')
     expect((p as unknown as Record<string, unknown>).channels).toBeUndefined()
