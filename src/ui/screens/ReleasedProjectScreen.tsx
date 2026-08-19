@@ -1,5 +1,4 @@
-import { useState } from 'react'
-import type { Channel, CriticReview, FilmRun, GameState, WorkerSettlement } from '../../core/types'
+import type { CriticReview, FilmRun, GameState, WorkerSettlement } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { lowerChannelsOf } from '../../core/tick/distribution'
 import { ECONOMY } from '../../core/config/economy'
@@ -11,6 +10,7 @@ import { MoneyText } from '../components/MoneyText'
 import { DataTable, type Column } from '../components/DataTable'
 import { Tabs } from '../components/Tabs'
 import { LineChart } from '../components/LineChart'
+import { RereleaseBox } from '../components/RereleaseBox'
 
 /**
  * 已上映电影独立详情页（4-TAB）：
@@ -27,7 +27,6 @@ export function ReleasedProjectScreen({
 }) {
   const state = useGameStore((s) => s.state)
   const dispatch = useGameStore((s) => s.dispatch)
-  const [rereleaseCh, setRereleaseCh] = useState<Channel | ''>('')
 
   if (!state) return null
   const p = state.projects.find((x) => x.id === projectId)
@@ -213,28 +212,13 @@ export function ReleasedProjectScreen({
               <div className="run-status-head">
                 <span className="tag run-status-tag">⏸ 已下片 · 可再发行</span>
                 {lowerCh.length > 0 && (
-                  <div className="rerelease-box">
-                    <span className="slot-label">再发行渠道（严格更低档）</span>
-                    <select value={rereleaseCh} onChange={(e) => setRereleaseCh(e.target.value as Channel | '')}>
-                      <option value="">选择渠道…</option>
-                      {lowerCh.map((c) => (
-                        <option key={c} value={c}>
-                          {CHANNEL_INFO[c].label}
-                        </option>
-                      ))}
-                    </select>
-                    <button
-                      className="btn-primary"
-                      disabled={!rereleaseCh}
-                      onClick={() => {
-                        if (!rereleaseCh) return
-                        dispatch({ type: 'rerelease', projectId: p.id, channel: rereleaseCh as Channel })
-                        setRereleaseCh('')
-                      }}
-                    >
-                      下周开映 ▶
-                    </button>
-                  </div>
+                  <RereleaseBox
+                    lower={lowerCh}
+                    buttonText="下周开映 ▶"
+                    onRerelease={(channel, config) =>
+                      dispatch({ type: 'rerelease', projectId: p.id, channel, config })
+                    }
+                  />
                 )}
               </div>
               <p className="dim">

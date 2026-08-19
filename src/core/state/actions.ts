@@ -1,4 +1,4 @@
-import type { Channel, RoleId, TeamAssignments, TimingQuality } from '../types'
+import type { Channel, RoleId, TeamAssignments, TimingQuality, RunChannelConfig } from '../types'
 import type { RecruitPoolId } from '../config/recruit'
 import type { WriterPoolId } from '../config/writers'
 import type { BudgetAlloc } from '../config/budget'
@@ -46,8 +46,8 @@ export type Action =
   | { type: 'release'; projectId: string; weeks: number }
   // 手动下片：结束当前放映段（本周已结算收入保留）
   | { type: 'endRun'; projectId: string }
-  // 再发行：选择严格更低档渠道，下周开映（不定档不预售）
-  | { type: 'rerelease'; projectId: string; channel: Channel }
+  // 再发行：选择严格更低档渠道，下周开映（不定档不预售）；config 缺省用渠道默认参数
+  | { type: 'rerelease'; projectId: string; channel: Channel; config?: Partial<RunChannelConfig> }
   // 版权交易：把 IP 版权卖给电视剧/游戏公司（固定总额每周分期）
   | { type: 'sellCopyright'; ipId: string; kind: 'tv' | 'game' }
   // 取消未上映项目：投入不退、剧组人员释放回员工池

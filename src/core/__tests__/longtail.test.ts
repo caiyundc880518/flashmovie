@@ -177,6 +177,37 @@ describe('下片与再发行', () => {
     expect(s.projects[0].currentMp).toBe(mpBefore)
   })
 
+  it('再发行：使用玩家设置的渠道参数（DVD 单价 / 免费广告单价）', () => {
+    let s = makeProject(10)
+    s = releaseAndFinish(s, 'prj-lt') // 首轮影院 → idle
+    // DVD 再发行：自定义单价 55（默认 20）
+    s = reduce(s, { type: 'rerelease', projectId: 'prj-lt', channel: 'dvd', config: { dvdPrice: 55 } })
+    let run = s.projects[0].run!.runs[s.projects[0].run!.runs.length - 1]
+    expect(run.config.dvdPrice).toBe(55)
+    // 手动下片 → 免费再发行自定义广告单价 60（默认 30）
+    s = reduce(s, { type: 'endRun', projectId: 'prj-lt' })
+    expect(s.projects[0].run!.status).toBe('idle')
+    s = reduce(s, { type: 'rerelease', projectId: 'prj-lt', channel: 'free', config: { freeAdPrice: 60 } })
+    run = s.projects[0].run!.runs[s.projects[0].run!.runs.length - 1]
+    expect(run.config.freeAdPrice).toBe(60)
+  })
+
+  it('再发行：不传 config 回落到渠道默认参数（网络平台/时长、DVD 单价）', () => {
+    let s = makeProject(10)
+    s = releaseAndFinish(s, 'prj-lt') // 首轮影院 → idle
+    // 网络再发行缺省：默认平台+默认时长
+    s = reduce(s, { type: 'rerelease', projectId: 'prj-lt', channel: 'web' })
+    let run = s.projects[0].run!.runs[s.projects[0].run!.runs.length - 1]
+    expect(run.config.webPlatforms).toEqual(['腾讯视频'])
+    expect(run.config.webWeeks).toBe(CHANNEL_CONFIG.webDefaultWeeks)
+    // 手动下片 → DVD 再发行缺省：默认单价
+    s = reduce(s, { type: 'endRun', projectId: 'prj-lt' })
+    expect(s.projects[0].run!.status).toBe('idle')
+    s = reduce(s, { type: 'rerelease', projectId: 'prj-lt', channel: 'dvd' })
+    run = s.projects[0].run!.runs[s.projects[0].run!.runs.length - 1]
+    expect(run.config.dvdPrice).toBe(CHANNEL_CONFIG.dvdRefPrice)
+  })
+
   it('免费档下片后 → 彻底完结', () => {
     let s = makeProject(11, 'free')
     s = releaseAndFinish(s, 'prj-lt')

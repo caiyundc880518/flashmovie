@@ -649,7 +649,13 @@ export function reduce(state: GameState, action: Action): GameState {
       if (rs.status !== 'idle') return state
       const last = rs.runs[rs.runs.length - 1]
       if (!last || !isLowerChannel(action.channel, last.channel)) return state
-      const run = createRun(draft, p, action.channel, false, createRunConfigForChannel(action.channel))
+      const run = createRun(
+        draft,
+        p,
+        action.channel,
+        false,
+        { ...createRunConfigForChannel(action.channel), ...(action.config ?? {}) },
+      )
       rs.runs.push(run)
       rs.currentRunId = run.id
       rs.status = 'running'

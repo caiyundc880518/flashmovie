@@ -2620,6 +2620,40 @@ input[type='range'] {
 .rerelease-box select {
   min-width: 160px;
 }
+
+/* ===== 再发行设置框（选渠道 + 与首次发行一致的渠道参数） ===== */
+.rr-box {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-left: auto;
+}
+.rr-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.rr-line select {
+  min-width: 160px;
+}
+.rr-config {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: rgba(13, 19, 33, 0.35);
+}
+.lt-row .rr-box {
+  flex: 1 1 100%;
+  margin-left: 0;
+  margin-top: 4px;
+}
+.lt-row .rr-line .slot-label {
+  min-width: auto;
+}
 .run-block {
   display: flex;
   flex-direction: column;

@@ -1,5 +1,3 @@
-import { useState } from 'react'
-import type { Channel } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
 import { lowerChannelsOf } from '../../core/tick/distribution'
 import { CHANNEL_INFO } from '../../core/config/channels'
@@ -8,6 +6,7 @@ import { STAGE_ZH, fmtWan } from '../format'
 import { Bar } from '../components/Bar'
 import { MoneyText } from '../components/MoneyText'
 import { Tabs } from '../components/Tabs'
+import { RereleaseBox } from '../components/RereleaseBox'
 
 /** IP 当前周周边收入估算（万/周，与结算公式一致） */
 function merchPerWeek(hotness: number, level: number, merchBonus: number): number {
@@ -25,7 +24,6 @@ function merchPerWeek(hotness: number, level: number, merchBonus: number): numbe
 export function LongtailScreen({ onOpenProject }: { onOpenProject: (id: string) => void }) {
   const state = useGameStore((s) => s.state)
   const dispatch = useGameStore((s) => s.dispatch)
-  const [rereleaseSel, setRereleaseSel] = useState<Record<string, Channel | ''>>({})
 
   if (!state) return null
 
@@ -67,7 +65,6 @@ export function LongtailScreen({ onOpenProject }: { onOpenProject: (id: string) 
         {rereleasable.map((p) => {
           const lastRun = p.run!.runs[p.run!.runs.length - 1]
           const lower = lastRun ? lowerChannelsOf(lastRun.channel) : []
-          const sel = rereleaseSel[p.id] ?? ''
           return (
             <div key={p.id} className="lt-row">
               <span className="table-name" onClick={() => onOpenProject(p.id)} style={{ cursor: 'pointer' }}>
@@ -77,30 +74,12 @@ export function LongtailScreen({ onOpenProject }: { onOpenProject: (id: string) 
                 上一档：{CHANNEL_INFO[lastRun.channel].label} · 累计票房 {fmtWan(p.result?.boxOffice ?? 0)}
               </span>
               {lower.length > 0 && (
-                <>
-                  <select
-                    value={sel}
-                    onChange={(e) => setRereleaseSel((prev) => ({ ...prev, [p.id]: e.target.value as Channel | '' }))}
-                  >
-                    <option value="">选择更低档…</option>
-                    {lower.map((c) => (
-                      <option key={c} value={c}>
-                        {CHANNEL_INFO[c].label}
-                      </option>
-                    ))}
-                  </select>
-                  <button
-                    className="btn-primary"
-                    disabled={!sel}
-                    onClick={() => {
-                      if (!sel) return
-                      dispatch({ type: 'rerelease', projectId: p.id, channel: sel as Channel })
-                      setRereleaseSel((prev) => ({ ...prev, [p.id]: '' }))
-                    }}
-                  >
-                    再发行 ▶
-                  </button>
-                </>
+                <RereleaseBox
+                  lower={lower}
+                  onRerelease={(channel, config) =>
+                    dispatch({ type: 'rerelease', projectId: p.id, channel, config })
+                  }
+                />
               )}
             </div>
           )
