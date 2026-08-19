@@ -51,7 +51,6 @@ export function AwardsScreen() {
                 </div>
                 <div className="award-card-film">《{w.filmName}》</div>
                 {w.workerName && <div className="award-card-worker">{w.workerName}</div>}
-                <div className="award-card-score">得分 {w.score}</div>
               </div>
             ))}
           </div>

@@ -1540,18 +1540,20 @@ input[type='range'] {
   letter-spacing: 1px;
 }
 .award-card-film {
-  font-size: 13px;
-  font-weight: 600;
+  flex: 1;
+  display: flex;
+  align-items: center;
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: 0.5px;
+  color: var(--text);
 }
 .award-card-worker {
-  font-size: 12px;
-  color: var(--text-dim);
-}
-.award-card-score {
-  margin-top: auto;
-  font-size: 12px;
-  color: var(--text-dim);
-  font-variant-numeric: tabular-nums;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--gold);
 }
 @media (max-width: 1100px) {
   .award-grid {
