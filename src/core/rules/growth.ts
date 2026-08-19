@@ -137,8 +137,8 @@ export function applyProjectGrowth(
   return settlements
 }
 
-/** 每周员工状态推进：空闲累计与衰减（GDD §4.4） */
-export function applyWeeklyWorkerState(w: Worker, inProject: boolean, rng: Rng): void {
+/** 每周员工状态推进：空闲累计与衰减（GDD §4.4）；noDecay = 作弊开关（不衰退、成长照常） */
+export function applyWeeklyWorkerState(w: Worker, inProject: boolean, rng: Rng, noDecay = false): void {
   if (inProject) {
     w.idleWeeks = 0
     w.active.mood = clamp(w.active.mood + (rng() < 0.5 ? 1 : 0), 10, 95)
@@ -147,7 +147,7 @@ export function applyWeeklyWorkerState(w: Worker, inProject: boolean, rng: Rng):
     w.idleWeeks += 1
     w.active.mood = clamp(w.active.mood - 1, 10, 95)
     w.active.volume = clamp(w.active.volume + 0.5, 10, 100)
-    if (w.idleWeeks > GROWTH.decayAfterWeeks) {
+    if (!noDecay && w.idleWeeks > GROWTH.decayAfterWeeks) {
       const keys = Object.keys(w.skills) as SkillKey[]
       for (const k of keys) {
         w.skills[k] = clamp(w.skills[k] * (1 - GROWTH.decayPerWeek), 0, 100)

@@ -40,6 +40,8 @@ export type Action =
   | { type: 'investTech'; lineId: string }
   | { type: 'ipo' }
   | { type: 'cheatSpawnWorker'; role: RoleId }
+  // 作弊开关：员工 CA 不衰退（成长照常）；关闭 = 正常衰退/成长
+  | { type: 'toggleNoCaDecay' }
   // 定档上映：weeks = 提前周数（0 = 本周立即上映），进入放映/预售
   | { type: 'release'; projectId: string; weeks: number }
   // 手动下片：结束当前放映段（本周已结算收入保留）

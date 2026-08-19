@@ -2375,6 +2375,65 @@ input[type='range'] {
   color: var(--gold);
 }
 
+/* ===== 作弊开关（顶部区隔线 + 滑块开关） ===== */
+.cheat-toggles {
+  margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px dashed var(--border);
+}
+.cheat-switch {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+  user-select: none;
+}
+.cheat-switch input {
+  position: absolute;
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+.cheat-switch-ui {
+  position: relative;
+  flex-shrink: 0;
+  width: 42px;
+  height: 22px;
+  border-radius: 999px;
+  background: var(--bg-hover, #223056);
+  border: 1px solid var(--border);
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+.cheat-switch-ui::after {
+  content: '';
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-dim);
+  transition: transform 0.18s ease, background 0.18s ease;
+}
+.cheat-switch input:checked + .cheat-switch-ui {
+  background: rgba(232, 182, 76, 0.22);
+  border-color: var(--gold);
+}
+.cheat-switch input:checked + .cheat-switch-ui::after {
+  transform: translateX(20px);
+  background: var(--gold);
+}
+.cheat-switch > span:last-child {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 13px;
+  font-weight: 600;
+}
+.cheat-switch small {
+  font-weight: 400;
+}
+
 /* ===== 项目流程步骤条（①筹备→⑤上映完成） ===== */
 .flow-steps {
   display: flex;

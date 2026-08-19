@@ -187,7 +187,7 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
   }
   for (const id of draft.company.employeeIds) {
     const w = draft.workers[id]
-    if (w) applyWeeklyWorkerState(w, busy.has(id), rng)
+    if (w) applyWeeklyWorkerState(w, busy.has(id), rng, draft.cheats?.noCaDecay ?? false)
   }
 
   // 4. 编剧产出剧本（旧签约编剧机制，writerQueues 排队）

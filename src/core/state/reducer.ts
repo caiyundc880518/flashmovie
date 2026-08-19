@@ -562,6 +562,14 @@ export function reduce(state: GameState, action: Action): GameState {
       break
     }
 
+    case 'toggleNoCaDecay': {
+      // 作弊开关：员工 CA 不衰退（成长照常）；默认关闭 = 正常衰退/成长
+      const cur = draft.cheats?.noCaDecay ?? false
+      draft.cheats = { ...(draft.cheats ?? {}), noCaDecay: !cur }
+      pushNews(draft, cur ? '⛔ 已关闭「员工 CA 不衰退」，恢复正常衰退。' : '⚡ 已开启「员工 CA 不衰退」：空闲不再掉技能/CA，成长照常。')
+      break
+    }
+
     case 'resolveEvent': {
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p) return state

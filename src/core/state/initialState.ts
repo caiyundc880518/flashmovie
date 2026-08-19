@@ -83,6 +83,7 @@ export function createInitialState(seed?: number, companyName = '星光影业'):
     projects: [],
     writerQueues: {},
     scriptDrafts: [],
+    cheats: { noCaDecay: false },
   }
   return state
 }

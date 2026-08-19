@@ -156,4 +156,9 @@ export interface GameState {
   scriptDrafts: ScriptDraft[]
   /** 最近一届 TMA 颁奖结果（跨年时生成） */
   lastCeremony?: YearAwards
+  /** 作弊开关（可选，旧档缺省全部关闭） */
+  cheats?: {
+    /** 员工 CA 不衰退（成长照常） */
+    noCaDecay?: boolean
+  }
 }

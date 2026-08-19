@@ -372,7 +372,7 @@ export function App() {
         </div>
       </div>
 
-      {/* 作弊菜单：选择职位，在招聘市场生成满属性免费人才 */}
+      {/* 作弊菜单：生成满属性免费人才 + 作弊开关 */}
       {cheatOpen && (
         <Modal title="⚡ 作弊菜单" onClose={() => setCheatOpen(false)}>
           <p className="dim">
@@ -390,6 +390,20 @@ export function App() {
                 {ROLE_ZH[r]}
               </button>
             ))}
+          </div>
+          <div className="cheat-toggles">
+            <label className="cheat-switch">
+              <input
+                type="checkbox"
+                checked={!!state?.cheats?.noCaDecay}
+                onChange={() => dispatch({ type: 'toggleNoCaDecay' })}
+              />
+              <span className="cheat-switch-ui" aria-hidden />
+              <span>
+                员工 CA 不衰退
+                <small className="dim">开启：空闲不掉技能/CA/名气，成长照常；关闭：正常衰退与成长</small>
+              </span>
+            </label>
           </div>
         </Modal>
       )}
