@@ -356,9 +356,9 @@ export function ReleasedProjectScreen({
           <h2>长尾收益走势</h2>
           <p className="dim">X 轴为 WEEK（第几周），Y 轴为当周数值；首轮与每段再发行分开查看。</p>
           <Tabs
-            tabs={rs.runs.map((run, i) => ({
+            tabs={rs.runs.map((run) => ({
               key: run.id,
-              label: run.isFirst ? '首轮' : `再发行 ${i}`,
+              label: run.channel === 'web' ? '网络平台' : CHANNEL_INFO[run.channel].label,
               content: <RunCharts run={run} />,
             }))}
           />
