@@ -220,6 +220,7 @@ export function vfxTypeFactor(type: FilmType, mocap = 0): number {
 export function channelRevenue(
   project: FilmProject,
   gross: number,
+  totalCinemas?: number,
 ): {
   boxOffice: number
   revenue: number
@@ -236,10 +237,14 @@ export function channelRevenue(
 
   switch (ch) {
     case 'cinema': {
-      const count = Math.min(project.cinemaCount || cfg.cinemaDefaultCount, TOTAL_CINEMAS)
-      const cover = Math.min(1, count / TOTAL_CINEMAS)
+      // 全国影院总数 = 基础 5178 + 玩家自建（院线管理），投放上限与覆盖率分母随之变化
+      const total = totalCinemas ?? TOTAL_CINEMAS
+      const count = Math.min(project.cinemaCount || cfg.cinemaDefaultCount, total)
+      const cover = Math.min(1, count / total)
+      // 自建影院提升满覆盖票房上限（默认 ×4，每座 +cinemaMaxMulPerCinema）
+      const maxMul = cfg.cinemaMaxMul + Math.max(0, total - TOTAL_CINEMAS) * cfg.cinemaMaxMulPerCinema
       // 影院权重最高：覆盖越广票房放大越多（0.8 → 4.0 倍）
-      const mul = cfg.cinemaBaseMul + cover * (cfg.cinemaMaxMul - cfg.cinemaBaseMul)
+      const mul = cfg.cinemaBaseMul + cover * (maxMul - cfg.cinemaBaseMul)
       const boxOffice = gross * mul
       const admissions = boxOffice / cfg.cinemaAvgTicket
       const revenue = boxOffice * ECONOMY.cinemaShare

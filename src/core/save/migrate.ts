@@ -46,6 +46,7 @@ import { SAVE_VERSION } from './schema'
  * v13：发行长尾大修：上映改「定档 + 每周动态票房结算 + 下片 + 再发行」；
  *       旧已上映影片视为彻底完结（run.status='finished'，只读不参与再发行）；
  *       IP 新增 hotness（热门度，旧档 = level×20）与 deals（版权合同，空）。
+ * v16：公司新增 ownCinemas（自建影院数，院线管理；全国影院总数 = 基础 5178 + 自建数）。
  */
 export function migrateSave(raw: unknown): GameState {
   if (!raw || typeof raw !== 'object') {
@@ -71,6 +72,7 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 12) state = migrateV12toV13(state)
   if (state.version === 13) state = migrateV13toV14(state)
   if (state.version === 14) state = migrateV14toV15(state)
+  if (state.version === 15) state = migrateV15toV16(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
   // NPC 团队补齐：对手自带员工（新档与旧档统一，确定性派生）
@@ -283,6 +285,15 @@ function migrateV14toV15(s: GameState): GameState {
     if (!Array.isArray(comp.ips)) comp.ips = []
   })
   return { ...s, version: 15 }
+}
+
+/** v15 → v16：公司新增自建影院数（院线管理，全国影院总数 = 基础 5178 + 自建数） */
+function migrateV15toV16(s: GameState): GameState {
+  const company = s.company as { ownCinemas?: number }
+  if (typeof company.ownCinemas !== 'number' || !Number.isFinite(company.ownCinemas)) {
+    company.ownCinemas = 0
+  }
+  return { ...s, version: 16 }
 }
 
 /** 世界实体为空时，用存档种子派生确定性生成 */function ensureWorldPopulated(s: GameState): GameState {

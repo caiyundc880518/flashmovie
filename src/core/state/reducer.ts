@@ -28,6 +28,7 @@ import { AD_CONFIG, AD_SPONSOR_MAP } from '../config/ads'
 import { CHANNEL_CONFIG, CHANNEL_INFO, TOTAL_CINEMAS, WEB_PLATFORMS } from '../config/channels'
 import { availableVfxTiers } from '../rules/scoring'
 import { poachSuccessChance } from '../rules/competitor'
+import { cinemaBuildCost } from '../rules/cinema'
 import type { Action } from './actions'
 import type { SkillKey } from '../types'
 
@@ -200,6 +201,21 @@ export function reduce(state: GameState, action: Action): GameState {
       if (!loan) return state
       draft.company.cash -= loan.principal
       draft.company.loans = draft.company.loans.filter((l) => l.id !== loan.id)
+      break
+    }
+
+    case 'buildCinemas': {
+      // 院线管理：投钱建影院（数量无上限），总影院数 = 基础 5178 + 自建数
+      const count = Math.floor(action.count)
+      if (!Number.isFinite(count) || count <= 0) return state
+      const cost = cinemaBuildCost(count)
+      if (draft.company.cash < cost) return state
+      draft.company.cash = round1(draft.company.cash - cost)
+      draft.company.ownCinemas = (draft.company.ownCinemas ?? 0) + count
+      pushNews(
+        draft,
+        `院线扩张：投资 ${cost} 万新建 ${count} 座影院，全国影院总数达 ${TOTAL_CINEMAS + draft.company.ownCinemas} 家。`,
+      )
       break
     }
 

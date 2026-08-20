@@ -6,6 +6,7 @@ import { computeFilmResult, channelRevenue } from '../../core/rules/scoring'
 import { audienceFit, regionMarkets } from '../../core/rules/audience'
 import { ECONOMY } from '../../core/config/economy'
 import { CHANNEL_CONFIG, CHANNEL_INFO, CHANNEL_ORDER, TOTAL_CINEMAS, WEB_PLATFORMS } from '../../core/config/channels'
+import { totalCinemas as totalCinemasOf } from '../../core/rules/cinema'
 import { STAGE_ZH, TYPE_ZH, fmtWan } from '../format'
 import { Bar } from '../components/Bar'
 import { Modal } from '../components/Modal'
@@ -223,21 +224,24 @@ export function ProjectDetailScreen({
               ))}
             </div>
             <p className="dim">{p.channel ? CHANNEL_INFO[p.channel].desc : '请选择一种发行渠道。'}</p>
-            {p.channel === 'cinema' && (
-              <div className="config-row">
-                <label className="config-label">
-                  投放影院数（共 {TOTAL_CINEMAS} 家，单价 {CHANNEL_CONFIG.cinemaCostPerUnit} 万/家）
-                </label>
-                <input
-                  type="number"
-                  value={p.cinemaCount || ''}
-                  min={0}
-                  max={TOTAL_CINEMAS}
-                  placeholder="50"
-                  onChange={(e) => dispatch({ type: 'setCinemaCount', projectId, count: Number(e.target.value) || 0 })}
-                />
-              </div>
-            )}
+            {p.channel === 'cinema' && (() => {
+              const total = totalCinemasOf(state)
+              return (
+                <div className="config-row">
+                  <label className="config-label">
+                    投放影院数（全国共 {total.toLocaleString()} 家{total > TOTAL_CINEMAS ? `，含自建 ${(total - TOTAL_CINEMAS).toLocaleString()} 家` : ''}，单价 {CHANNEL_CONFIG.cinemaCostPerUnit} 万/家）
+                  </label>
+                  <input
+                    type="number"
+                    value={p.cinemaCount || ''}
+                    min={0}
+                    max={total}
+                    placeholder="50"
+                    onChange={(e) => dispatch({ type: 'setCinemaCount', projectId, count: Number(e.target.value) || 0 })}
+                  />
+                </div>
+              )
+            })()}
             {p.channel === 'web' && (
               <>
                 <div className="channel-row">

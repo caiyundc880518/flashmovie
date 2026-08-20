@@ -14,10 +14,11 @@ describe('存档迁移', () => {
   it('接受最新 v11 存档（恒等迁移）', () => {
     const s = createInitialState(1)
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(15)
+    expect(migrated.version).toBe(16)
     expect(migrated.company.name).toBe('星光影业')
     expect(migrated.company.ips).toEqual([])
     expect(migrated.company.tech).toEqual({})
+    expect(migrated.company.ownCinemas).toBe(0)
     expect(migrated.world.competitors.length).toBeGreaterThan(0)
     expect(migrated.world.audience.length).toBeGreaterThan(0)
     expect(migrated.world.activeEvents).toEqual([])
@@ -33,7 +34,7 @@ describe('存档迁移', () => {
     delete (s.world as { audience?: unknown }).audience
     delete (s.world as { activeEvents?: unknown }).activeEvents
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(15)
+    expect(migrated.version).toBe(16)
     expect(migrated.company.tech).toEqual({})
     expect(migrated.world.audience.length).toBeGreaterThan(0)
     expect(migrated.world.activeEvents).toEqual([])
@@ -87,7 +88,7 @@ describe('存档迁移', () => {
     }
     s.company.ips = [ip as never]
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(15)
+    expect(migrated.version).toBe(16)
     const p = migrated.projects[0]
     expect(p.budgetAlloc).toEqual({ story: 0, vfx: 40, acting: 0, edit: 0 })
     expect(p.vfxLevel).toBe(0)
@@ -122,7 +123,7 @@ describe('存档迁移', () => {
       ] as unknown) as import('../../core/types').AwardEntry[],
     }
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(15)
+    expect(migrated.version).toBe(16)
     const awards = migrated.workers['w1'].awards
     expect(awards).toHaveLength(2)
     expect(awards[0].year).toBe(1)
@@ -141,8 +142,9 @@ describe('存档迁移', () => {
     ] as unknown as import('../../core/types').Competitor[]
     const first = migrateSave(JSON.parse(JSON.stringify(s)))
     const second = migrateSave(JSON.parse(JSON.stringify(s)))
-    expect(first.version).toBe(15)
-    expect(second.version).toBe(15)
+    expect(first.version).toBe(16)
+    expect(second.version).toBe(16)
+    expect(first.company.ownCinemas).toBe(0)
     for (const c of first.world.competitors) {
       expect(['quality', 'volume', 'specialist', 'sniper', 'balanced']).toContain(c.personality)
       expect(typeof c.cash).toBe('number')
@@ -188,7 +190,7 @@ describe('存档迁移', () => {
     }
     s.projects = [project as never]
     const migrated = migrateSave(s)
-    expect(migrated.version).toBe(15)
+    expect(migrated.version).toBe(16)
     const p = migrated.projects[0]
     expect(p.channel).toBe('cinema')
     expect((p as unknown as Record<string, unknown>).channels).toBeUndefined()

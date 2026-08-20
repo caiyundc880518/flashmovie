@@ -40,6 +40,8 @@ export interface Company {
   reputation: number
   /** 写作学校等级 0–3 */
   schoolLevel: number
+  /** 自建影院数（院线管理；全国影院总数 = 5178 + 此值） */
+  ownCinemas: number
   loans: Loan[]
   /** 当前投资人（可空） */
   investor?: CompanyInvestor

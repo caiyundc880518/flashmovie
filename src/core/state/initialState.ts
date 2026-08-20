@@ -52,6 +52,7 @@ export function createInitialState(seed?: number, companyName = '星光影业'):
       cash: ECONOMY.startingCash,
       reputation: ECONOMY.startingReputation,
       schoolLevel: 0,
+      ownCinemas: 0,
       loans: [],
       ownedScriptIds: [],
       employeeIds: [],

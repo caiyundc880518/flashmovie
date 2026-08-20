@@ -15,6 +15,7 @@ import { IP_CONFIG, IP_LONGTAIL_CONFIG } from '../config/ip'
 import { AD_CONFIG, AD_SPONSOR_MAP } from '../config/ads'
 import { ipLevel, refreshIpDerived, royaltyPerQuarter, sequelBonusFactor } from '../rules/ip'
 import { applyProjectGrowth } from '../rules/growth'
+import { totalCinemas as totalCinemasOf } from '../rules/cinema'
 import { pushNews, uid } from '../state/utils'
 
 /**
@@ -35,14 +36,20 @@ export function lowerChannelsOf(last: Channel): Channel[] {
   return (['cinema', 'web', 'dvd', 'free'] as Channel[]).filter((c) => isLowerChannel(c, last))
 }
 
-/** 渠道倍数（复用现有 channelRevenue 倍数逻辑；free 含热度） */
-export function channelMulFactor(ch: Channel, cfg: RunChannelConfig, hype = 50): number {
+/** 渠道倍数（复用现有 channelRevenue 倍数逻辑；free 含热度；totalCinemas = 全国影院总数，缺省用基础 5178） */
+export function channelMulFactor(
+  ch: Channel,
+  cfg: RunChannelConfig,
+  hype = 50,
+  totalCinemas: number = TOTAL_CINEMAS,
+): number {
   const c = CHANNEL_CONFIG
   switch (ch) {
     case 'cinema': {
-      const count = Math.min(cfg.cinemaCount || c.cinemaDefaultCount, TOTAL_CINEMAS)
-      const cover = Math.min(1, count / TOTAL_CINEMAS)
-      return c.cinemaBaseMul + cover * (c.cinemaMaxMul - c.cinemaBaseMul)
+      const count = Math.min(cfg.cinemaCount || c.cinemaDefaultCount, totalCinemas)
+      const cover = Math.min(1, count / totalCinemas)
+      const maxMul = c.cinemaMaxMul + Math.max(0, totalCinemas - TOTAL_CINEMAS) * c.cinemaMaxMulPerCinema
+      return c.cinemaBaseMul + cover * (maxMul - c.cinemaBaseMul)
     }
     case 'web': {
       const platforms = cfg.webPlatforms.length > 0 ? cfg.webPlatforms.length : 1
@@ -63,12 +70,16 @@ export function channelMulFactor(ch: Channel, cfg: RunChannelConfig, hype = 50):
   }
 }
 
-/** 渠道投放成本（万，一次性） */
-export function channelCostFor(ch: Channel, cfg: RunChannelConfig): number {
+/** 渠道投放成本（万，一次性；totalCinemas = 全国影院总数，缺省用基础 5178） */
+export function channelCostFor(
+  ch: Channel,
+  cfg: RunChannelConfig,
+  totalCinemas: number = TOTAL_CINEMAS,
+): number {
   const c = CHANNEL_CONFIG
   switch (ch) {
     case 'cinema':
-      return Math.min(cfg.cinemaCount || c.cinemaDefaultCount, TOTAL_CINEMAS) * c.cinemaCostPerUnit
+      return Math.min(cfg.cinemaCount || c.cinemaDefaultCount, totalCinemas) * c.cinemaCostPerUnit
     case 'web': {
       const platforms = cfg.webPlatforms.length > 0 ? cfg.webPlatforms.length : 1
       const weeks = cfg.webWeeks || c.webDefaultWeeks
@@ -138,12 +149,13 @@ export function createRun(
   const basePotential = basePotentialOverride ?? p.run?.basePotential ?? p.result?.boxOffice ?? 0
   const factor = isFirst ? 1 : CHANNEL_CONFIG.run.rereleaseFactor
   const hype = p.hype ?? 50
+  const total = totalCinemasOf(state)
   return {
     id: uid(state, 'run'),
     channel: ch,
     isFirst,
     config: cfg,
-    expectedTotal: round1(basePotential * channelMulFactor(ch, cfg, hype) * factor),
+    expectedTotal: round1(basePotential * channelMulFactor(ch, cfg, hype, total) * factor),
     startWeek: state.calendar.week,
     startYear: state.calendar.year,
     status: 'running',
@@ -248,7 +260,7 @@ export function settleRunWeek(draft: GameState, p: FilmProject, run: FilmRun): v
 
   // 开映当周一次性扣渠道成本
   if (n === 0) {
-    run.channelCost = round1(channelCostFor(run.channel, run.config))
+    run.channelCost = round1(channelCostFor(run.channel, run.config, totalCinemasOf(draft)))
     draft.company.cash -= run.channelCost
     pushNews(draft, `《${p.name}》首周上映，票房 ${Math.round(boxOffice)} 万（渠道投放成本 ${run.channelCost} 万）。`)
   }

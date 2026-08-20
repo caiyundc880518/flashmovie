@@ -3582,3 +3582,74 @@ input[type='range'] {
   border: 1px dashed var(--border);
   border-radius: var(--radius);
 }
+
+/* ===== 院线管理 ===== */
+.cinema-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 14px;
+  margin: 16px 0 20px;
+}
+.cinema-stat {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.cinema-stat-own {
+  border-color: rgba(232, 182, 76, 0.45);
+}
+.cinema-stat-total {
+  border-color: rgba(76, 139, 245, 0.5);
+}
+.cinema-stat-label {
+  font-size: 12px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.cinema-stat-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.cinema-stat-own .cinema-stat-value {
+  color: var(--gold);
+}
+.cinema-stat-total .cinema-stat-value {
+  color: var(--accent);
+}
+.cinema-stat-sub {
+  font-size: 12px;
+  color: var(--text-dim);
+}
+.cinema-build {
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin-bottom: 14px;
+}
+.cinema-build h3 {
+  margin: 0 0 6px;
+  font-size: 15px;
+  color: var(--gold);
+}
+.cinema-build-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.cinema-build-row input[type='number'] {
+  width: 140px;
+}
+.cinema-build-info {
+  font-size: 13px;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}

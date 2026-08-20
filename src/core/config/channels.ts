@@ -12,7 +12,7 @@ import type { Channel } from '../types'
 export const CHANNEL_INFO: Record<Channel, { label: string; desc: string }> = {
   cinema: {
     label: '影院',
-    desc: '填写投放影院数：影院数越多覆盖越广、观影人次越高，票房增幅越大（全国 5178 家铺满可放大数倍），是权重最高的渠道。',
+    desc: '填写投放影院数：影院数越多覆盖越广、观影人次越高，票房增幅越大（全国影院铺满可放大数倍），是权重最高的渠道。',
   },
   web: {
     label: '网络',
@@ -30,7 +30,7 @@ export const CHANNEL_INFO: Record<Channel, { label: string; desc: string }> = {
 
 export const CHANNEL_ORDER: Channel[] = ['cinema', 'web', 'dvd', 'free']
 
-/** 游戏内影院总家数 */
+/** 游戏内影院基础总家数（院线管理：全国总数 = 基础 + 玩家自建） */
 export const TOTAL_CINEMAS = 5178
 
 /** 常见网络电影平台 */
@@ -45,8 +45,12 @@ export const CHANNEL_CONFIG = {
   cinemaBaseMul: 0.9,
   /** 影院：全国铺满时的票房系数上限（影院数 → 覆盖率线性抬升，满覆盖 ×4，权重最高） */
   cinemaMaxMul: 4.0,
+  /** 影院：自建影院对满覆盖上限的提升（每座 +此值；建 1000 座 → 上限 +0.5 → ×4.5） */
+  cinemaMaxMulPerCinema: 0.0005,
   /** 影院：平均票价（元），用于换算观影人次 */
   cinemaAvgTicket: 40,
+  /** 院线管理：自建影院单价（万/座） */
+  cinemaBuildCost: 1,
 
   /** 网络：单平台投放成本（万/周） */
   webCostPerPlatform: 40,
