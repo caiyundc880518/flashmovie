@@ -4,11 +4,13 @@ import { SCRIPT_POOL } from '../config/scripts'
 import { WORLD_CONFIG } from '../config/world'
 import { ECONOMY } from '../config/economy'
 import { SCORE_WEIGHTS } from '../config/weights'
+import { FILM_TYPE_ZH } from '../config/events'
+import { ROLES } from '../config/roles'
 import { audienceFit } from './audience'
 import { eventBoxOfficeFactor } from './events'
 import { competitionPenalty } from './scoring'
-import { generateWorker } from '../generators/workerGen'
-import { teamIds } from '../state/utils'
+import { generateWorker, type WorkerTier } from '../generators/workerGen'
+import { pushNews, teamIds } from '../state/utils'
 import type { Rng } from '../rng'
 import { clamp, createRng, pick, randInt, round1 } from '../rng'
 
@@ -218,7 +220,16 @@ export function releaseCompetitorFilm(state: GameState, c: Competitor, rng: Rng)
       boxOffice * (1 + sequel.films * cfg.economy.sequelBoxOfficePerFilm),
     )
     sequel.films += 1
+    const prevTotal = sequel.totalBoxOffice
     sequel.totalBoxOffice = round1(sequel.totalBoxOffice + boxOffice)
+    // 系列 IP 累计票房里程碑：跨过即上报纸
+    const milestone = cfg.news.milestoneThreshold
+    if (prevTotal < milestone && sequel.totalBoxOffice >= milestone) {
+      pushNews(
+        state,
+        `竞争对手「${c.name}」的系列 IP《${sequel.name}》累计票房突破 ${milestone.toLocaleString()} 万，载入行业史册！`,
+      )
+    }
   }
 
   // 资金经营：收入 = 票房 × 分账；成本 = 基准 × 投入倍率 × 声誉系数
@@ -252,6 +263,68 @@ export function releaseCompetitorFilm(state: GameState, c: Competitor, rng: Rng)
   c.reputation = clamp(c.reputation + (mp >= 50 ? 1 : -1), 0, 100)
   c.nextType = type
   return film
+}
+
+/** NPC 上映开画新闻（合并：档期公告 + 首周票房 + 口碑评价，替代原来的纯上映公告） */
+export function competitorReleaseNews(state: GameState, c: Competitor, film: CompetitorFilm): void {
+  const cfg = WORLD_CONFIG.competitor
+  const typeText = film.type ? FILM_TYPE_ZH[film.type] : ''
+  const big = film.boxOffice >= cfg.economy.ipThreshold
+  const flop = film.boxOffice < cfg.economy.ipThreshold * cfg.news.flopRatio
+  const criticScore = film.criticScore ?? 7 // 旧档无口碑分：按中性处理
+  const praise = criticScore >= cfg.news.praiseCritic
+  const slam = criticScore < cfg.news.slamCritic
+  if (big) {
+    pushNews(
+      state,
+      `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}，首周票房 ${film.boxOffice.toLocaleString()} 万${praise ? '，影评人盛赞' : ''}，市场大爆！`,
+    )
+  } else if (flop) {
+    pushNews(
+      state,
+      `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}遭冷遇，首周仅 ${film.boxOffice.toLocaleString()} 万${slam ? '，影评人差评如潮' : ''}。`,
+    )
+  } else {
+    pushNews(
+      state,
+      `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}，首周票房 ${film.boxOffice.toLocaleString()} 万，市场反响平平。`,
+    )
+  }
+}
+
+/** NPC 破产救急新闻：资金链断裂 → 注资歇业（上报纸） */
+export function competitorBailoutNews(state: GameState, c: Competitor, pauseWeeks: number): void {
+  pushNews(state, `【风波】竞争对手「${c.name}」资金链告急，宣布停业整顿 ${pauseWeeks} 周，暂别影市。`)
+}
+
+/**
+ * 运行期团队补员：被玩家挖角挖到低于下限时，对手低概率签回新人（每周一次检查）。
+ * 用「种子 + 竞对 id + 年/周」派生的确定性 rng，不消耗主随机序列（不扰动世界确定性）。
+ */
+export function maybeCompetitorRefill(draft: GameState): void {
+  const cfg = WORLD_CONFIG.competitor.news
+  const roles: RoleId[] = ['director', 'actor', 'shooter', 'editor', 'market', 'technician']
+  const cal = draft.calendar
+  for (const c of draft.world.competitors) {
+    if (c.team.length >= cfg.teamMin || c.cash <= 0) continue
+    const hash = c.id.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0)
+    const rng = createRng(
+      ((draft.seed ^ 0xf00d ^ hash * 104729 + cal.year * 7919 + cal.week * 104729) >>> 0) + 1,
+    )
+    if (rng() >= cfg.refillChance) continue
+    const tier: WorkerTier = c.reputation >= 60 ? 'pro' : 'rookie'
+    const w = generateWorker(rng, roles[c.team.length % roles.length], tier)
+    // id 避开全局 workers 表（被挖走的员工仍留在表内，防止覆盖玩家手里的同名员工）
+    let id = `${c.id}-n${randInt(rng, 1000, 9999)}`
+    while (draft.workers[id]) id = `${c.id}-n${randInt(rng, 1000, 9999)}`
+    w.id = id
+    draft.workers[id] = w
+    c.team.push(id)
+    pushNews(
+      draft,
+      `竞争对手「${c.name}」签下新人「${w.name}」（${ROLES[w.role].nameZh}），充实制作团队。`,
+    )
+  }
 }
 
 /** NPC 每周运营成本（万） */

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../state/initialState'
 import { reduce } from '../state/reducer'
 import {
+  competitorReleaseNews,
   decideCompetitorType,
   releaseCompetitorFilm,
   scoreCompetitorFilm,
@@ -13,7 +14,7 @@ import {
 import { competitorSummary, weeklyCompanyBoxOffice } from '../rules/competitorView'
 import { generateWorker } from '../generators/workerGen'
 import { createRng } from '../rng'
-import type { Competitor, FilmProject, RoleId } from '../types'
+import type { Competitor, CompetitorFilm, FilmProject, RoleId } from '../types'
 
 function makeCompetitor(over: Partial<Competitor> = {}): Competitor {
   return {
@@ -382,5 +383,84 @@ describe('NPC AI（阶段 2：感知决策 + 口碑闭环）', () => {
     const list = weeklyCompanyBoxOffice(s)
     expect(list.find((e) => e.ours)?.boxOffice).toBe(800)
     expect(list.find((e) => e.name === s.world.competitors[0].name)?.boxOffice).toBe(1200)
+  })
+})
+
+describe('NPC 新闻（阶段 4.5：玩家有的新闻 NPC 也上报纸）', () => {
+  function makeFilm(over: Partial<CompetitorFilm> = {}): CompetitorFilm {
+    return {
+      week: 1,
+      year: 1,
+      name: '测试片',
+      type: 'action',
+      ap: 60,
+      mp: 60,
+      criticScore: 7,
+      audienceScore: 7,
+      boxOffice: 1000,
+      ...over,
+    }
+  }
+
+  it('开画新闻分档：大卖（票房≥阈值+高口碑）/ 扑街（低票房+差评）/ 平淡', () => {
+    const s = createInitialState(50)
+    const c = makeCompetitor()
+    const before = s.world.news.length
+
+    competitorReleaseNews(s, c, makeFilm({ boxOffice: 2100, criticScore: 8.6 }))
+    expect(s.world.news[s.world.news.length - 1].text).toContain('市场大爆')
+    expect(s.world.news[s.world.news.length - 1].text).toContain('影评人盛赞')
+
+    competitorReleaseNews(s, c, makeFilm({ boxOffice: 400, criticScore: 3.2 }))
+    expect(s.world.news[s.world.news.length - 1].text).toContain('遭冷遇')
+    expect(s.world.news[s.world.news.length - 1].text).toContain('影评人差评如潮')
+
+    competitorReleaseNews(s, c, makeFilm({ boxOffice: 900, criticScore: 6 }))
+    expect(s.world.news[s.world.news.length - 1].text).toContain('市场反响平平')
+    expect(s.world.news.length).toBe(before + 3)
+  })
+
+  it('破产歇业：资金链断裂上报纸（停业整顿 X 周）', () => {
+    const s = createInitialState(51)
+    const c = s.world.competitors[0]
+    c.cash = -100
+    c.nextReleaseIn = 0
+    c.team = [] // 空团队避免补员干扰断言（cash<0 本身也会跳过补员）
+    const s2 = reduce(s, { type: 'advanceWeek' })
+    const news = s2.world.news.some(
+      (n) => n.text.includes('停业整顿') && n.text.includes(c.name),
+    )
+    expect(news).toBe(true)
+  })
+
+  it('团队补员：被挖空后对手慢慢签回新人并上报纸', () => {
+    let s = createInitialState(52)
+    const c = s.world.competitors[0]
+    c.team = []
+    c.cash = 5000
+    c.nextReleaseIn = 999 // 不发片，专注验证补员
+    // 清掉该竞对已生成的团队员工（确保从 0 开始）
+    for (const w of Object.keys(s.workers)) {
+      if (w.startsWith(c.id + '-')) delete s.workers[w]
+    }
+    for (let i = 0; i < 80; i++) {
+      s = reduce(s, { type: 'advanceWeek' })
+    }
+    const c2 = s.world.competitors[0]
+    expect(c2.team.length).toBeGreaterThanOrEqual(3)
+    expect(s.world.news.some((n) => n.text.includes('签下新人'))).toBe(true)
+  })
+
+  it('系列 IP 里程碑：累计票房突破 5000 万载入行业史册', () => {
+    let s = createInitialState(53)
+    const c = makeCompetitor({ reputation: 60, cash: 5000, ips: [{ id: 'ip1', name: '长河', type: 'action', films: 3, totalBoxOffice: 4900 }] })
+    s.world.competitors = [c]
+    let hit = false
+    for (let i = 0; i < 120 && !hit; i++) {
+      releaseCompetitorFilm(s, c, createRng(1000 + i))
+      hit = s.world.news.some((n) => n.text.includes('累计票房突破'))
+    }
+    expect(hit).toBe(true)
+    expect(c.ips[0].totalBoxOffice).toBeGreaterThanOrEqual(5000)
   })
 })

@@ -85,6 +85,21 @@ export const WORLD_CONFIG = {
       /** 续作票房乘数 = 1 + 已出部数 × 系数 */
       sequelBoxOfficePerFilm: 0.08,
     } as const,
+    /** NPC 行业新闻（阶段 4.5：把 NPC 经营行为写进报纸，玩家有的新闻 NPC 也有） */
+    news: {
+      /** 开画口碑：影评 ≥ 此值 → 头条级「影评人盛赞」 */
+      praiseCritic: 8,
+      /** 开画口碑：影评 < 此值 → 「影评人差评如潮」 */
+      slamCritic: 4.5,
+      /** 扑街判定：票房 < ipThreshold × 此比例 → 「遭冷遇」 */
+      flopRatio: 0.5,
+      /** 系列 IP 累计票房里程碑（万）：跨过即上报行业新闻 */
+      milestoneThreshold: 5000,
+      /** 团队人数低于此值时允许补员（被挖空后慢慢重建） */
+      teamMin: 3,
+      /** 团队不足时每周补员概率 */
+      refillChance: 0.25,
+    } as const,
     /** NPC 挖角（阶段 4：双向挖团队） */
     poach: {
       /** 每周触发概率 */

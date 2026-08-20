@@ -19,6 +19,9 @@ import { chemistrySpeedFactor } from '../rules/chemistry'
 import { settleDistribution, settleIpLongtail } from './distribution'
 import { applyAwardEffects, computeYearAwards } from '../rules/awards'
 import {
+  competitorBailoutNews,
+  competitorReleaseNews,
+  maybeCompetitorRefill,
   maybeNpcPoach,
   releaseCompetitorFilm,
   shouldCompetitorRelease,
@@ -301,19 +304,21 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     )
     c.nextReleaseIn -= 1
     if (c.nextReleaseIn <= 0) {
-      // 破产救急：注资 + 歇业 8–12 周
+      // 破产救急：注资 + 歇业 8–12 周（上报纸；rng 消耗顺序与历史版本一致）
       if (c.cash < 0) {
         c.cash = round1(c.cash + randInt(rng, WORLD_CONFIG.competitor.economy.bailoutRange[0], WORLD_CONFIG.competitor.economy.bailoutRange[1]))
-        c.nextReleaseIn = randInt(rng, WORLD_CONFIG.competitor.economy.pauseWeeks[0], WORLD_CONFIG.competitor.economy.pauseWeeks[1])
+        const pause = randInt(
+          rng,
+          WORLD_CONFIG.competitor.economy.pauseWeeks[0],
+          WORLD_CONFIG.competitor.economy.pauseWeeks[1],
+        )
+        c.nextReleaseIn = pause
+        competitorBailoutNews(draft, c, pause)
         continue
       }
       if (!shouldCompetitorRelease(draft, c, rng)) continue
       const film = releaseCompetitorFilm(draft, c, rng)
-      const typeText = film.type ? FILM_TYPE_ZH[film.type] : ''
-      pushNews(
-        draft,
-        `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}，档期竞争加剧！`,
-      )
+      competitorReleaseNews(draft, c, film)
       c.nextReleaseIn = Math.max(
         1,
         Math.round(
@@ -327,8 +332,9 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     }
   }
 
-  // 7.55 对手挖角：对玩家高价值空闲员工发起挖角（一次一个，玩家在弹窗中决定留/放）
+  // 7.55 对手挖角：对玩家高价值空闲员工发起挖角（一次一个，玩家在弹窗中决定留/放）+ 团队补员
   maybeNpcPoach(draft)
+  maybeCompetitorRefill(draft)
 
   // 7.6 行业/公司随机事件（GDD §6 Random Events）：清理过期 + 概率触发
   draft.world.activeEvents = draft.world.activeEvents.filter(
