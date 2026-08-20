@@ -13,6 +13,7 @@ import { poachSuccessChance } from '../../core/rules/competitor'
 import { WorkerDetail } from '../components/WorkerDetail'
 import { Modal } from '../components/Modal'
 import { MoneyText } from '../components/MoneyText'
+import { Tabs } from '../components/Tabs'
 
 /** 单名对手员工：签字费报价 + 成功率预估 + 挖角按钮 */
 function PoachRow({
@@ -121,8 +122,15 @@ export function RecruitScreen() {
 
   return (
     <div className="screen">
-      <section className="panel">
-        <h2>招聘抽卡</h2>
+      <Tabs
+        tabs={[
+          {
+            key: 'recruit',
+            label: '招聘',
+            content: (
+              <>
+                <section className="panel">
+                  <h2>招聘抽卡</h2>
         <p className="dim">
           按单个演员价格抽人：1 抽 / 10 连（9 折）。档位决定人才质量；可先选抽取范围，定向抽取某个职位。
         </p>
@@ -254,9 +262,15 @@ export function RecruitScreen() {
         )}
       </section>
 
-      {/* 竞对挖角：挖对手员工（签字费报价决定成功率）；对手也会反过来挖你的明星员工 */}
-      <section className="panel">
-        <h2>⚔️ 竞对挖角</h2>
+              </>
+            ),
+          },
+          {
+            key: 'poach',
+            label: '竞对挖角',
+            content: (
+              <section className="panel">
+                <h2>⚔️ 竞对挖角</h2>
         <p className="dim">
           挖角竞争对手的员工：一次性签字费越高成功率越高，公司声誉高于对方也有加成。对手也会盯上你的明星员工，注意弹窗。
         </p>
@@ -289,7 +303,11 @@ export function RecruitScreen() {
             )}
           </div>
         ))}
-      </section>
+              </section>
+            ),
+          },
+        ]}
+      />
 
       {/* 抽卡弹窗：卡背 → 逐张翻开 */}
       {gacha && (
