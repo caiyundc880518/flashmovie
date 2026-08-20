@@ -24,6 +24,38 @@ export const WORLD_CONFIG = {
   /** 对手首部影片延迟（周） */
   competitorFirstReleaseDelay: [3, 8] as const,
 
+  /** NPC AI（阶段 1：性格系统；阶段 2/3 的决策与经营参数陆续接入） */
+  competitor: {
+    /** 性格权重（加权随机分配） */
+    personalityWeights: {
+      quality: 0.22,
+      volume: 0.18,
+      specialist: 0.22,
+      sniper: 0.15,
+      balanced: 0.23,
+    } as const,
+    /** 初始资金池（万；玩家起始现金 1000 万为参照） */
+    startCash: [600, 1600] as const,
+    /** 出片间隔倍率（相对 base 5–10 周；快发型多产、品质型少而精；平均值≈1 避免整体档期变挤） */
+    intervalMul: {
+      quality: 1.35,
+      volume: 0.7,
+      specialist: 1.05,
+      sniper: 1.1,
+      balanced: 1.0,
+    } as const,
+    /** 制片投入/品质投入倍率（阶段 2 决策用） */
+    investMul: {
+      quality: 1.5,
+      volume: 0.55,
+      specialist: 1.0,
+      sniper: 0.9,
+      balanced: 1.0,
+    } as const,
+    /** 专精型锁定的类型数量范围 */
+    specialistHomeTypes: [1, 2] as const,
+  },
+
   /** 档期竞争惩罚：同周/近周上映的对手片数 × 惩罚系数，上限 maxPenalty */
   competition: {
     penaltyPerFilm: 0.06,

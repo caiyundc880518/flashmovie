@@ -74,6 +74,8 @@ export type {
 export type {
   Competitor,
   CompetitorFilm,
+  CompetitorPersonality,
+  CompetitorIp,
   Critic,
   Publisher,
   Investor,

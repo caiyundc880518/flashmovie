@@ -2,6 +2,8 @@ import type {
   AudienceGroup,
   Channel,
   Competitor,
+  CompetitorIp,
+  CompetitorPersonality,
   Critic,
   FilmProject,
   GameState,
@@ -13,7 +15,7 @@ import type {
 } from '../types'
 import { createRng } from '../rng'
 import { pick, randInt } from '../rng'
-import { FILM_TYPES } from '../types'
+import { FILM_TYPES, type FilmType } from '../types'
 import { WORLD_CONFIG } from '../config/world'
 import {
   generateAudienceGroups,
@@ -21,6 +23,7 @@ import {
   generateCritics,
   generateInvestors,
   generatePublishers,
+  pickPersonality,
 } from '../generators/worldGen'
 import { SAVE_VERSION } from './schema'
 
@@ -66,6 +69,7 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 11) state = migrateV11toV12(state)
   if (state.version === 12) state = migrateV12toV13(state)
   if (state.version === 13) state = migrateV13toV14(state)
+  if (state.version === 14) state = migrateV14toV15(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
   return state
@@ -242,6 +246,42 @@ function migrateV13toV14(s: GameState): GameState {
   return { ...s, version: 14 }
 }
 
+/** v14 → v15：NPC AI 强化——对手补性格/资金池/团队/IP 字段（按种子确定性派生） */
+function migrateV14toV15(s: GameState): GameState {
+  const cfg = WORLD_CONFIG.competitor
+  s.world.competitors.forEach((c, i) => {
+    const comp = c as Competitor & {
+      personality?: CompetitorPersonality
+      cash?: number
+      team?: string[]
+      ips?: CompetitorIp[]
+      homeTypes?: FilmType[]
+    }
+    // 每个对手一个确定性 rng（种子 + 序号 + id 哈希），避免迁移结果随机漂移
+    const rng = createRng(
+      ((s.seed ^ 0x51a7 ^ i * 7919 ^ c.id.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0) * 31) >>> 0) + 1,
+    )
+    if (!comp.personality) {
+      comp.personality = pickPersonality(rng)
+      if (comp.personality === 'specialist') {
+        const pool = [...FILM_TYPES]
+        for (let j = pool.length - 1; j > 0; j--) {
+          const k = Math.floor(rng() * (j + 1))
+          ;[pool[j], pool[k]] = [pool[k], pool[j]]
+        }
+        comp.homeTypes = pool.slice(
+          0,
+          randInt(rng, cfg.specialistHomeTypes[0], cfg.specialistHomeTypes[1]),
+        )
+      }
+    }
+    if (typeof comp.cash !== 'number') comp.cash = randInt(rng, cfg.startCash[0], cfg.startCash[1])
+    if (!Array.isArray(comp.team)) comp.team = []
+    if (!Array.isArray(comp.ips)) comp.ips = []
+  })
+  return { ...s, version: 15 }
+}
+
 /** 世界实体为空时，用存档种子派生确定性生成 */function ensureWorldPopulated(s: GameState): GameState {
   const world = s.world as World & {
     competitors?: Competitor[]
@@ -259,9 +299,10 @@ function migrateV13toV14(s: GameState): GameState {
   const criticShort = Array.isArray(world.critics) && world.critics.length < WORLD_CONFIG.criticCount[0]
   if (needAll || needCritics || criticShort || needAudience || needPubs || needInvs) {
     const rng = createRng((s.seed ^ 0x51a7) >>> 0)
+    const aiRng = createRng((s.seed ^ 0x51a7 ^ 0xbeef) >>> 0)
     let n = 1
     const uid = (p: string) => `${p}${(n++).toString(36)}`
-    if (needAll) world.competitors = generateCompetitors(rng, uid)
+    if (needAll) world.competitors = generateCompetitors(rng, uid, aiRng)
     if (needCritics) {
       world.critics = generateCritics(rng, uid)
     } else if (criticShort) {

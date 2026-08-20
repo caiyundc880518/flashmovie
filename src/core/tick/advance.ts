@@ -288,16 +288,21 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     }
   }
 
-  // 7.5 竞争对手周期：倒计时归零 → 上映一部影片
+  // 7.5 竞争对手周期：倒计时归零 → 上映一部影片（间隔按性格倍率差异化：快发型多产、品质型少而精）
   for (const c of draft.world.competitors) {
     c.nextReleaseIn -= 1
     if (c.nextReleaseIn <= 0) {
       const film = releaseCompetitorFilm(draft, c, rng)
       pushNews(draft, `竞争对手「${c.name}」本周上映《${film.name}》，档期竞争加剧！`)
-      c.nextReleaseIn = randInt(
-        rng,
-        WORLD_CONFIG.competitorReleaseWeeks[0],
-        WORLD_CONFIG.competitorReleaseWeeks[1],
+      c.nextReleaseIn = Math.max(
+        1,
+        Math.round(
+          randInt(
+            rng,
+            WORLD_CONFIG.competitorReleaseWeeks[0],
+            WORLD_CONFIG.competitorReleaseWeeks[1],
+          ) * WORLD_CONFIG.competitor.intervalMul[c.personality],
+        ),
       )
     }
   }

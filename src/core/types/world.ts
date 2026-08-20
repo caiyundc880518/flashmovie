@@ -65,6 +65,19 @@ export interface CompetitorFilm {
   boxOffice: number
 }
 
+/** NPC 性格（策略差异化）：品质型/快发型/专精型/狙击型/稳健型 */
+export type CompetitorPersonality = 'quality' | 'volume' | 'specialist' | 'sniper' | 'balanced'
+
+/** NPC 沉淀的 IP 资产（高票房片，用于续作） */
+export interface CompetitorIp {
+  id: string
+  name: string
+  type: FilmType
+  /** 已出部数 */
+  films: number
+  totalBoxOffice: number
+}
+
 /** AI 竞争对手影业 */
 export interface Competitor {
   id: string
@@ -74,6 +87,18 @@ export interface Competitor {
   /** 距下次上映周数 */
   nextReleaseIn: number
   history: CompetitorFilm[]
+  /** 性格（策略差异化，阶段 1 引入） */
+  personality: CompetitorPersonality
+  /** 专精型锁定的类型（1–2 个，其他性格无） */
+  homeTypes?: FilmType[]
+  /** 资金池（万；收入/成本结算用，阶段 3 引入） */
+  cash: number
+  /** 自家员工 id（员工本体在全局 workers 表，阶段 4 引入） */
+  team: string[]
+  /** 沉淀 IP（续作用） */
+  ips: CompetitorIp[]
+  /** 已定档的下一部类型（决策后写入，阶段 2 引入） */
+  nextType?: FilmType
 }
 
 /** 影评人 */

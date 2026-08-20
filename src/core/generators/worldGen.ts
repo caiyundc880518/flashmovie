@@ -1,4 +1,4 @@
-import type { AudienceGroup, Competitor, Critic, Investor, Publisher } from '../types'
+import type { AudienceGroup, Competitor, CompetitorPersonality, Critic, Investor, Publisher } from '../types'
 import { FILM_TYPES, type FilmType } from '../types'
 import { WORLD_CONFIG } from '../config/world'
 import { PUBLISHER_CONFIG } from '../config/channels'
@@ -6,26 +6,66 @@ import { INVESTOR_CONFIG } from '../config/company'
 import type { Rng } from '../rng'
 import { clamp, pick, randInt, round1 } from '../rng'
 
-/** 生成 AI 竞争对手（2–5 家） */
-export function generateCompetitors(rng: Rng, uid: (prefix: string) => string): Competitor[] {
+/** 按权重随机抽一个性格 */
+export function pickPersonality(rng: Rng): CompetitorPersonality {
+  const weights = WORLD_CONFIG.competitor.personalityWeights
+  const total = Object.values(weights).reduce((s, w) => s + w, 0)
+  let roll = rng() * total
+  for (const [k, w] of Object.entries(weights)) {
+    roll -= w
+    if (roll <= 0) return k as CompetitorPersonality
+  }
+  return 'balanced'
+}
+
+/** 专精型：随机锁定 1–2 个类型 */
+function pickHomeTypes(rng: Rng): FilmType[] {
+  const count = randInt(rng, WORLD_CONFIG.competitor.specialistHomeTypes[0], WORLD_CONFIG.competitor.specialistHomeTypes[1])
+  const pool = [...FILM_TYPES]
+  for (let i = pool.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1))
+    ;[pool[i], pool[j]] = [pool[j], pool[i]]
+  }
+  return pool.slice(0, count)
+}
+
+/**
+ * 生成 AI 竞争对手（2–5 家，带性格差异化）。
+ * rng 只用于原有字段（数量/名字/声誉/首映延迟，保持既有随机序列不变）；
+ * aiRng 用于新增 AI 字段（性格/专精类型/资金），避免扰动世界生成的确定性序列。
+ */
+export function generateCompetitors(
+  rng: Rng,
+  uid: (prefix: string) => string,
+  aiRng: Rng,
+): Competitor[] {
   const namePool = [...WORLD_CONFIG.competitorNames]
+  const cfg = WORLD_CONFIG.competitor
   return Array.from(
     { length: randInt(rng, WORLD_CONFIG.competitorCount[0], WORLD_CONFIG.competitorCount[1]) },
-    () => ({
-      id: uid('comp'),
-      name: pick(rng, namePool),
-      reputation: randInt(
-        rng,
-        WORLD_CONFIG.competitorBaseReputation[0],
-        WORLD_CONFIG.competitorBaseReputation[1],
-      ),
-      nextReleaseIn: randInt(
-        rng,
-        WORLD_CONFIG.competitorFirstReleaseDelay[0],
-        WORLD_CONFIG.competitorFirstReleaseDelay[1],
-      ),
-      history: [],
-    }),
+    () => {
+      const personality = pickPersonality(aiRng)
+      return {
+        id: uid('comp'),
+        name: pick(rng, namePool),
+        reputation: randInt(
+          rng,
+          WORLD_CONFIG.competitorBaseReputation[0],
+          WORLD_CONFIG.competitorBaseReputation[1],
+        ),
+        nextReleaseIn: randInt(
+          rng,
+          WORLD_CONFIG.competitorFirstReleaseDelay[0],
+          WORLD_CONFIG.competitorFirstReleaseDelay[1],
+        ),
+        history: [],
+        personality,
+        homeTypes: personality === 'specialist' ? pickHomeTypes(aiRng) : undefined,
+        cash: randInt(aiRng, cfg.startCash[0], cfg.startCash[1]),
+        team: [],
+        ips: [],
+      }
+    },
   )
 }
 

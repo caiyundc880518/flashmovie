@@ -30,7 +30,12 @@ export function createInitialState(seed?: number, companyName = '星光影业'):
     id: `wrk${(counter++).toString(36)}`,
   }))
 
-  const competitors = generateCompetitors(rng, (p) => `${p}${(counter++).toString(36)}`)
+  const competitors = generateCompetitors(
+    rng,
+    (p) => `${p}${(counter++).toString(36)}`,
+    // AI 字段（性格/资金/专精类型）走独立 rng，不扰动世界生成的既有随机序列
+    createRng((s ^ 0x51a7 ^ 0xbeef) >>> 0),
+  )
   const critics = generateCritics(rng, (p) => `${p}${(counter++).toString(36)}`)
   const audience = generateAudienceGroups(rng, (p) => `${p}${(counter++).toString(36)}`)
   const publishers = generatePublishers(rng, (p) => `${p}${(counter++).toString(36)}`)
