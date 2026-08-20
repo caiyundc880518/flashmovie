@@ -49,10 +49,10 @@ function PaperArticle({ p }: { p: Paper }) {
       </header>
       <div className="newspaper-headline">
         <span className="newspaper-stamp">头条</span>
-        <div className="newspaper-headline-text">
+        <h3>
           <span className={`news-tag ${headSec.cls}`}>{headSec.label}</span>
-          <h3>{p.headline.text}</h3>
-        </div>
+          {p.headline.text}
+        </h3>
       </div>
       {p.body.length > 0 && (
         <div className={`newspaper-body${p.body.length >= 3 ? ' two-col' : ''}`}>
