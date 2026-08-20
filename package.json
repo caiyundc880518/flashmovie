@@ -1,7 +1,7 @@
 {
   "name": "flashmovie",
   "private": true,
-  "version": "0.4.2",
+  "version": "0.4.3",
   "type": "module",
   "description": "星光影业 FlashMovie — 网页端电影公司模拟经营游戏",
   "scripts": {
