@@ -48,7 +48,6 @@ function PaperArticle({ p }: { p: Paper }) {
         <div className="newspaper-sub">SCREEN WEEKLY · 光影行业每周要闻</div>
       </header>
       <div className="newspaper-headline">
-        <span className="newspaper-stamp">头条</span>
         <h3>
           <span className={`news-tag ${headSec.cls}`}>{headSec.label}</span>
           {p.headline.text}
