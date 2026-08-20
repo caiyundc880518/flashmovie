@@ -3471,3 +3471,55 @@ input[type='range'] {
 .sec-company {
   color: #3a6ea5;
 }
+
+/* ===== 新闻报纸筛选导航 ===== */
+.paper-nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+.paper-nav-years {
+  display: flex;
+  gap: 2px;
+  border-bottom: none;
+}
+.paper-nav-years .tab-btn {
+  padding: 7px 14px;
+}
+.paper-nav-week {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.paper-nav-week select {
+  min-width: 76px;
+  padding: 6px 8px;
+}
+.paper-nav-btns {
+  display: flex;
+  gap: 8px;
+  margin-left: auto;
+}
+.paper-info {
+  text-align: center;
+  margin-bottom: 12px;
+  letter-spacing: 1px;
+}
+.paper-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  padding: 48px 20px;
+  color: var(--text-dim);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+}
