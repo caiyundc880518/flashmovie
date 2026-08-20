@@ -39,17 +39,20 @@ function PaperArticle({ p }: { p: Paper }) {
   return (
     <article className="newspaper">
       <header className="newspaper-head">
+        <div className="newspaper-topline">
+          <span>第 {p.issue} 期</span>
+          <span>{SEASON_ZH(p.week)}</span>
+          <span>第 {p.year} 年 · 第 {p.week} 周</span>
+        </div>
         <div className="newspaper-masthead">银幕周刊</div>
         <div className="newspaper-sub">SCREEN WEEKLY · 光影行业每周要闻</div>
-        <div className="newspaper-meta">
-          <span>第 {p.year} 年 · 第 {p.week} 周</span>
-          <span>{SEASON_ZH(p.week)}</span>
-          <span>第 {p.issue} 期</span>
-        </div>
       </header>
       <div className="newspaper-headline">
-        <span className={`news-tag ${headSec.cls}`}>{headSec.label}</span>
-        <h3>{p.headline.text}</h3>
+        <span className="newspaper-stamp">头条</span>
+        <div className="newspaper-headline-text">
+          <span className={`news-tag ${headSec.cls}`}>{headSec.label}</span>
+          <h3>{p.headline.text}</h3>
+        </div>
       </div>
       {p.body.length > 0 && (
         <div className={`newspaper-body${p.body.length >= 3 ? ' two-col' : ''}`}>
