@@ -63,6 +63,12 @@ export interface CompetitorFilm {
   ap: number
   mp: number
   boxOffice: number
+  /** 类型（感知决策产出，阶段 2 引入） */
+  type?: FilmType
+  /** 影评人平均分（10 分制，口碑闭环，阶段 2 引入） */
+  criticScore?: number
+  /** 观众评分（10 分制，口碑闭环，阶段 2 引入） */
+  audienceScore?: number
 }
 
 /** NPC 性格（策略差异化）：品质型/快发型/专精型/狙击型/稳健型 */

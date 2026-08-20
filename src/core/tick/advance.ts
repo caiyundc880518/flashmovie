@@ -1,6 +1,4 @@
 import type {
-  Competitor,
-  CompetitorFilm,
   FilmProject,
   GameState,
   ProjectEvent,
@@ -20,6 +18,7 @@ import { applyWeeklyWorkerState } from '../rules/growth'
 import { chemistrySpeedFactor } from '../rules/chemistry'
 import { settleDistribution, settleIpLongtail } from './distribution'
 import { applyAwardEffects, computeYearAwards } from '../rules/awards'
+import { releaseCompetitorFilm, shouldCompetitorRelease } from '../rules/competitor'
 import { annualCriticRotation } from '../rules/critics'
 import { generateScript, generateTierScript } from '../generators/scriptGen'
 import { generateMarketScripts } from '../generators/scriptGen'
@@ -288,12 +287,17 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     }
   }
 
-  // 7.5 竞争对手周期：倒计时归零 → 上映一部影片（间隔按性格倍率差异化：快发型多产、品质型少而精）
+  // 7.5 竞争对手周期：倒计时归零 → 档期决策（拥挤避让/狙击）→ 感知类型决策 + 口碑闭环上映
   for (const c of draft.world.competitors) {
     c.nextReleaseIn -= 1
     if (c.nextReleaseIn <= 0) {
+      if (!shouldCompetitorRelease(draft, c, rng)) continue
       const film = releaseCompetitorFilm(draft, c, rng)
-      pushNews(draft, `竞争对手「${c.name}」本周上映《${film.name}》，档期竞争加剧！`)
+      const typeText = film.type ? FILM_TYPE_ZH[film.type] : ''
+      pushNews(
+        draft,
+        `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}，档期竞争加剧！`,
+      )
       c.nextReleaseIn = Math.max(
         1,
         Math.round(
@@ -330,27 +334,3 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
   draft.world.news = draft.world.news.slice(-30)
 }
 
-/** 对手上映一部影片（简化质量模型，声誉越高出品越强） */
-export function releaseCompetitorFilm(
-  state: GameState,
-  c: Competitor,
-  rng: Rng,
-): CompetitorFilm {
-  const type = pick(rng, FILM_TYPES)
-  const title = pick(rng, SCRIPT_POOL.titles[type])
-  const ap = clamp(Math.round(randInt(rng, 20, 60) + c.reputation * 0.4), 0, 100)
-  const mp = clamp(Math.round(randInt(rng, 25, 65) + c.reputation * 0.5), 0, 100)
-  const boxOffice = Math.round((randInt(rng, 400, 900) + c.reputation * 15) * (0.8 + mp / 100))
-  const film: CompetitorFilm = {
-    week: state.calendar.week,
-    year: state.calendar.year,
-    name: title,
-    ap,
-    mp,
-    boxOffice,
-  }
-  c.history.push(film)
-  c.history = c.history.slice(-10)
-  c.reputation = clamp(c.reputation + (mp >= 50 ? 1 : -1), 0, 100)
-  return film
-}

@@ -45,9 +45,12 @@ export function generateCompetitors(
     { length: randInt(rng, WORLD_CONFIG.competitorCount[0], WORLD_CONFIG.competitorCount[1]) },
     () => {
       const personality = pickPersonality(aiRng)
+      // 名字从池中取出不重复（与影评人生成一致）
+      const idx = Math.floor(rng() * namePool.length)
+      const name = namePool.splice(idx, 1)[0]
       return {
         id: uid('comp'),
-        name: pick(rng, namePool),
+        name,
         reputation: randInt(
           rng,
           WORLD_CONFIG.competitorBaseReputation[0],
