@@ -23,6 +23,7 @@ npm run preview             # 本地预览生产构建
 | `docs/Preparation.md` | 源概念文档（英文粗纲） |
 | `docs/GDD.md` | 游戏设计文档（完整愿景 + 分阶段路线图） |
 | `docs/ARCHITECTURE.md` | V1 架构设计（分层/模块/数据流/技术选型/实施计划） |
+| `docs/ROADMAP.md` | 后续版本规划（版权交易 / 公司收购 / 员工培养 / 沉浸感 / UI 美化 / AI 加持） |
 | `docs/superpowers/specs/2026-08-18-movie-longtail-design.md` | 电影长尾收益大修设计（定档预售 / 每周结算 / 下片再发行 / IP 周边 / 版权交易） |
 
 ## 架构速览
