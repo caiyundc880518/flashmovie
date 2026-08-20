@@ -338,9 +338,9 @@ export function ProjectDetailScreen({
                 )}
               </p>
             )}
-            {/* 预计渠道结算：实时反映渠道选择对票房的影响 */}
+            {/* 预计渠道结算：实时反映渠道选择对票房的影响（影院渠道按全国影院总数 = 基础 5178 + 自建） */}
             {preview && p.channel && (() => {
-              const est = channelRevenue(p, preview.boxOffice)
+              const est = channelRevenue(p, preview.boxOffice, totalCinemasOf(state))
               return (
                 <div className="channel-effect channel-preview">
                   <h3>预计渠道结算</h3>
