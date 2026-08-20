@@ -9,11 +9,11 @@ import { ECONOMY } from '../../core/config/economy'
 import { RECRUIT_POOLS, type RecruitPoolConfig } from '../../core/config/recruit'
 import { TEN_PULL_DISCOUNT } from '../../core/config/writers'
 import { ROLES } from '../../core/config/roles'
-import { poachSuccessChance } from '../../core/rules/competitor'
 import { WorkerDetail } from '../components/WorkerDetail'
 import { Modal } from '../components/Modal'
 import { MoneyText } from '../components/MoneyText'
 import { Tabs } from '../components/Tabs'
+import { PoachAction } from '../components/PoachAction'
 
 /** 单名对手员工：签字费报价 + 成功率预估 + 挖角按钮 */
 function PoachRow({
@@ -27,9 +27,6 @@ function PoachRow({
   worker: Worker
   dispatch: (a: Action) => void
 }) {
-  const [offer, setOffer] = useState(Math.max(1, Math.round(worker.salary * 3)))
-  const chance = poachSuccessChance(state, competitor, worker, offer)
-  const canAfford = state.company.cash >= offer
   const mainSkill = ROLES[worker.role].skill ?? 'act'
   return (
     <div className="poach-row">
@@ -44,33 +41,7 @@ function PoachRow({
         </span>
       </div>
       <div className="poach-row-ops">
-        <input
-          className="poach-offer"
-          type="number"
-          min={1}
-          value={offer}
-          onChange={(e) => setOffer(Math.max(0, Math.round(Number(e.target.value) || 0)))}
-        />
-        <span className="dim">
-          签字费（万）· 成功率{' '}
-          <b className={chance >= 0.5 ? 'good' : chance >= 0.2 ? '' : 'bad'}>
-            {Math.round(chance * 100)}%
-          </b>
-        </span>
-        <button
-          className="btn-primary"
-          disabled={!canAfford || offer <= 0}
-          onClick={() =>
-            dispatch({
-              type: 'poachCompetitorWorker',
-              competitorId: competitor.id,
-              workerId: worker.id,
-              offer,
-            })
-          }
-        >
-          挖角
-        </button>
+        <PoachAction state={state} competitor={competitor} worker={worker} dispatch={dispatch} />
       </div>
     </div>
   )

@@ -10,6 +10,7 @@ import {
   poachSuccessChance,
   idlePlayerWorkers,
 } from '../rules/competitor'
+import { competitorSummary, weeklyCompanyBoxOffice } from '../rules/competitorView'
 import { generateWorker } from '../generators/workerGen'
 import { createRng } from '../rng'
 import type { Competitor, FilmProject, RoleId } from '../types'
@@ -325,5 +326,61 @@ describe('NPC AI（阶段 2：感知决策 + 口碑闭环）', () => {
       }
     }
     expect(fired).toBe(true)
+  })
+
+  it('竞对聚合：出片数/累计/平均/最佳统计正确', () => {
+    const s = createInitialState(40)
+    const c = s.world.competitors[0]
+    c.history = [
+      { week: 1, year: 1, name: 'A', ap: 50, mp: 50, boxOffice: 1000 },
+      { week: 3, year: 1, name: 'B', ap: 60, mp: 60, boxOffice: 2000 },
+      { week: 5, year: 1, name: 'C', ap: 40, mp: 40, boxOffice: 500 },
+    ]
+    const sum = competitorSummary(s, c)
+    expect(sum.films).toBe(3)
+    expect(sum.totalBoxOffice).toBe(3500)
+    expect(sum.avgBoxOffice).toBe(1167)
+    expect(sum.best?.name).toBe('B')
+  })
+
+  it('本周公司票房对比：我司周结算累计 + NPC 上映周一次性', () => {
+    const s = createInitialState(41)
+    s.calendar = { year: 1, week: 10 }
+    const script = s.world.marketScripts[0]
+    s.scripts[script.id] = script
+    const p = {
+      id: 'p1',
+      name: '我司片',
+      scriptId: script.id,
+      stage: 'released',
+      run: {
+        status: 'running',
+        currentRunId: 'r1',
+        runs: [
+          {
+            id: 'r1',
+            channel: 'cinema',
+            isFirst: true,
+            config: {},
+            expectedTotal: 100,
+            startWeek: 8,
+            startYear: 1,
+            status: 'running',
+            weekly: [{ week: 10, year: 1, boxOffice: 800, revenue: 400, mp: 60, audience: 6 }],
+            channelCost: 0,
+          },
+        ],
+        releaseWeek: 8,
+        releaseYear: 1,
+        presale: 0,
+        firstRunEnded: false,
+        basePotential: 100,
+      },
+    } as unknown as FilmProject
+    s.projects = [p]
+    s.world.competitors[0].history = [{ week: 10, year: 1, name: '对手片', ap: 50, mp: 50, boxOffice: 1200 }]
+    const list = weeklyCompanyBoxOffice(s)
+    expect(list.find((e) => e.ours)?.boxOffice).toBe(800)
+    expect(list.find((e) => e.name === s.world.competitors[0].name)?.boxOffice).toBe(1200)
   })
 })

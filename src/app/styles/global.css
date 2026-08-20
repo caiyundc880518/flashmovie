@@ -3117,3 +3117,253 @@ input[type='range'] {
   color: var(--gold);
   letter-spacing: 0.5px;
 }
+
+/* ===== 竞对影业（列表 / 详情） ===== */
+.page-head {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+.page-head h2 {
+  margin: 0;
+}
+.comp-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 14px;
+}
+.comp-card {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--gold);
+  border-radius: 12px;
+  background: var(--panel-2, #131c2e);
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.comp-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+.comp-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.comp-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap: 8px;
+}
+.comp-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  text-align: center;
+}
+.comp-stat b {
+  font-size: 16px;
+  font-variant-numeric: tabular-nums;
+}
+.comp-stat span {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.comp-sub {
+  font-size: 12px;
+}
+
+.comp-info {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.comp-info-line {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+.comp-info-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 10px;
+}
+.comp-info-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.comp-info-cell b {
+  font-size: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.comp-info-cell span {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.comp-ips {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.comp-ip {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border: 1px dashed var(--border);
+  border-radius: 10px;
+  background: var(--bg);
+}
+
+.comp-film-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+.comp-film-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--panel-2, #131c2e);
+}
+.comp-film-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.comp-film-box {
+  margin-top: auto;
+  font-size: 15px;
+}
+.poach-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.poach-modal-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* ===== 实时票房排行 ===== */
+.rt-total .boxoffice-total-label {
+  font-size: 15px;
+}
+.rt-compare {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.rt-compare .rolling-num {
+  color: var(--gold);
+  font-weight: 700;
+}
+.rt-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.rt-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--panel-2, #131c2e);
+  transition: background 0.15s ease;
+}
+.rt-row.rt-top {
+  border-color: rgba(232, 182, 76, 0.55);
+  background:
+    linear-gradient(90deg, rgba(232, 182, 76, 0.08), transparent 60%),
+    var(--panel-2, #131c2e);
+}
+.rt-rank-1 {
+  background: linear-gradient(135deg, #b8860b, #e8b64c) !important;
+  color: #1a1200 !important;
+}
+.rt-rank-2 {
+  background: #9aa5b5 !important;
+  color: #0d1321 !important;
+}
+.rt-rank-3 {
+  background: #b5733a !important;
+  color: #fff !important;
+}
+.rt-name {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rt-owner {
+  min-width: 90px;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.rt-ours {
+  color: var(--gold);
+  font-weight: 600;
+}
+.rt-num {
+  min-width: 110px;
+  text-align: right;
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.rt-week {
+  min-width: 84px;
+  text-align: right;
+}
+.rt-delta {
+  display: inline-block;
+  min-width: 34px;
+  text-align: center;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--text-dim);
+}
+.rt-up {
+  color: var(--ok);
+}
+.rt-down {
+  color: var(--danger);
+}
+.rt-new {
+  color: var(--gold);
+}
+@media (max-width: 800px) {
+  .rt-week {
+    display: none;
+  }
+}

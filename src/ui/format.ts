@@ -18,6 +18,15 @@ export const PERSONALITY_ZH: Record<CompetitorPersonality, string> = {
   balanced: '稳健型',
 }
 
+/** NPC 性格一句话说明（竞对详情页） */
+export const PERSONALITY_DESC: Record<CompetitorPersonality, string> = {
+  quality: '少而精：间隔长、投入高，专注打磨高口碑大片，爱拍续作。',
+  volume: '多而快：低成本快速出片，以量取胜，档期从不缺席。',
+  specialist: '深耕本命类型（专精类型），容易沉淀系列 IP 与续作。',
+  sniper: '专挑热门档期出手，尤其爱撞你正在上映的大片。',
+  balanced: '稳健经营：追潮流、跟观众，各项决策均衡随大流。',
+}
+
 export const TYPE_COLOR: Record<FilmType, string> = {
   comedy: '#f5a623',
   horror: '#8a5cff',

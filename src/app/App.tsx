@@ -20,6 +20,9 @@ import { CriticsScreen } from '../ui/screens/CriticsScreen'
 import { NewsScreen } from '../ui/screens/NewsScreen'
 import { LeaderboardScreen } from '../ui/screens/LeaderboardScreen'
 import { AwardsScreen } from '../ui/screens/AwardsScreen'
+import { CompetitorsScreen } from '../ui/screens/CompetitorsScreen'
+import { CompetitorDetailScreen } from '../ui/screens/CompetitorDetailScreen'
+import { RealTimeBoxOfficeScreen } from '../ui/screens/RealTimeBoxOfficeScreen'
 import { MainMenuScreen } from '../ui/screens/MainMenuScreen'
 import { AwardsCeremonyModal } from '../ui/components/AwardsCeremonyModal'
 import { Modal } from '../ui/components/Modal'
@@ -51,10 +54,13 @@ type Nav =
   | { screen: 'news' }
   | { screen: 'leaderboard' }
   | { screen: 'awards' }
+  | { screen: 'competitors' }
+  | { screen: 'competitor'; competitorId: string }
+  | { screen: 'realtime' }
   | { screen: 'project'; projectId: string }
 
-/** 导航菜单项 key（排除带参页面 project / ipDetail） */
-type NavKey = Exclude<Nav['screen'], 'project' | 'ipDetail'>
+/** 导航菜单项 key（排除带参页面 project / ipDetail / competitor） */
+type NavKey = Exclude<Nav['screen'], 'project' | 'ipDetail' | 'competitor'>
 
 /** 左侧多级导航：分组 → 页面 */
 const NAV_GROUPS: Array<{ group: string; items: Array<{ key: NavKey; label: string }> }> = [
@@ -83,6 +89,7 @@ const NAV_GROUPS: Array<{ group: string; items: Array<{ key: NavKey; label: stri
       { key: 'team', label: '组队立项' },
       { key: 'projects', label: '项目' },
       { key: 'longtail', label: '长尾收益' },
+      { key: 'realtime', label: '实时票房' },
     ],
   },
   {
@@ -97,6 +104,7 @@ const NAV_GROUPS: Array<{ group: string; items: Array<{ key: NavKey; label: stri
     items: [
       { key: 'news', label: '新闻' },
       { key: 'leaderboard', label: '排行榜' },
+      { key: 'competitors', label: '竞对影业' },
       { key: 'awards', label: '颁奖' },
     ],
   },
@@ -345,6 +353,18 @@ export function App() {
           {nav.screen === 'news' && <NewsScreen />}
           {nav.screen === 'leaderboard' && <LeaderboardScreen />}
           {nav.screen === 'awards' && <AwardsScreen />}
+          {nav.screen === 'realtime' && <RealTimeBoxOfficeScreen />}
+          {nav.screen === 'competitors' && (
+            <CompetitorsScreen
+              onOpenCompetitor={(id) => setNav({ screen: 'competitor', competitorId: id })}
+            />
+          )}
+          {nav.screen === 'competitor' && (
+            <CompetitorDetailScreen
+              competitorId={nav.competitorId}
+              onBack={() => setNav({ screen: 'competitors' })}
+            />
+          )}
           {nav.screen === 'projects' && (
             <ProjectsScreen onOpenProject={openProject} />
           )}

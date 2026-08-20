@@ -248,7 +248,7 @@ export function releaseCompetitorFilm(state: GameState, c: Competitor, rng: Rng)
     boxOffice,
   }
   c.history.push(film)
-  c.history = c.history.slice(-10)
+  c.history = c.history.slice(-30)
   c.reputation = clamp(c.reputation + (mp >= 50 ? 1 : -1), 0, 100)
   c.nextType = type
   return film
