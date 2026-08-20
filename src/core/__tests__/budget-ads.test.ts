@@ -201,6 +201,34 @@ describe('预算占比（Budget Alloc）', () => {
     expect(b1).toBeGreaterThan(b0)
     expect(b2).toBeGreaterThan(b1)
   })
+
+  it('startProject：自定义电影名生效；留空默认用剧本名', () => {
+    const s = createInitialState(14)
+    s.company.cash = 100000
+    const mk = (seed: number, id: string) => {
+      const sc = generateScript(createRng(seed), 'company')
+      sc.id = id
+      s.scripts[id] = sc
+      s.company.ownedScriptIds.push(id)
+      return sc
+    }
+    const sc1 = mk(20, 'scr-c1')
+    const sc2 = mk(21, 'scr-c2')
+    for (const role of ['director', 'actor', 'shooter', 'editor', 'market'] as const) {
+      const w = generateWorker(createRng(22), role, 'pro')
+      w.id = `wc-${role}`
+      s.workers[w.id] = w
+      s.company.employeeIds.push(w.id)
+    }
+    const team = { directorId: 'wc-director', actorIds: ['wc-actor'], shooterId: 'wc-shooter', editorId: 'wc-editor', marketId: 'wc-market' }
+    const base = { team, budgetAlloc: { story: 30, vfx: 30, acting: 20, edit: 20 }, vfxLevel: 0, adSponsorIds: [] }
+    // 自定义名
+    let s2 = reduce(s, { type: 'startProject', ...base, scriptId: sc1.id, name: '我的原创巨片' })
+    expect(s2.projects[s2.projects.length - 1].name).toBe('我的原创巨片')
+    // 留空 → 剧本名
+    s2 = reduce(s2, { type: 'startProject', ...base, scriptId: sc2.id })
+    expect(s2.projects[s2.projects.length - 1].name).toBe(sc2.title)
+  })
 })
 
 describe('特效档位（VFX Level）', () => {

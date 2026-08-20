@@ -3,6 +3,7 @@ import { createRng } from '../rng'
 import { generateWorker, generateCandidates } from '../generators/workerGen'
 import { generateScript, generateMarketScripts } from '../generators/scriptGen'
 import { ROLE_IDS, FILM_TYPES } from '../types'
+import { SCRIPT_POOL } from '../config/scripts'
 import { vfxTier, vfxTypeFactor } from '../rules/scoring'
 
 describe('worker generator', () => {
@@ -62,6 +63,17 @@ describe('script generator', () => {
   it('generateMarketScripts 数量正确', () => {
     const r = createRng(2)
     expect(generateMarketScripts(r, 4)).toHaveLength(4)
+  })
+
+  it('标题池扩容：每类型 ≥ 12 个，批量生成重名显著下降', () => {
+    for (const t of FILM_TYPES) {
+      expect(SCRIPT_POOL.titles[t].length).toBeGreaterThanOrEqual(12)
+    }
+    const r = createRng(7)
+    const seen = new Set<string>()
+    for (let i = 0; i < 40; i++) seen.add(generateScript(r, 'company').title)
+    // 旧池每类型仅 5 个，40 次抽样唯一标题通常 < 6；扩容后应 ≥ 12
+    expect(seen.size).toBeGreaterThanOrEqual(12)
   })
 })
 

@@ -18,7 +18,7 @@ export type Action =
   | { type: 'repayLoan'; loanId: string }
   // 院线管理：投钱自建影院（数量无上限，全国总数 = 基础 5178 + 自建数）
   | { type: 'buildCinemas'; count: number }
-  | { type: 'startProject'; scriptId: string; team: TeamAssignments; budgetAlloc: BudgetAlloc; vfxLevel: number; adSponsorIds: string[]; ipId?: string }
+  | { type: 'startProject'; scriptId: string; team: TeamAssignments; budgetAlloc: BudgetAlloc; vfxLevel: number; adSponsorIds: string[]; ipId?: string; name?: string }
   | { type: 'startShooting'; projectId: string }
   // 筹备：投入预热成本（对 MP 加成，无上限）
   | { type: 'setWarmup'; projectId: string; amount: number }

@@ -107,6 +107,7 @@ export function TeamBuildScreen({
   const [vfxLevel, setVfxLevel] = useState(0)
   const [adIds, setAdIds] = useState<string[]>([])
   const [ipId, setIpId] = useState(initialIpId ?? '')
+  const [customName, setCustomName] = useState('')
   const [msg, setMsg] = useState('')
   const [picker, setPicker] = useState<PickerState | null>(null)
   // 选人弹窗：职位筛选 + 分页
@@ -297,6 +298,7 @@ export function TeamBuildScreen({
       vfxLevel,
       adSponsorIds: adIds,
       ipId: selectedIp?.id,
+      name: customName.trim() || undefined,
     })
     // 从最新状态找到刚创建的项目，弹窗引导前往项目页
     const latest = useGameStore.getState().state
@@ -314,6 +316,7 @@ export function TeamBuildScreen({
     setMsg('')
     setScriptId('')
     setIpId('')
+    setCustomName('')
     setAdIds([])
     setAlloc({ ...BALANCED_ALLOC })
     setVfxLevel(0)
@@ -467,6 +470,21 @@ export function TeamBuildScreen({
               </PosterCard>
             ))}
             {owned.length === 0 && <p className="dim">剧本库为空。</p>}
+          </div>
+
+          <div className="config-row">
+            <label className="config-label">
+              电影名（可选，留空默认用剧本名）
+              {selectedIp && <span className="warn"> · 续作沿用系列名</span>}
+            </label>
+            <input
+              type="text"
+              maxLength={24}
+              value={selectedIp ? '' : customName}
+              placeholder={selectedIp ? `${selectedIp.name} ${selectedIp.entry + 1}` : script?.title ?? '输入自定义片名'}
+              disabled={!!selectedIp}
+              onChange={(e) => setCustomName(e.target.value)}
+            />
           </div>
 
           {state.company.ips.length > 0 && (

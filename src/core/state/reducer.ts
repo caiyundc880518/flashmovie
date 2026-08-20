@@ -262,7 +262,8 @@ export function reduce(state: GameState, action: Action): GameState {
       let ipId: string | undefined
       let ipEntry: number | undefined
       let hype = 0
-      let projectName = script.title
+      // 自定义电影名（可选）：默认用剧本名；续作沿用系列名
+      let projectName = action.name?.trim()?.slice(0, 24) || script.title
       if (action.ipId) {
         const ip = draft.company.ips.find((x) => x.id === action.ipId)
         if (!ip || script.type !== ip.type) return state
