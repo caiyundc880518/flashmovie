@@ -60,8 +60,10 @@ function PaperArticle({ p }: { p: Paper }) {
             const sec = newsSection(n.text)
             return (
               <article className="newspaper-article" key={n.id}>
-                <span className={`news-tag ${sec.cls}`}>{sec.label}</span>
-                <p>{n.text}</p>
+                <p>
+                  <span className={`news-tag ${sec.cls}`}>{sec.label}</span>
+                  {n.text}
+                </p>
               </article>
             )
           })}

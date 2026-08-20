@@ -3500,12 +3500,16 @@ input[type='range'] {
   border-bottom: none;
 }
 .newspaper-article p {
-  margin: 6px 0 0;
-  text-indent: 2em;
+  margin: 0;
   font-size: 15.5px;
   line-height: 1.95;
   color: #33291b;
   font-variant-numeric: tabular-nums;
+}
+/* 正文条目：栏目标签与文本同行（标签在前，文本紧随，无首行缩进） */
+.newspaper-article p .news-tag {
+  margin-right: 10px;
+  vertical-align: middle;
 }
 .news-tag {
   display: inline-block;
