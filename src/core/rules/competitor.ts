@@ -11,6 +11,7 @@ import { eventBoxOfficeFactor } from './events'
 import { competitionPenalty } from './scoring'
 import { generateWorker, type WorkerTier } from '../generators/workerGen'
 import { pushNews, teamIds } from '../state/utils'
+import { fmtWanCore } from '../format'
 import type { Rng } from '../rng'
 import { clamp, createRng, pick, randInt, round1 } from '../rng'
 
@@ -227,7 +228,7 @@ export function releaseCompetitorFilm(state: GameState, c: Competitor, rng: Rng)
     if (prevTotal < milestone && sequel.totalBoxOffice >= milestone) {
       pushNews(
         state,
-        `竞争对手「${c.name}」的系列 IP《${sequel.name}》累计票房突破 ${milestone.toLocaleString()} 万，载入行业史册！`,
+        `竞争对手「${c.name}」的系列 IP《${sequel.name}》累计票房突破 ${fmtWanCore(milestone)}，载入行业史册！`,
       )
     }
   }
@@ -277,17 +278,17 @@ export function competitorReleaseNews(state: GameState, c: Competitor, film: Com
   if (big) {
     pushNews(
       state,
-      `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}，首周票房 ${film.boxOffice.toLocaleString()} 万${praise ? '，影评人盛赞' : ''}，市场大爆！`,
+      `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}，首周票房 ${fmtWanCore(film.boxOffice)}${praise ? '，影评人盛赞' : ''}，市场大爆！`,
     )
   } else if (flop) {
     pushNews(
       state,
-      `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}遭冷遇，首周仅 ${film.boxOffice.toLocaleString()} 万${slam ? '，影评人差评如潮' : ''}。`,
+      `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}遭冷遇，首周仅 ${fmtWanCore(film.boxOffice)}${slam ? '，影评人差评如潮' : ''}。`,
     )
   } else {
     pushNews(
       state,
-      `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}，首周票房 ${film.boxOffice.toLocaleString()} 万，市场反响平平。`,
+      `竞争对手「${c.name}」本周上映《${film.name}》${typeText ? `（${typeText}）` : ''}，首周票房 ${fmtWanCore(film.boxOffice)}，市场反响平平。`,
     )
   }
 }

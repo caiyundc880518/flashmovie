@@ -71,11 +71,10 @@ export function LongtailScreen({ onOpenProject }: { onOpenProject: (id: string) 
             <div className="boxoffice-total">
               <span className="boxoffice-total-label">公司本周总票房</span>
               <span className="boxoffice-total-num">
-                <RollingNumber value={weekTotalBoxOffice} duration={900} />
-                <span className="boxoffice-unit">万</span>
+                <RollingNumber value={weekTotalBoxOffice} duration={900} format={(n) => fmtWan(n)} />
               </span>
               <span className="boxoffice-total-sub">
-                本周总收入 <RollingNumber value={weekTotalRevenue} duration={900} /> 万
+                本周总收入 <RollingNumber value={weekTotalRevenue} duration={900} format={(n) => fmtWan(n)} />
               </span>
             </div>
             <div className="boxoffice-grid">
@@ -103,29 +102,25 @@ export function LongtailScreen({ onOpenProject }: { onOpenProject: (id: string) 
                       <div className="boxoffice-metric">
                         <span className="boxoffice-metric-label">本周票房</span>
                         <span className="boxoffice-metric-num">
-                          <RollingNumber value={wk?.boxOffice ?? 0} />
-                          <span className="boxoffice-unit">万</span>
+                          <RollingNumber value={wk?.boxOffice ?? 0} format={(n) => fmtWan(n)} />
                         </span>
                       </div>
                       <div className="boxoffice-metric">
                         <span className="boxoffice-metric-label">累计票房</span>
                         <span className="boxoffice-metric-num">
-                          <RollingNumber value={p.result?.boxOffice ?? 0} />
-                          <span className="boxoffice-unit">万</span>
+                          <RollingNumber value={p.result?.boxOffice ?? 0} format={(n) => fmtWan(n)} />
                         </span>
                       </div>
                       <div className="boxoffice-metric">
                         <span className="boxoffice-metric-label">本周收入</span>
                         <span className="boxoffice-metric-num">
-                          <RollingNumber value={wk?.revenue ?? 0} />
-                          <span className="boxoffice-unit">万</span>
+                          <RollingNumber value={wk?.revenue ?? 0} format={(n) => fmtWan(n)} />
                         </span>
                       </div>
                       <div className="boxoffice-metric">
                         <span className="boxoffice-metric-label">累计收入</span>
                         <span className="boxoffice-metric-num">
-                          <RollingNumber value={p.result?.revenue ?? 0} />
-                          <span className="boxoffice-unit">万</span>
+                          <RollingNumber value={p.result?.revenue ?? 0} format={(n) => fmtWan(n)} />
                         </span>
                       </div>
                     </div>

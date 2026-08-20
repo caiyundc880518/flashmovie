@@ -16,6 +16,7 @@ import { AD_CONFIG, AD_SPONSOR_MAP } from '../config/ads'
 import { ipLevel, refreshIpDerived, royaltyPerQuarter, sequelBonusFactor } from '../rules/ip'
 import { applyProjectGrowth } from '../rules/growth'
 import { totalCinemas as totalCinemasOf } from '../rules/cinema'
+import { fmtWanCore } from '../format'
 import { pushNews, uid } from '../state/utils'
 
 /**
@@ -262,7 +263,7 @@ export function settleRunWeek(draft: GameState, p: FilmProject, run: FilmRun): v
   if (n === 0) {
     run.channelCost = round1(channelCostFor(run.channel, run.config, totalCinemasOf(draft)))
     draft.company.cash -= run.channelCost
-    pushNews(draft, `《${p.name}》首周上映，票房 ${Math.round(boxOffice)} 万（渠道投放成本 ${run.channelCost} 万）。`)
+    pushNews(draft, `《${p.name}》首周上映，票房 ${fmtWanCore(boxOffice)}（渠道投放成本 ${fmtWanCore(run.channelCost)}）。`)
   }
 
   // 入账 + 投资人分成

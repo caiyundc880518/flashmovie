@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { useGameStore } from '../store/gameStore'
 import { allTimeFilms, weeklyFilms, type FilmEntry } from '../../core/rules/leaderboard'
 import { weeklyCompanyBoxOffice } from '../../core/rules/competitorView'
-import { fmtWeek } from '../format'
+import { fmtWan, fmtWeek } from '../format'
 import { Tabs } from '../components/Tabs'
 import { RollingNumber } from '../components/RollingNumber'
 
@@ -57,8 +57,7 @@ function RankTable({
           <span className="table-name rt-name">{e.name}</span>
           <span className={`dim rt-owner${e.owner === companyName ? ' rt-ours' : ''}`}>{e.owner}</span>
           <span className="rt-num">
-            <RollingNumber value={e.boxOffice} />
-            <span className="boxoffice-unit">万</span>
+            <RollingNumber value={e.boxOffice} format={(n) => fmtWan(n)} />
           </span>
           <span className="dim rt-week">
             {e.year}年第{e.week}周
@@ -97,12 +96,11 @@ export function RealTimeBoxOfficeScreen() {
         <div className="boxoffice-total rt-total">
           <span className="boxoffice-total-label">全场本周总票房</span>
           <span className="boxoffice-total-num">
-            <RollingNumber value={weekTotal} duration={900} />
-            <span className="boxoffice-unit">万</span>
+            <RollingNumber value={weekTotal} duration={900} format={(n) => fmtWan(n)} />
           </span>
           <span className="rt-compare">
-            我司 <RollingNumber value={ours} duration={900} /> 万 · 对手合计{' '}
-            <RollingNumber value={rivalTotal} duration={900} /> 万
+            我司 <RollingNumber value={ours} duration={900} format={(n) => fmtWan(n)} /> · 对手合计{' '}
+            <RollingNumber value={rivalTotal} duration={900} format={(n) => fmtWan(n)} />
           </span>
         </div>
         <Tabs
