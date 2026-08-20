@@ -100,4 +100,47 @@ describe('院线管理（影院自建）', () => {
     expect(cinemaBuildCost(0)).toBe(0)
     expect(cinemaBuildCost(-3)).toBe(0)
   })
+
+  it('宣发投放上限 = 全国影院总数（自建后不再钳制在基础 5178）', () => {
+    const s = createInitialState(66)
+    // 造一个宣发中影院项目
+    const script = s.world.marketScripts[0]
+    s.scripts[script.id] = script
+    const p = {
+      id: 'prj-m',
+      name: '宣发片',
+      scriptId: script.id,
+      stage: 'marketing',
+      channel: 'cinema',
+      team: { directorId: 'w1', actorIds: [], shooterId: 'w2', editorId: 'w3', marketId: 'w4' },
+      totalStages: 4,
+      shotStages: 4,
+      budgetAlloc: { story: 30, vfx: 20, acting: 30, edit: 20 },
+      vfxLevel: 0,
+      adSponsorIds: [],
+      hype: 50,
+      marketingBudget: 100,
+      budget: 1000,
+      spent: 0,
+      editStyle: 'market',
+      buffs: 0,
+      apAdjust: 0,
+      pendingEvents: [],
+      cinemaCount: 0,
+    } as unknown as FilmProject
+    s.projects = [p]
+    s.company.employeeIds = ['w1', 'w2', 'w3', 'w4']
+    s.workers['w1'] = { id: 'w1', name: '甲', role: 'director' } as never
+
+    // 未自建：上限 = 5178
+    let s2 = reduce(s, { type: 'setCinemaCount', projectId: 'prj-m', count: 9000 })
+    expect(s2.projects[0].cinemaCount).toBe(TOTAL_CINEMAS)
+    // 自建 1000 座后：上限 = 6178
+    s2 = reduce(s2, { type: 'buildCinemas', count: 1000 })
+    s2 = reduce(s2, { type: 'setCinemaCount', projectId: 'prj-m', count: 9000 })
+    expect(s2.projects[0].cinemaCount).toBe(TOTAL_CINEMAS + 1000)
+    // 精确投放新上限内的数量不被截断
+    s2 = reduce(s2, { type: 'setCinemaCount', projectId: 'prj-m', count: 6000 })
+    expect(s2.projects[0].cinemaCount).toBe(6000)
+  })
 })

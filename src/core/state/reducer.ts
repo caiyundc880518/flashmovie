@@ -28,7 +28,7 @@ import { AD_CONFIG, AD_SPONSOR_MAP } from '../config/ads'
 import { CHANNEL_CONFIG, CHANNEL_INFO, TOTAL_CINEMAS, WEB_PLATFORMS } from '../config/channels'
 import { availableVfxTiers } from '../rules/scoring'
 import { poachSuccessChance } from '../rules/competitor'
-import { cinemaBuildCost } from '../rules/cinema'
+import { cinemaBuildCost, totalCinemas } from '../rules/cinema'
 import type { Action } from './actions'
 import type { SkillKey } from '../types'
 
@@ -430,7 +430,8 @@ export function reduce(state: GameState, action: Action): GameState {
       const p = draft.projects.find((x) => x.id === action.projectId)
       if (!p || p.stage !== 'marketing' || p.channel !== 'cinema') return state
       const prev = p.cinemaCount
-      p.cinemaCount = clamp(Math.round(action.count), 0, TOTAL_CINEMAS)
+      // 上限 = 全国影院总数（基础 5178 + 自建，院线管理）
+      p.cinemaCount = clamp(Math.round(action.count), 0, totalCinemas(draft))
       // 投放更多影院 → 热度小幅提升（宣发力度）
       const delta = Math.floor((p.cinemaCount - prev) / 100)
       if (delta > 0) p.hype = clamp(p.hype + delta, 0, 100)
