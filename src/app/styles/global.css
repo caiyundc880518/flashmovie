@@ -3518,21 +3518,22 @@ input[type='range'] {
   font-weight: 700;
   letter-spacing: 0.14em;
   padding: 2px 10px;
-  border-radius: 2px;
-  border: 1px solid currentColor;
+  border-radius: 3px;
+  color: #fbf5e6;
   line-height: 1.5;
+  border: none;
 }
 .sec-industry {
-  color: #96382c;
+  background: #96382c;
 }
 .sec-market {
-  color: #9c6210;
+  background: #9c6210;
 }
 .sec-hr {
-  color: #35693c;
+  background: #35693c;
 }
 .sec-company {
-  color: #2f5f9e;
+  background: #2f5f9e;
 }
 @media (max-width: 800px) {
   .newspaper {
