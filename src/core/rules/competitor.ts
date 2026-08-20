@@ -1,4 +1,4 @@
-import type { Competitor, CompetitorFilm, FilmType, GameState } from '../types'
+import type { Competitor, CompetitorFilm, CompetitorIp, FilmType, GameState } from '../types'
 import { FILM_TYPES } from '../types'
 import { SCRIPT_POOL } from '../config/scripts'
 import { WORLD_CONFIG } from '../config/world'
@@ -163,20 +163,61 @@ export function scoreCompetitorFilm(
 }
 
 /**
- * 对手上映一部影片（感知决策 + 口碑闭环）：
- * 类型决策 → 品质（声誉 + 性格投入）→ 影评/观众/事件/竞争结算 → 入历史 + 声誉微调。
+ * 对手上映一部影片（感知决策 + 口碑闭环 + 长线经营）：
+ * 类型决策 → 续作决策 → 品质（声誉 + 性格投入 + 续作加成，拮据降档）→
+ * 影评/观众/事件/竞争结算 → 收入/成本入资金池 → 高票房沉淀 IP → 入历史 + 声誉微调。
  */
 export function releaseCompetitorFilm(state: GameState, c: Competitor, rng: Rng): CompetitorFilm {
+  const cfg = WORLD_CONFIG.competitor
   const type = decideCompetitorType(state, c, rng)
-  const title = pick(rng, SCRIPT_POOL.titles[type])
 
-  // 品质投入：性格 investMul 决定精雕/粗糙（品质型 ap/mp 更高、快发型更低）
-  const invest = WORLD_CONFIG.competitor.investMul[c.personality]
+  // 续作决策：已有同类型 IP 且抽中性格续作概率 → 拍续作
+  let sequel: CompetitorIp | undefined
+  const candidates = c.ips.filter((ip) => ip.type === type)
+  if (candidates.length > 0 && rng() < cfg.economy.sequelChance[c.personality]) {
+    sequel = [...candidates].sort((a, b) => b.totalBoxOffice - a.totalBoxOffice)[0]
+  }
+  const title = sequel ? `${sequel.name} ${sequel.films + 1}` : pick(rng, SCRIPT_POOL.titles[type])
+
+  // 品质投入：性格 investMul；拮据（cash < 阈值）时降档
+  const poor = c.cash < cfg.economy.poorThreshold
+  const invest = cfg.investMul[c.personality] * (poor ? cfg.economy.downshiftMul : 1)
   const qualityBonus = Math.round((invest - 1) * 25)
-  const ap = clamp(Math.round(randInt(rng, 20, 60) + c.reputation * 0.4 + qualityBonus), 0, 100)
-  const mp = clamp(Math.round(randInt(rng, 25, 65) + c.reputation * 0.5 + qualityBonus * 0.6), 0, 100)
+  const sequelBonus = sequel ? (sequel.films - 1) * cfg.economy.sequelQualityBonus : 0
+  const ap = clamp(
+    Math.round(randInt(rng, 20, 60) + c.reputation * 0.4 + qualityBonus + sequelBonus),
+    0,
+    100,
+  )
+  const mp = clamp(
+    Math.round(randInt(rng, 25, 65) + c.reputation * 0.5 + qualityBonus * 0.6 + sequelBonus * 0.6),
+    0,
+    100,
+  )
 
-  const { criticScore, audienceScore, boxOffice } = scoreCompetitorFilm(state, type, ap, mp, rng)
+  let { criticScore, audienceScore, boxOffice } = scoreCompetitorFilm(state, type, ap, mp, rng)
+  if (sequel) {
+    boxOffice = Math.round(
+      boxOffice * (1 + sequel.films * cfg.economy.sequelBoxOfficePerFilm),
+    )
+    sequel.films += 1
+    sequel.totalBoxOffice = round1(sequel.totalBoxOffice + boxOffice)
+  }
+
+  // 资金经营：收入 = 票房 × 分账；成本 = 基准 × 投入倍率 × 声誉系数
+  const cost = Math.round(cfg.economy.costBase * invest * (0.8 + c.reputation / 100))
+  c.cash = round1(c.cash + boxOffice * cfg.economy.share - cost)
+
+  // 高票房新片沉淀为 IP（续作不重复沉淀）
+  if (!sequel && boxOffice >= cfg.economy.ipThreshold) {
+    c.ips.push({
+      id: `${c.id}-ip${c.ips.length + 1}`,
+      name: title,
+      type,
+      films: 1,
+      totalBoxOffice: boxOffice,
+    })
+  }
 
   const film: CompetitorFilm = {
     week: state.calendar.week,
@@ -194,4 +235,10 @@ export function releaseCompetitorFilm(state: GameState, c: Competitor, rng: Rng)
   c.reputation = clamp(c.reputation + (mp >= 50 ? 1 : -1), 0, 100)
   c.nextType = type
   return film
+}
+
+/** NPC 每周运营成本（万） */
+export function weeklyCompetitorOverhead(c: Competitor): number {
+  const e = WORLD_CONFIG.competitor.economy
+  return round1(e.weeklyOverheadBase + c.reputation * e.weeklyOverheadPerRep)
 }

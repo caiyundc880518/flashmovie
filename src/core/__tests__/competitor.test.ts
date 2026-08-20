@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createInitialState } from '../state/initialState'
+import { reduce } from '../state/reducer'
 import {
   decideCompetitorType,
   releaseCompetitorFilm,
@@ -129,5 +130,59 @@ describe('NPC AI（阶段 2：感知决策 + 口碑闭环）', () => {
     makePlayerPresale(s, 'comedy', s.calendar.week)
     const types = playerWindowTypes(s)
     expect(types).toContain('comedy')
+  })
+
+  it('长线经营：高票房新片沉淀为 IP（票房 ≥ 阈值）', () => {
+    const s = createInitialState(17)
+    // 造有利环境：潮流 action + 行业景气，无竞争
+    s.world.trend = { type: 'action', untilWeek: s.calendar.week + 20 }
+    s.world.activeEvents = [{ id: 'e1', title: '景气', desc: 'x', kind: 'boom', untilWeek: s.calendar.week + 10, boxOfficeMul: 1.15 }]
+    s.world.competitors = []
+    const c = makeCompetitor({ personality: 'specialist', homeTypes: ['action'], reputation: 70, cash: 3000 })
+    let high = 0
+    for (let i = 0; i < 8; i++) {
+      const film = releaseCompetitorFilm(s, c, createRng(i + 50))
+      if (film.boxOffice >= 1500) high++
+    }
+    expect(high).toBeGreaterThan(0)
+    expect(c.ips.length).toBeGreaterThan(0)
+    // 每部沉淀 IP 都满足阈值（续作会在 films 上累加）
+    for (const ip of c.ips) {
+      expect(ip.films).toBeGreaterThanOrEqual(1)
+      expect(ip.totalBoxOffice).toBeGreaterThanOrEqual(1500)
+    }
+  })
+
+  it('长线经营：同类型 IP 存在时按性格概率拍续作（片名带序号、部数累加）', () => {
+    const s = createInitialState(18)
+    s.world.trend = { type: 'war', untilWeek: s.calendar.week + 20 }
+    s.world.competitors = []
+    const c = makeCompetitor({
+      personality: 'specialist',
+      homeTypes: ['war'],
+      reputation: 70,
+      cash: 5000,
+      ips: [{ id: 'ip1', name: '长津湖畔', type: 'war', films: 2, totalBoxOffice: 8000 }],
+    })
+    let sequels = 0
+    for (let i = 0; i < 40; i++) {
+      const film = releaseCompetitorFilm(s, c, createRng(i + 100))
+      if (film.name.startsWith('长津湖畔 3')) sequels++
+    }
+    expect(sequels).toBeGreaterThan(0)
+    expect(c.ips[0].films).toBeGreaterThan(2)
+    expect(c.ips[0].totalBoxOffice).toBeGreaterThan(8000)
+  })
+
+  it('长线经营：破产救急——cash<0 时推进一周注资并歇业 8–12 周', () => {
+    const s = createInitialState(19)
+    s.company.employeeIds = []
+    s.world.competitors[0].cash = -100
+    s.world.competitors[0].nextReleaseIn = 0
+    const s2 = reduce(s, { type: 'advanceWeek' })
+    const c = s2.world.competitors[0]
+    expect(c.cash).toBeGreaterThan(0)
+    expect(c.nextReleaseIn).toBeGreaterThanOrEqual(8)
+    expect(c.nextReleaseIn).toBeLessThanOrEqual(12)
   })
 })

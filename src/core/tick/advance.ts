@@ -18,7 +18,7 @@ import { applyWeeklyWorkerState } from '../rules/growth'
 import { chemistrySpeedFactor } from '../rules/chemistry'
 import { settleDistribution, settleIpLongtail } from './distribution'
 import { applyAwardEffects, computeYearAwards } from '../rules/awards'
-import { releaseCompetitorFilm, shouldCompetitorRelease } from '../rules/competitor'
+import { releaseCompetitorFilm, shouldCompetitorRelease, weeklyCompetitorOverhead } from '../rules/competitor'
 import { annualCriticRotation } from '../rules/critics'
 import { generateScript, generateTierScript } from '../generators/scriptGen'
 import { generateMarketScripts } from '../generators/scriptGen'
@@ -287,10 +287,18 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     }
   }
 
-  // 7.5 竞争对手周期：倒计时归零 → 档期决策（拥挤避让/狙击）→ 感知类型决策 + 口碑闭环上映
+  // 7.5 竞争对手周期：每周运营成本 → 倒计时归零 → 破产救急 → 档期决策 → 感知类型决策 + 口碑闭环上映
   for (const c of draft.world.competitors) {
+    // 资金经营：每周运营开销
+    c.cash = round1(c.cash - weeklyCompetitorOverhead(c))
     c.nextReleaseIn -= 1
     if (c.nextReleaseIn <= 0) {
+      // 破产救急：注资 + 歇业 8–12 周
+      if (c.cash < 0) {
+        c.cash = round1(c.cash + randInt(rng, WORLD_CONFIG.competitor.economy.bailoutRange[0], WORLD_CONFIG.competitor.economy.bailoutRange[1]))
+        c.nextReleaseIn = randInt(rng, WORLD_CONFIG.competitor.economy.pauseWeeks[0], WORLD_CONFIG.competitor.economy.pauseWeeks[1])
+        continue
+      }
       if (!shouldCompetitorRelease(draft, c, rng)) continue
       const film = releaseCompetitorFilm(draft, c, rng)
       const typeText = film.type ? FILM_TYPE_ZH[film.type] : ''

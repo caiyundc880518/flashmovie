@@ -54,6 +54,37 @@ export const WORLD_CONFIG = {
     } as const,
     /** 专精型锁定的类型数量范围 */
     specialistHomeTypes: [1, 2] as const,
+    /** NPC 长线经营（阶段 3：资金池 / IP 沉淀 / 续作 / 破产） */
+    economy: {
+      /** 片方分账比例（NPC 票房收入） */
+      share: 0.5,
+      /** 制片成本基准（万，× 性格投入倍率 × 声誉系数） */
+      costBase: 700,
+      /** 每周运营成本 = 基准 + 声誉 × 系数（万） */
+      weeklyOverheadBase: 4,
+      weeklyOverheadPerRep: 0.08,
+      /** 拮据线：cash < 此值 → 品质投入降档 */
+      poorThreshold: 200,
+      /** 降档倍率 */
+      downshiftMul: 0.7,
+      /** 破产暂停：cash < 0 → 注资救急 + 歇业期（周） */
+      bailoutRange: [300, 500] as const,
+      pauseWeeks: [8, 12] as const,
+      /** IP 沉淀票房阈值（万） */
+      ipThreshold: 1500,
+      /** 续作概率（按性格：专精/品质最恋旧，快发最不恋旧） */
+      sequelChance: {
+        quality: 0.5,
+        volume: 0.15,
+        specialist: 0.55,
+        sniper: 0.2,
+        balanced: 0.3,
+      } as const,
+      /** 续作品质加成（每多一部 +4 ap/mp） */
+      sequelQualityBonus: 4,
+      /** 续作票房乘数 = 1 + 已出部数 × 系数 */
+      sequelBoxOfficePerFilm: 0.08,
+    } as const,
   },
 
   /** 档期竞争惩罚：同周/近周上映的对手片数 × 惩罚系数，上限 maxPenalty */
