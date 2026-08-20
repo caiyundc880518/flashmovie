@@ -7,6 +7,8 @@ import { Bar } from '../components/Bar'
 import { MoneyText } from '../components/MoneyText'
 import { Tabs } from '../components/Tabs'
 import { RereleaseBox } from '../components/RereleaseBox'
+import { RollingNumber } from '../components/RollingNumber'
+import type { FilmProject, FilmRunState, WeeklyBoxOffice } from '../../core/types'
 
 /** IP 当前周周边收入估算（万/周，与结算公式一致） */
 function merchPerWeek(hotness: number, level: number, merchBonus: number): number {
@@ -18,8 +20,21 @@ function merchPerWeek(hotness: number, level: number, merchBonus: number): numbe
   )
 }
 
+/** 全部放映段里最新一条周结算记录（按 年/周 取最大） */
+function latestWeekRecord(rs: FilmRunState): WeeklyBoxOffice | undefined {
+  let last: WeeklyBoxOffice | undefined
+  for (const run of rs.runs) {
+    const w = run.weekly[run.weekly.length - 1]
+    if (w && (!last || w.year > last.year || (w.year === last.year && w.week > last.week))) {
+      last = w
+    }
+  }
+  return last
+}
+
 /**
- * 长尾收益页：TAB「放映」= 进行中的放映 + 已下片可再发行；TAB「IP长尾」= 周边收入 + 版权交易
+ * 长尾收益页：TAB「放映」= 实时票房看板（本周公司总票房 + 每部电影本周/累计售卖）+ 已下片可再发行；
+ * TAB「IP长尾」= 周边收入 + 版权交易
  */
 export function LongtailScreen({ onOpenProject }: { onOpenProject: (id: string) => void }) {
   const state = useGameStore((s) => s.state)
@@ -31,31 +46,96 @@ export function LongtailScreen({ onOpenProject }: { onOpenProject: (id: string) 
   const active = released.filter((p) => p.run!.status === 'presale' || p.run!.status === 'running')
   const rereleasable = released.filter((p) => p.run!.status === 'idle')
 
-  /** TAB「放映」：进行中的放映 + 已下片可再发行 */
+  /** 当前周结算记录（仅当最新记录就是本周时有效，否则本周尚未开映/已下片 → undefined） */
+  const weekOf = (p: FilmProject): WeeklyBoxOffice | undefined => {
+    const rec = latestWeekRecord(p.run!)
+    if (rec && rec.year === state.calendar.year && rec.week === state.calendar.week) return rec
+    return undefined
+  }
+
+  const weekTotalBoxOffice = active.reduce((s, p) => s + (weekOf(p)?.boxOffice ?? 0), 0)
+  const weekTotalRevenue = active.reduce((s, p) => s + (weekOf(p)?.revenue ?? 0), 0)
+
+  /** TAB「放映」：实时票房看板 + 已下片可再发行 */
   const screeningTab = (
     <>
       <section className="panel">
-        <h2>🎬 进行中的放映（{active.length}）</h2>
-        <p className="dim">每周推进自动结算当周票房/流量/收入；首轮放映下片后结算成员成长与 IP 沉淀。</p>
-        {active.length === 0 && <p className="dim empty-hint">当前没有正在放映或待映的影片。</p>}
-        {active.map((p) => {
-          const rs = p.run!
-          const run = rs.runs.find((x) => x.id === rs.currentRunId)
-          return (
-            <div key={p.id} className="lt-row" onClick={() => onOpenProject(p.id)}>
-              <span className="table-name">{p.name}</span>
-              {rs.status === 'presale' ? (
-                <span className="tag">⏳ 待映 · {Math.max(0, rs.releaseWeek - state.calendar.week)} 周后 · 预售 {fmtWan(rs.presale)}</span>
-              ) : (
-                <span className="tag tag-gold">
-                  🎬 {run ? `${CHANNEL_INFO[run.channel].label}档 · 第 ${run.weekly.length + 1} 周` : ''} · 累计{' '}
-                  {fmtWan(p.result?.boxOffice ?? 0)}
-                </span>
-              )}
-              <span className="dim">{STAGE_ZH[p.stage]} · 点击查看详情</span>
+        <h2>🎬 实时票房（第 {state.calendar.week} 周）</h2>
+        <p className="dim">
+          推进一周后数字滚动刷新：每部电影的当周与累计票房 / 分账收入实时呈现，反映公司每周售卖情况。
+        </p>
+        {active.length === 0 ? (
+          <p className="dim empty-hint">当前没有正在放映或待映的影片。</p>
+        ) : (
+          <>
+            <div className="boxoffice-total">
+              <span className="boxoffice-total-label">公司本周总票房</span>
+              <span className="boxoffice-total-num">
+                <RollingNumber value={weekTotalBoxOffice} duration={900} />
+                <span className="boxoffice-unit">万</span>
+              </span>
+              <span className="boxoffice-total-sub">
+                本周总收入 <RollingNumber value={weekTotalRevenue} duration={900} /> 万
+              </span>
             </div>
-          )
-        })}
+            <div className="boxoffice-grid">
+              {active.map((p) => {
+                const rs = p.run!
+                const run = rs.runs.find((x) => x.id === rs.currentRunId)
+                const wk = weekOf(p)
+                const isPresale = rs.status === 'presale'
+                return (
+                  <div key={p.id} className="boxoffice-card" onClick={() => onOpenProject(p.id)}>
+                    <div className="boxoffice-card-head">
+                      <span className="boxoffice-card-name">{p.name}</span>
+                      {isPresale ? (
+                        <span className="tag">
+                          ⏳ 待映 · {Math.max(0, rs.releaseWeek - state.calendar.week)} 周后
+                          {rs.presale > 0 ? ` · 预售 ${fmtWan(rs.presale)}` : ''}
+                        </span>
+                      ) : (
+                        <span className="tag tag-gold">
+                          🎬 {run ? `${CHANNEL_INFO[run.channel].label} · 放映第 ${run.weekly.length} 周` : ''}
+                        </span>
+                      )}
+                    </div>
+                    <div className="boxoffice-metrics">
+                      <div className="boxoffice-metric">
+                        <span className="boxoffice-metric-label">本周票房</span>
+                        <span className="boxoffice-metric-num">
+                          <RollingNumber value={wk?.boxOffice ?? 0} />
+                          <span className="boxoffice-unit">万</span>
+                        </span>
+                      </div>
+                      <div className="boxoffice-metric">
+                        <span className="boxoffice-metric-label">累计票房</span>
+                        <span className="boxoffice-metric-num">
+                          <RollingNumber value={p.result?.boxOffice ?? 0} />
+                          <span className="boxoffice-unit">万</span>
+                        </span>
+                      </div>
+                      <div className="boxoffice-metric">
+                        <span className="boxoffice-metric-label">本周收入</span>
+                        <span className="boxoffice-metric-num">
+                          <RollingNumber value={wk?.revenue ?? 0} />
+                          <span className="boxoffice-unit">万</span>
+                        </span>
+                      </div>
+                      <div className="boxoffice-metric">
+                        <span className="boxoffice-metric-label">累计收入</span>
+                        <span className="boxoffice-metric-num">
+                          <RollingNumber value={p.result?.revenue ?? 0} />
+                          <span className="boxoffice-unit">万</span>
+                        </span>
+                      </div>
+                    </div>
+                    <div className="boxoffice-card-foot dim">{STAGE_ZH[p.stage]} · 点击查看详情</div>
+                  </div>
+                )
+              })}
+            </div>
+          </>
+        )}
       </section>
 
       <section className="panel">

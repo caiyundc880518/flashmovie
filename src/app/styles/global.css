@@ -2860,6 +2860,129 @@ input[type='range'] {
   }
 }
 
+/* ===== 实时票房看板（长尾收益·放映 TAB） ===== */
+.boxoffice-total {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  padding: 22px 20px 20px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background:
+    radial-gradient(600px 120px at 50% -20px, rgba(232, 182, 76, 0.12), transparent 70%),
+    var(--panel-2, #131c2e);
+}
+.boxoffice-total-label {
+  color: var(--text-dim);
+  font-size: 14px;
+  letter-spacing: 2px;
+}
+.boxoffice-total-num {
+  font-size: 44px;
+  font-weight: 800;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 1px;
+  line-height: 1;
+  text-shadow: 0 0 24px rgba(232, 182, 76, 0.35);
+}
+.boxoffice-total-sub {
+  color: var(--text-dim);
+  font-size: 13px;
+}
+.boxoffice-total-sub .rolling-num,
+.boxoffice-total-sub .boxoffice-unit {
+  color: var(--gold);
+  font-weight: 600;
+}
+.boxoffice-unit {
+  margin-left: 3px;
+  font-size: 0.62em;
+  font-weight: 600;
+  color: var(--text-dim);
+  letter-spacing: 0;
+}
+.boxoffice-total .boxoffice-unit {
+  color: var(--gold);
+  opacity: 0.8;
+}
+.boxoffice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 12px;
+}
+.boxoffice-card {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--gold);
+  border-radius: 12px;
+  background: var(--panel-2, #131c2e);
+  cursor: pointer;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+.boxoffice-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-2px);
+}
+.boxoffice-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.boxoffice-card-name {
+  font-weight: 700;
+  font-size: 14px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.boxoffice-metrics {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.boxoffice-metric {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+.boxoffice-metric-label {
+  font-size: 11px;
+  color: var(--text-dim);
+  letter-spacing: 1px;
+}
+.boxoffice-metric-num {
+  font-size: 19px;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.boxoffice-card-foot {
+  font-size: 12px;
+}
+@media (max-width: 900px) {
+  .boxoffice-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+@media (max-width: 560px) {
+  .boxoffice-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* ===== 曲线图（LineChart） ===== */
 .line-chart {
   width: 100%;
