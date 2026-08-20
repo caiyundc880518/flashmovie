@@ -476,6 +476,46 @@ export function App() {
           onClose={() => setSeenCeremonyYear(state.lastCeremony!.year)}
         />
       )}
+
+      {/* 对手挖角弹窗：留人（付签字费）或放人（员工跳槽） */}
+      {inGame && state.world.pendingPoach && (() => {
+        const poach = state.world.pendingPoach
+        const worker = state.workers[poach.workerId]
+        const comp = state.world.competitors.find((c) => c.id === poach.competitorId)
+        const canKeep = state.company.cash >= poach.offer
+        return (
+          <div className="modal-overlay">
+            <div className="modal" role="dialog" aria-modal="true">
+              <div className="modal-head">
+                <h2>⚔️ 挖角警告</h2>
+              </div>
+              <div className="modal-body">
+                <p>
+                  竞争对手「{comp?.name ?? '未知影业'}」开出{' '}
+                  <b className="money">{poach.offer} 万</b> 签字费，试图挖走你的员工「
+                  {worker?.name ?? '未知员工'}」！
+                </p>
+                {!canKeep && <p className="bad">资金不足，无法挽留，只能放人。</p>}
+                <div className="btn-row" style={{ marginTop: 14 }}>
+                  <button
+                    className="btn-primary"
+                    disabled={!canKeep}
+                    onClick={() => dispatch({ type: 'respondPoach', keep: true })}
+                  >
+                    挽留（付 {poach.offer} 万）
+                  </button>
+                  <button
+                    className="btn-danger"
+                    onClick={() => dispatch({ type: 'respondPoach', keep: false })}
+                  >
+                    放人
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

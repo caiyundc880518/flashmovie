@@ -52,3 +52,7 @@ export type Action =
   | { type: 'sellCopyright'; ipId: string; kind: 'tv' | 'game' }
   // 取消未上映项目：投入不退、剧组人员释放回员工池
   | { type: 'cancelProject'; projectId: string }
+  // NPC 挖角：玩家挖对手员工（一次性签字费 offer 万，成功率看报价/声誉差）
+  | { type: 'poachCompetitorWorker'; competitorId: string; workerId: string; offer: number }
+  // 回应对手挖角：keep=true 付签字费挽留 / false 放人（员工跳槽至对手团队）
+  | { type: 'respondPoach'; keep: boolean }

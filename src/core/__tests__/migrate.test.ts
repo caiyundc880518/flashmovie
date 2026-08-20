@@ -147,7 +147,9 @@ describe('存档迁移', () => {
       expect(['quality', 'volume', 'specialist', 'sniper', 'balanced']).toContain(c.personality)
       expect(typeof c.cash).toBe('number')
       expect(c.cash).toBeGreaterThan(0)
-      expect(c.team).toEqual([])
+      // 阶段 4：迁移后自动补团队（3–6 人，员工在 workers 表）
+      expect(c.team.length).toBeGreaterThanOrEqual(3)
+      for (const id of c.team) expect(first.workers[id]).toBeDefined()
       expect(c.ips).toEqual([])
       if (c.personality === 'specialist') {
         expect(c.homeTypes?.length).toBeGreaterThan(0)

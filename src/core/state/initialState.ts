@@ -14,6 +14,7 @@ import {
   generateInvestors,
   generatePublishers,
 } from '../generators/worldGen'
+import { ensureCompetitorTeams } from '../rules/competitor'
 
 /** 创建新档（种子可复现；公司名自定义，默认星光影业） */
 export function createInitialState(seed?: number, companyName = '星光影业'): GameState {
@@ -90,5 +91,7 @@ export function createInitialState(seed?: number, companyName = '星光影业'):
     scriptDrafts: [],
     cheats: { noCaDecay: false },
   }
+  // NPC 团队：对手自带 3–6 名员工（进 workers 表，team 挂 id）
+  ensureCompetitorTeams(state)
   return state
 }

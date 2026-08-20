@@ -1,14 +1,79 @@
 import { useState } from 'react'
 import type { Worker } from '../../core/types'
+import type { Competitor, GameState } from '../../core/types'
+import type { Action } from '../../core/state/actions'
 import { ROLE_IDS } from '../../core/types'
 import { useGameStore } from '../store/gameStore'
-import { ROLE_ZH, moodColor } from '../format'
+import { ROLE_ZH, PERSONALITY_ZH, moodColor, fmtWan } from '../format'
 import { ECONOMY } from '../../core/config/economy'
 import { RECRUIT_POOLS, type RecruitPoolConfig } from '../../core/config/recruit'
 import { TEN_PULL_DISCOUNT } from '../../core/config/writers'
+import { ROLES } from '../../core/config/roles'
+import { poachSuccessChance } from '../../core/rules/competitor'
 import { WorkerDetail } from '../components/WorkerDetail'
 import { Modal } from '../components/Modal'
 import { MoneyText } from '../components/MoneyText'
+
+/** 单名对手员工：签字费报价 + 成功率预估 + 挖角按钮 */
+function PoachRow({
+  state,
+  competitor,
+  worker,
+  dispatch,
+}: {
+  state: GameState
+  competitor: Competitor
+  worker: Worker
+  dispatch: (a: Action) => void
+}) {
+  const [offer, setOffer] = useState(Math.max(1, Math.round(worker.salary * 3)))
+  const chance = poachSuccessChance(state, competitor, worker, offer)
+  const canAfford = state.company.cash >= offer
+  const mainSkill = ROLES[worker.role].skill ?? 'act'
+  return (
+    <div className="poach-row">
+      <div className="poach-row-info">
+        <span className="table-name">{worker.name}</span>
+        <span className="tag">{ROLE_ZH[worker.role]}</span>
+        <span className="dim">
+          CA {worker.basic.ca} · 主技 {worker.skills[mainSkill]} · Fame {Math.round(worker.basic.fame)}
+        </span>
+        <span className="dim">
+          周薪 <MoneyText value={worker.salary} />
+        </span>
+      </div>
+      <div className="poach-row-ops">
+        <input
+          className="poach-offer"
+          type="number"
+          min={1}
+          value={offer}
+          onChange={(e) => setOffer(Math.max(0, Math.round(Number(e.target.value) || 0)))}
+        />
+        <span className="dim">
+          签字费（万）· 成功率{' '}
+          <b className={chance >= 0.5 ? 'good' : chance >= 0.2 ? '' : 'bad'}>
+            {Math.round(chance * 100)}%
+          </b>
+        </span>
+        <button
+          className="btn-primary"
+          disabled={!canAfford || offer <= 0}
+          onClick={() =>
+            dispatch({
+              type: 'poachCompetitorWorker',
+              competitorId: competitor.id,
+              workerId: worker.id,
+              offer,
+            })
+          }
+        >
+          挖角
+        </button>
+      </div>
+    </div>
+  )
+}
 
 interface GachaState {
   pool: RecruitPoolConfig
@@ -187,6 +252,43 @@ export function RecruitScreen() {
             ))}
           </div>
         )}
+      </section>
+
+      {/* 竞对挖角：挖对手员工（签字费报价决定成功率）；对手也会反过来挖你的明星员工 */}
+      <section className="panel">
+        <h2>⚔️ 竞对挖角</h2>
+        <p className="dim">
+          挖角竞争对手的员工：一次性签字费越高成功率越高，公司声誉高于对方也有加成。对手也会盯上你的明星员工，注意弹窗。
+        </p>
+        {state.world.competitors.map((c) => (
+          <div key={c.id} className="poach-comp">
+            <div className="poach-comp-head">
+              <b className="table-name">{c.name}</b>
+              <span className="tag tag-gold">{PERSONALITY_ZH[c.personality]}</span>
+              <span className="dim">
+                声誉 {Math.round(c.reputation)} · 资金 {fmtWan(c.cash)}
+              </span>
+            </div>
+            {c.team.length === 0 ? (
+              <p className="dim">该对手暂时没有可挖的员工。</p>
+            ) : (
+              <div className="poach-rows">
+                {c.team.map((wid) => {
+                  const w = state.workers[wid]
+                  return w ? (
+                    <PoachRow
+                      key={wid}
+                      state={state}
+                      competitor={c}
+                      worker={w}
+                      dispatch={dispatch}
+                    />
+                  ) : null
+                })}
+              </div>
+            )}
+          </div>
+        ))}
       </section>
 
       {/* 抽卡弹窗：卡背 → 逐张翻开 */}

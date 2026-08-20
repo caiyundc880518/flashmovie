@@ -141,6 +141,14 @@ export interface Investor {
   share: number
 }
 
+/** NPC 挖角邀约（对手 → 玩家员工） */
+export interface PoachOffer {
+  competitorId: string
+  workerId: string
+  /** 开出签字费（万） */
+  offer: number
+}
+
 /** 世界状态（剧本市场 / 招聘市场 / 新闻 / 趋势 / 对手 / 影评人 / 发行商 / 投资人） */
 export interface World {
   /** 剧本市场在售剧本 */
@@ -163,6 +171,8 @@ export interface World {
   publishers: Publisher[]
   /** 投资人（可签约其一） */
   investors: Investor[]
+  /** 待决的对手挖角邀约（一次一个，玩家处理后清除） */
+  pendingPoach?: PoachOffer
 }
 
 export interface GameState {

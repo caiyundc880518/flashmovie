@@ -18,7 +18,13 @@ import { applyWeeklyWorkerState } from '../rules/growth'
 import { chemistrySpeedFactor } from '../rules/chemistry'
 import { settleDistribution, settleIpLongtail } from './distribution'
 import { applyAwardEffects, computeYearAwards } from '../rules/awards'
-import { releaseCompetitorFilm, shouldCompetitorRelease, weeklyCompetitorOverhead } from '../rules/competitor'
+import {
+  maybeNpcPoach,
+  releaseCompetitorFilm,
+  shouldCompetitorRelease,
+  weeklyCompetitorOverhead,
+  weeklyTeamSalary,
+} from '../rules/competitor'
 import { annualCriticRotation } from '../rules/critics'
 import { generateScript, generateTierScript } from '../generators/scriptGen'
 import { generateMarketScripts } from '../generators/scriptGen'
@@ -287,10 +293,12 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
     }
   }
 
-  // 7.5 竞争对手周期：每周运营成本 → 倒计时归零 → 破产救急 → 档期决策 → 感知类型决策 + 口碑闭环上映
+  // 7.5 竞争对手周期：每周运营成本+团队薪资 → 倒计时归零 → 破产救急 → 档期决策 → 感知类型决策 + 口碑闭环上映
   for (const c of draft.world.competitors) {
-    // 资金经营：每周运营开销
-    c.cash = round1(c.cash - weeklyCompetitorOverhead(c))
+    // 资金经营：每周运营开销 + 团队薪资
+    c.cash = round1(
+      c.cash - weeklyCompetitorOverhead(c) - weeklyTeamSalary(draft, c),
+    )
     c.nextReleaseIn -= 1
     if (c.nextReleaseIn <= 0) {
       // 破产救急：注资 + 歇业 8–12 周
@@ -318,6 +326,9 @@ export function advanceWeek(draft: GameState, rng: Rng): void {
       )
     }
   }
+
+  // 7.55 对手挖角：对玩家高价值空闲员工发起挖角（一次一个，玩家在弹窗中决定留/放）
+  maybeNpcPoach(draft)
 
   // 7.6 行业/公司随机事件（GDD §6 Random Events）：清理过期 + 概率触发
   draft.world.activeEvents = draft.world.activeEvents.filter(

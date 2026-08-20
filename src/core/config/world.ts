@@ -85,6 +85,22 @@ export const WORLD_CONFIG = {
       /** 续作票房乘数 = 1 + 已出部数 × 系数 */
       sequelBoxOfficePerFilm: 0.08,
     } as const,
+    /** NPC 挖角（阶段 4：双向挖团队） */
+    poach: {
+      /** 每周触发概率 */
+      chance: 0.12,
+      /** NPC 开出签字费 = 员工周薪 × mul/10（2.5–4 倍周薪） */
+      offerMul: [25, 40] as const,
+      /** 玩家挖角成功率：基础 + offer 超出 4 倍周薪每万 + 系数 + 声誉差 × 系数 */
+      baseSuccess: 0.35,
+      successPerOfferOver: 0.001,
+      successPerRepDiff: 0.003,
+      maxSuccess: 0.9,
+      minSuccess: 0.05,
+      /** 目标筛选：名气或最高技能达到阈值才值得挖 */
+      targetFameMin: 25,
+      targetSkillMin: 60,
+    } as const,
   },
 
   /** 档期竞争惩罚：同周/近周上映的对手片数 × 惩罚系数，上限 maxPenalty */

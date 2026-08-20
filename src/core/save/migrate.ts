@@ -25,6 +25,7 @@ import {
   generatePublishers,
   pickPersonality,
 } from '../generators/worldGen'
+import { ensureCompetitorTeams } from '../rules/competitor'
 import { SAVE_VERSION } from './schema'
 
 /**
@@ -72,6 +73,8 @@ export function migrateSave(raw: unknown): GameState {
   if (state.version === 14) state = migrateV14toV15(state)
   // 兼容修复：世界实体为空时按种子补生成（覆盖迁移与早期空档）
   state = ensureWorldPopulated(state)
+  // NPC 团队补齐：对手自带员工（新档与旧档统一，确定性派生）
+  ensureCompetitorTeams(state)
   return state
 }
 

@@ -27,6 +27,7 @@ import { BUDGET_CONFIG } from '../config/budget'
 import { AD_CONFIG, AD_SPONSOR_MAP } from '../config/ads'
 import { CHANNEL_CONFIG, CHANNEL_INFO, TOTAL_CINEMAS, WEB_PLATFORMS } from '../config/channels'
 import { availableVfxTiers } from '../rules/scoring'
+import { poachSuccessChance } from '../rules/competitor'
 import type { Action } from './actions'
 import type { SkillKey } from '../types'
 
@@ -712,6 +713,46 @@ export function reduce(state: GameState, action: Action): GameState {
         draft,
         `《${p.name}》未上映即被取消，已投入 ${Math.round(p.spent)} 万沉没，剧组人员已释放回员工池。`,
       )
+      break
+    }
+
+    case 'poachCompetitorWorker': {
+      // 玩家挖对手员工：付一次性签字费，成功率 = 基础 + 报价溢价 + 声誉差
+      const comp = draft.world.competitors.find((c) => c.id === action.competitorId)
+      const worker = draft.workers[action.workerId]
+      if (!comp || !worker || !comp.team.includes(action.workerId)) return state
+      const offer = Math.max(0, Math.round(action.offer))
+      if (draft.company.cash < offer) return state
+      if (rng() < poachSuccessChance(draft, comp, worker, offer)) {
+        draft.company.cash = round1(draft.company.cash - offer)
+        comp.team = comp.team.filter((id) => id !== action.workerId)
+        draft.company.employeeIds.push(action.workerId)
+        pushNews(draft, `挖角成功！「${worker.name}」（${ROLES[worker.role].nameZh}）以 ${offer} 万签字费加盟星光影业，原属 ${comp.name}。`)
+      } else {
+        pushNews(draft, `挖角失败：${comp.name} 拒绝了 ${offer} 万签字费，不放走「${worker.name}」。`)
+      }
+      break
+    }
+
+    case 'respondPoach': {
+      // 回应对手挖角：挽留 = 付签字费留人；放人 = 员工跳槽至对手团队
+      const poach = draft.world.pendingPoach
+      if (!poach) return state
+      const comp = draft.world.competitors.find((c) => c.id === poach.competitorId)
+      const worker = draft.workers[poach.workerId]
+      if (action.keep) {
+        if (draft.company.cash < poach.offer) return state // 资金不足：保持待决，只能放人
+        draft.company.cash = round1(draft.company.cash - poach.offer)
+        draft.world.pendingPoach = undefined
+        if (worker) pushNews(draft, `以 ${poach.offer} 万签字费挽留「${worker.name}」，化解了${comp?.name ?? '对手'}的挖角攻势。`)
+      } else {
+        draft.world.pendingPoach = undefined
+        if (worker && comp) {
+          draft.company.employeeIds = draft.company.employeeIds.filter((id) => id !== poach.workerId)
+          comp.team.push(poach.workerId)
+          pushNews(draft, `「${worker.name}」接受 ${comp.name} 的挖角，跳槽离开星光影业！`)
+        }
+      }
       break
     }
   }

@@ -76,6 +76,7 @@ export type {
   CompetitorFilm,
   CompetitorPersonality,
   CompetitorIp,
+  PoachOffer,
   Critic,
   Publisher,
   Investor,

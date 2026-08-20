@@ -1,4 +1,4 @@
-import type { FilmType, RoleId, ProjectStage } from '../core/types'
+import type { CompetitorPersonality, FilmType, RoleId, ProjectStage } from '../core/types'
 
 export const TYPE_ZH: Record<FilmType, string> = {
   comedy: '喜剧',
@@ -7,6 +7,15 @@ export const TYPE_ZH: Record<FilmType, string> = {
   love: '爱情',
   war: '战争',
   drama: '剧情',
+}
+
+/** NPC 性格中文名（竞对观察/挖角界面） */
+export const PERSONALITY_ZH: Record<CompetitorPersonality, string> = {
+  quality: '品质型',
+  volume: '快发型',
+  specialist: '专精型',
+  sniper: '狙击型',
+  balanced: '稳健型',
 }
 
 export const TYPE_COLOR: Record<FilmType, string> = {

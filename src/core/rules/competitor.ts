@@ -1,5 +1,5 @@
-import type { Competitor, CompetitorFilm, CompetitorIp, FilmType, GameState } from '../types'
-import { FILM_TYPES } from '../types'
+import type { Competitor, CompetitorFilm, CompetitorIp, FilmType, GameState, Worker } from '../types'
+import { FILM_TYPES, type RoleId } from '../types'
 import { SCRIPT_POOL } from '../config/scripts'
 import { WORLD_CONFIG } from '../config/world'
 import { ECONOMY } from '../config/economy'
@@ -7,8 +7,12 @@ import { SCORE_WEIGHTS } from '../config/weights'
 import { audienceFit } from './audience'
 import { eventBoxOfficeFactor } from './events'
 import { competitionPenalty } from './scoring'
+import { generateWorker } from '../generators/workerGen'
+import { teamIds } from '../state/utils'
 import type { Rng } from '../rng'
-import { clamp, pick, randInt, round1 } from '../rng'
+import { clamp, createRng, pick, randInt, round1 } from '../rng'
+
+const SKILL_KEYS = ['act', 'direct', 'shoot', 'edit', 'market', 'technical', 'advertise', 'vfx'] as const
 
 /** 按权重随机抽一个类型 */
 function weightedPick(weights: Record<FilmType, number>, rng: Rng): FilmType {
@@ -179,18 +183,31 @@ export function releaseCompetitorFilm(state: GameState, c: Competitor, rng: Rng)
   }
   const title = sequel ? `${sequel.name} ${sequel.films + 1}` : pick(rng, SCRIPT_POOL.titles[type])
 
-  // 品质投入：性格 investMul；拮据（cash < 阈值）时降档
+  // 品质投入：性格 investMul；拮据（cash < 阈值）时降档；团队平均技能加成
   const poor = c.cash < cfg.economy.poorThreshold
   const invest = cfg.investMul[c.personality] * (poor ? cfg.economy.downshiftMul : 1)
   const qualityBonus = Math.round((invest - 1) * 25)
   const sequelBonus = sequel ? (sequel.films - 1) * cfg.economy.sequelQualityBonus : 0
+  const teamSkill = avgWorkerSkill(state, c)
   const ap = clamp(
-    Math.round(randInt(rng, 20, 60) + c.reputation * 0.4 + qualityBonus + sequelBonus),
+    Math.round(
+      randInt(rng, 20, 60) +
+        c.reputation * 0.4 +
+        qualityBonus +
+        sequelBonus +
+        (teamSkill - 40) * 0.4,
+    ),
     0,
     100,
   )
   const mp = clamp(
-    Math.round(randInt(rng, 25, 65) + c.reputation * 0.5 + qualityBonus * 0.6 + sequelBonus * 0.6),
+    Math.round(
+      randInt(rng, 25, 65) +
+        c.reputation * 0.5 +
+        qualityBonus * 0.6 +
+        sequelBonus * 0.6 +
+        (teamSkill - 40) * 0.3,
+    ),
     0,
     100,
   )
@@ -241,4 +258,97 @@ export function releaseCompetitorFilm(state: GameState, c: Competitor, rng: Rng)
 export function weeklyCompetitorOverhead(c: Competitor): number {
   const e = WORLD_CONFIG.competitor.economy
   return round1(e.weeklyOverheadBase + c.reputation * e.weeklyOverheadPerRep)
+}
+
+/** NPC 团队每周薪资（万） */
+export function weeklyTeamSalary(state: GameState, c: Competitor): number {
+  return round1(c.team.reduce((s, id) => s + (state.workers[id]?.salary ?? 0), 0))
+}
+
+/** 团队平均技能（0–100；无团队回退 40） */
+export function avgWorkerSkill(state: GameState, c: Competitor): number {
+  if (c.team.length === 0) return 40
+  let sum = 0
+  let n = 0
+  for (const id of c.team) {
+    const w = state.workers[id]
+    if (!w) continue
+    for (const k of SKILL_KEYS) {
+      sum += w.skills[k] ?? 0
+      n += 1
+    }
+  }
+  return n > 0 ? sum / n : 40
+}
+
+/**
+ * 补齐 NPC 团队（新档与旧档统一入口）：3–6 名员工进全局 workers 表，team 挂 id。
+ * 员工质量随声誉（≥60 熟手，否则新人）；用种子确定性派生，不扰动主随机序列。
+ */
+export function ensureCompetitorTeams(state: GameState): void {
+  const roles: RoleId[] = ['director', 'actor', 'shooter', 'editor', 'market', 'technician']
+  for (const c of state.world.competitors) {
+    if (c.team.length > 0) continue
+    const hash = c.id.split('').reduce((a, ch) => a + ch.charCodeAt(0), 0)
+    const rng = createRng(((state.seed ^ 0xbeef ^ hash * 104729) >>> 0) + 1)
+    const count = randInt(rng, 3, 6)
+    const tier = c.reputation >= 60 ? ('pro' as const) : ('rookie' as const)
+    for (let i = 0; i < count; i++) {
+      const w = generateWorker(rng, roles[i % roles.length], tier)
+      w.id = `${c.id}-t${i + 1}`
+      state.workers[w.id] = w
+      c.team.push(w.id)
+    }
+  }
+}
+
+/** 玩家空闲员工（不在任何项目组） */
+export function idlePlayerWorkers(state: GameState): Worker[] {
+  const busy = new Set<string>()
+  for (const p of state.projects) {
+    for (const id of teamIds(p.team)) busy.add(id)
+  }
+  return state.company.employeeIds
+    .map((id) => state.workers[id])
+    .filter((w): w is Worker => !!w && !busy.has(w.id))
+}
+
+/** 玩家挖角成功率（纯函数，UI 预估与 reducer 结算共用） */
+export function poachSuccessChance(
+  state: GameState,
+  competitor: Competitor,
+  worker: Worker,
+  offer: number,
+): number {
+  const cfg = WORLD_CONFIG.competitor.poach
+  const repDiff = state.company.reputation - competitor.reputation
+  const premium = Math.max(0, offer - worker.salary * 4)
+  const chance = cfg.baseSuccess + premium * cfg.successPerOfferOver + repDiff * cfg.successPerRepDiff
+  return clamp(chance, cfg.minSuccess, cfg.maxSuccess)
+}
+
+/**
+ * 每周 NPC 挖角检查：对玩家高价值空闲员工发起挖角（一次一个）。
+ * 用「种子 + 年/周」派生的确定性 rng，不消耗主随机序列（不扰动玩家世界的确定性）。
+ */
+export function maybeNpcPoach(draft: GameState): void {
+  if (draft.world.pendingPoach) return
+  const cfg = WORLD_CONFIG.competitor.poach
+  const cal = draft.calendar
+  const rng = createRng(((draft.seed ^ 0xcafe ^ cal.year * 104729 + cal.week * 7919) >>> 0) + 1)
+  if (rng() >= cfg.chance) return
+  const targets = idlePlayerWorkers(draft).filter(
+    (w) =>
+      w.basic.fame >= cfg.targetFameMin ||
+      Math.max(...SKILL_KEYS.map((k) => w.skills[k] ?? 0)) >= cfg.targetSkillMin,
+  )
+  if (targets.length === 0) return
+  const competitors = draft.world.competitors.filter((c) => c.cash > 0)
+  if (competitors.length === 0) return
+  const target = targets[Math.floor(rng() * targets.length)]
+  const comp = competitors[Math.floor(rng() * competitors.length)]
+  const offer = Math.round(
+    (target.salary * randInt(rng, cfg.offerMul[0], cfg.offerMul[1])) / 10,
+  )
+  draft.world.pendingPoach = { competitorId: comp.id, workerId: target.id, offer }
 }

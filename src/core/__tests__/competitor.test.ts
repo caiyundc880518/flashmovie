@@ -7,9 +7,12 @@ import {
   scoreCompetitorFilm,
   shouldCompetitorRelease,
   playerWindowTypes,
+  poachSuccessChance,
+  idlePlayerWorkers,
 } from '../rules/competitor'
+import { generateWorker } from '../generators/workerGen'
 import { createRng } from '../rng'
-import type { Competitor, FilmProject } from '../types'
+import type { Competitor, FilmProject, RoleId } from '../types'
 
 function makeCompetitor(over: Partial<Competitor> = {}): Competitor {
   return {
@@ -184,5 +187,143 @@ describe('NPC AI（阶段 2：感知决策 + 口碑闭环）', () => {
     expect(c.cash).toBeGreaterThan(0)
     expect(c.nextReleaseIn).toBeGreaterThanOrEqual(8)
     expect(c.nextReleaseIn).toBeLessThanOrEqual(12)
+  })
+
+  it('NPC 团队：新档对手自带 3–6 名员工（员工在 workers 表，不属于玩家）', () => {
+    const s = createInitialState(20)
+    for (const c of s.world.competitors) {
+      expect(c.team.length).toBeGreaterThanOrEqual(3)
+      expect(c.team.length).toBeLessThanOrEqual(6)
+      for (const id of c.team) {
+        expect(s.workers[id]).toBeDefined()
+        expect(s.company.employeeIds).not.toContain(id)
+      }
+    }
+  })
+
+  it('成功率公式：报价越高/声誉差越大 → 成功率越高，且有上下限', () => {
+    const s = createInitialState(25)
+    const comp = s.world.competitors[0]
+    const worker = s.workers[comp.team[0]]
+    const low = poachSuccessChance(s, comp, worker, 0)
+    const high = poachSuccessChance(s, comp, worker, worker.salary * 20)
+    expect(high).toBeGreaterThan(low)
+    expect(poachSuccessChance(s, comp, worker, 999999)).toBeLessThanOrEqual(0.9)
+    expect(low).toBeGreaterThanOrEqual(0.05)
+  })
+
+  it('idlePlayerWorkers：只返回非项目组的空闲员工', () => {
+    const s = createInitialState(26)
+    const w1 = generateWorker(createRng(1), 'director')
+    w1.id = 'idle1'
+    const w2 = generateWorker(createRng(2), 'actor')
+    w2.id = 'busy1'
+    s.workers['idle1'] = w1
+    s.workers['busy1'] = w2
+    s.company.employeeIds = ['idle1', 'busy1']
+    s.projects = [{ id: 'p1', stage: 'shooting', team: { actorIds: ['busy1'] } } as unknown as FilmProject]
+    const idle = idlePlayerWorkers(s)
+    expect(idle.map((w) => w.id)).toEqual(['idle1'])
+  })
+
+  it('回应对手挖角：放人 → 员工跳槽至对手团队并移出公司', () => {
+    const s = createInitialState(27)
+    const w = s.world.candidates[0]
+    w.id = 'victim'
+    s.workers['victim'] = w
+    s.company.employeeIds = ['victim']
+    const comp = s.world.competitors[0]
+    s.world.pendingPoach = { competitorId: comp.id, workerId: 'victim', offer: 100 }
+    const s2 = reduce(s, { type: 'respondPoach', keep: false })
+    expect(s2.world.pendingPoach).toBeUndefined()
+    expect(s2.company.employeeIds).not.toContain('victim')
+    expect(s2.world.competitors[0].team).toContain('victim')
+  })
+
+  it('回应对手挖角：挽留 → 扣签字费、员工留队、待决清除', () => {
+    const s = createInitialState(28)
+    const w = s.world.candidates[0]
+    w.id = 'victim'
+    s.workers['victim'] = w
+    s.company.employeeIds = ['victim']
+    const comp = s.world.competitors[0]
+    s.world.pendingPoach = { competitorId: comp.id, workerId: 'victim', offer: 100 }
+    const s2 = reduce(s, { type: 'respondPoach', keep: true })
+    expect(s2.world.pendingPoach).toBeUndefined()
+    expect(s2.company.employeeIds).toContain('victim')
+    expect(s2.company.cash).toBe(s.company.cash - 100)
+  })
+
+  it('挽留但资金不足 → 保持待决不变', () => {
+    const s = createInitialState(29)
+    const w = s.world.candidates[0]
+    w.id = 'victim'
+    s.workers['victim'] = w
+    s.company.employeeIds = ['victim']
+    const comp = s.world.competitors[0]
+    s.company.cash = 50
+    s.world.pendingPoach = { competitorId: comp.id, workerId: 'victim', offer: 100 }
+    const s2 = reduce(s, { type: 'respondPoach', keep: true })
+    expect(s2.world.pendingPoach).toBeDefined()
+    expect(s2.company.cash).toBe(50)
+  })
+
+  it('玩家挖角：资金不足直接失败（无变化）', () => {
+    const s = createInitialState(30)
+    const comp = s.world.competitors[0]
+    const wid = comp.team[0]
+    s.company.cash = 10
+    const s2 = reduce(s, { type: 'poachCompetitorWorker', competitorId: comp.id, workerId: wid, offer: 500 })
+    expect(s2.company.cash).toBe(10)
+    expect(s2.world.competitors[0].team).toContain(wid)
+  })
+
+  it('玩家挖角：高报价 + 高声誉 → 有成功；低报价 → 有失败（种子遍历确定性）', () => {
+    let successes = 0
+    let failures = 0
+    for (let seed = 1; seed <= 60; seed++) {
+      const s = createInitialState(seed)
+      const comp = s.world.competitors[0]
+      const wid = comp.team[0]
+      const worker = s.workers[wid]
+      s.company.reputation = 90
+      s.company.cash = 10000
+      const s2 = reduce(s, {
+        type: 'poachCompetitorWorker',
+        competitorId: comp.id,
+        workerId: wid,
+        offer: Math.round(worker.salary * 20),
+      })
+      if (s2.company.employeeIds.includes(wid)) successes++
+      else failures++
+    }
+    expect(successes).toBeGreaterThan(0)
+    expect(failures).toBeGreaterThan(0)
+  })
+
+  it('NPC 挖角触发：推进若干周后发起针对高价值空闲员工的挖角', () => {
+    let s = createInitialState(31)
+    s.company.employeeIds = []
+    const rng = createRng(3)
+    for (const role of ['director', 'actor'] as RoleId[]) {
+      const w = generateWorker(rng, role, 'pro')
+      w.id = `my-${role}`
+      s.workers[w.id] = w
+      s.company.employeeIds.push(w.id)
+    }
+    let fired = false
+    for (let i = 0; i < 80; i++) {
+      s = reduce(s, { type: 'advanceWeek' })
+      if (s.world.pendingPoach) {
+        fired = true
+        expect(s.company.employeeIds).toContain(s.world.pendingPoach.workerId)
+        expect(
+          s.world.competitors.find((c) => c.id === s.world.pendingPoach!.competitorId),
+        ).toBeDefined()
+        expect(s.world.pendingPoach.offer).toBeGreaterThan(0)
+        break
+      }
+    }
+    expect(fired).toBe(true)
   })
 })
