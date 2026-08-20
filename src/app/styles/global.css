@@ -29,7 +29,7 @@ body,
 body {
   background: var(--bg);
   color: var(--text);
-  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', '楷体', serif;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
   font-size: 14px;
   line-height: 1.6;
 }
@@ -3387,7 +3387,7 @@ input[type='range'] {
     0 2px 6px rgba(0, 0, 0, 0.35),
     inset 0 1px 0 rgba(255, 255, 255, 0.55);
   padding: 30px 40px 34px;
-  font-family: 'Kaiti SC', 'STKaiti', 'KaiTi', '楷体', serif;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
   /* 新闻文本里的 emoji（🏆/⚡/⛔）按文本样式渲染：字号与基线跟随文字，不再突兀错位 */
   font-variant-emoji: text;
 }
@@ -3428,7 +3428,7 @@ input[type='range'] {
 }
 .newspaper-sub {
   text-align: center;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'Microsoft YaHei', '微软雅黑', sans-serif;
   font-style: italic;
   font-size: 12px;
   letter-spacing: 0.22em;
